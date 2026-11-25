@@ -512,19 +512,29 @@ struct BatchInstallSheet: View {
                     rowProgressBar(package)
                 }
             }
+            // Expand to fill the leftover width instead of hugging the longest
+            // text line, so the progress bar has the same length on every row.
+            .frame(maxWidth: .infinity, alignment: .leading)
 
             Spacer(minLength: 6)
 
-            Image(systemName: package.resolvedVerdict.shortSymbol)
+            let main = mainRowIcon(package)
+            Image(systemName: main.name)
                 .font(.system(size: 12))
-                .foregroundStyle(verdictColor(package.resolvedVerdict))
-                .help(package.resolvedVerdict.displayName)
+                .foregroundStyle(main.color)
+                // Fixed slots keep the icon column vertically aligned across
+                // rows whether or not a second deep-check icon is present.
+                .frame(width: 18, height: 18)
+                .help(main.help)
 
-            if package.deepState != .notRun {
+            if package.deepState != .notRun && package.deepState != .running {
                 Image(systemName: deepIcon(package.deepState))
                     .font(.system(size: 11))
                     .foregroundStyle(deepColor(package.deepState))
+                    .frame(width: 18, height: 18)
                     .help("深度检查：\(package.deepState.displayName)")
+            } else {
+                Color.clear.frame(width: 18, height: 18)
             }
 
             Text(package.sizeText)
@@ -931,6 +941,18 @@ struct BatchInstallSheet: View {
         let percent = Int((package.deepProgress * 100).rounded())
         let phase = package.deepPhase ?? "检查中"
         return "\(package.deepState.displayName) · \(phase) \(percent)%"
+    }
+
+    /// Primary row glyph. While the deep pass runs, the "pending" verdict
+    /// glyph would only duplicate the hourglass, so the hourglass takes the
+    /// main slot and the second slot stays an empty placeholder.
+    private func mainRowIcon(_ package: InstallPackage) -> (name: String, color: Color, help: String) {
+        if package.deepState == .running {
+            return ("hourglass", .accentColor, "正在深度检查")
+        }
+        return (package.resolvedVerdict.shortSymbol,
+                verdictColor(package.resolvedVerdict),
+                package.resolvedVerdict.displayName)
     }
 
     private func deepIcon(_ state: DeepCheckState) -> String {
