@@ -599,28 +599,26 @@ final class BatchInstallModel: ObservableObject {
     // MARK: - Selection
 
     func togglePackage(_ id: InstallPackage.ID) {
-        guard let index = packages.firstIndex(where: { $0.id == id }) else { return }
-        packages[index].isSelected.toggle()
+        updatePackage(id: id) { $0.isSelected.toggle() }
     }
 
     func setGroupSelection(_ group: InstallPackageGroup, selected: Bool) {
         for member in group.packages {
-            if let index = packages.firstIndex(where: { $0.id == member.id }) {
-                packages[index].isSelected = selected
-            }
+            updatePackage(id: member.id) { $0.isSelected = selected }
         }
     }
 
     func setAllVisible(_ selected: Bool) {
         let visibleIDs = Set(visibleGroups.flatMap { $0.packages.map(\.id) })
         for index in packages.indices where visibleIDs.contains(packages[index].id) {
-            packages[index].isSelected = selected
+            updatePackage(id: packages[index].id) { $0.isSelected = selected }
         }
     }
 
     func selectAllPassed() {
         for index in packages.indices {
-            packages[index].isSelected = packages[index].quickVerdict != .blocked && packages[index].deepState != .failed
+            let shouldSelect = packages[index].quickVerdict != .blocked && packages[index].deepState != .failed
+            updatePackage(id: packages[index].id) { $0.isSelected = shouldSelect }
         }
     }
 
@@ -719,9 +717,7 @@ final class BatchInstallModel: ObservableObject {
             return
         }
 
-        performDeepChecks(on: targets.map {
-            (id: $0.id, url: $0.url, format: $0.format, keyPath: keyPath, expectedNCAs: $0.report?.ncaCount)
-        }) { [weak self] in
+        performDeepChecks(on: targets.map { Self.deepJob($0, keyPath: keyPath) }) { [weak self] in
             guard let self else { return }
             self.setBanner(self.deepSummary(), isError: false)
         }
@@ -744,9 +740,7 @@ final class BatchInstallModel: ObservableObject {
             return
         }
 
-        performDeepChecks(on: pending.map {
-            (id: $0.id, url: $0.url, format: $0.format, keyPath: keyPath, expectedNCAs: $0.report?.ncaCount)
-        }) { [weak self] in
+        performDeepChecks(on: pending.map { Self.deepJob($0, keyPath: keyPath) }) { [weak self] in
             guard let self else { return }
             self.setBanner(self.deepSummary(), isError: false)
             completion(self.makePlan())
@@ -754,7 +748,14 @@ final class BatchInstallModel: ObservableObject {
     }
 
     private typealias DeepJob = (id: InstallPackage.ID, url: URL, format: PackageFormat,
-                                 keyPath: String, expectedNCAs: Int?)
+                                 keyPath: String, expectedNCAs: Int?,
+                                 entrySizes: [String: Int64])
+
+    private static func deepJob(_ package: InstallPackage, keyPath: String) -> DeepJob {
+        let sizes = package.report?.entries.reduce(into: [String: Int64]()) { $0[$1.name] = $1.size } ?? [:]
+        return (id: package.id, url: package.url, format: package.format, keyPath: keyPath,
+                expectedNCAs: package.report?.ncaCount, entrySizes: sizes)
+    }
 
     private func performDeepChecks(on jobs: [DeepJob], completion: @escaping () -> Void) {
         guard !jobs.isEmpty, !isDeepChecking else { completion(); return }
@@ -790,6 +791,7 @@ final class BatchInstallModel: ObservableObject {
                         titleKeysURL: titleKeys,
                         hactoolURL: hactool,
                         expectedNCAs: job.expectedNCAs,
+                        entrySizes: job.entrySizes,
                         progress: { fraction, phase in
                             DispatchQueue.main.async { [weak self] in
                                 guard let self else { return }

@@ -104,6 +104,7 @@ enum DeepVerifier {
                        titleKeysURL: URL? = nil,
                        hactoolURL: URL,
                        expectedNCAs: Int? = nil,
+                       entrySizes: [String: Int64] = [:],
                        progress: ((Double, String) -> Void)? = nil) -> DeepResult {
         // NSZ is now unpacked (zstd + section re-encryption) into a temporary
         // NSP, whose NCAs are then verified exactly like a normal NSP. The
@@ -138,14 +139,28 @@ enum DeepVerifier {
 
         var begunNCAs = 0
         var finishedNCAs = 0
+        var doneBytes: Int64 = 0
+        let totalBytes = entrySizes.values.reduce(Int64(0), +)
         let output: String
         switch run(hactoolURL, arguments: arguments, timeout: 1800, onLine: { line in
             if line.hasPrefix("NSP_NCA_BEGIN:") {
                 begunNCAs += 1
             } else if line.hasPrefix("NSP_NCA_END:") {
                 finishedNCAs += 1
-                let total = expectedNCAs ?? max(begunNCAs, 1)
-                let fraction = min(Double(finishedNCAs) / Double(max(total, 1)), 1)
+                let name = line.dropFirst("NSP_NCA_END:".count)
+                    .trimmingCharacters(in: .whitespaces)
+                if let size = entrySizes[name] { doneBytes += size }
+                // Weight by NCA size: a KB-sized CNMT and a multi-GB RomFS NCA
+                // are not equal units, so a plain count jumps after tiny files
+                // and stalls on the big one. Fall back to counting when the
+                // structural pass has no entry sizes.
+                let fraction: Double
+                if totalBytes > 0 {
+                    fraction = min(Double(doneBytes) / Double(totalBytes), 1)
+                } else {
+                    let total = expectedNCAs ?? max(begunNCAs, 1)
+                    fraction = min(Double(finishedNCAs) / Double(max(total, 1)), 1)
+                }
                 progress?(fraction, "验签中")
             }
         }) {
