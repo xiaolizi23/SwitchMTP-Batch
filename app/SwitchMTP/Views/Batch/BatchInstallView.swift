@@ -118,14 +118,8 @@ struct BatchInstallSheet: View {
                     .foregroundStyle(.orange)
             }
 
-            Menu {
-                Button("检查待查项（\(model.deepPendingCount)）") {
-                    model.runDeepCheck()
-                }
-                .disabled(model.deepPendingCount == 0)
-                Button("重新检查全部（忽略已有结论）") {
-                    model.runDeepCheck(force: true)
-                }
+            Button {
+                model.runDeepCheck()
             } label: {
                 Label(model.isDeepChecking
                       ? "深度检查 \(model.deepCheckDone)/\(model.deepCheckTotal)"

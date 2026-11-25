@@ -174,11 +174,6 @@ final class BatchInstallModel: ObservableObject {
         return pool.isEmpty ? packages : pool
     }
 
-    /// Packages in the pool that still need a deep pass. A terminal conclusion
-    /// (verified, signature-only, non-retail, failed, unavailable) is reused
-    /// instead of being re-verified every time the button is pressed.
-    var deepPendingCount: Int { deepPool().filter { $0.deepState == .notRun }.count }
-
     var passedCount: Int { packages.filter { $0.resolvedVerdict == .passed }.count }
     var unverifiedCount: Int { packages.filter { $0.resolvedVerdict == .unverified }.count }
     var cautionCount: Int { packages.filter { $0.resolvedVerdict == .caution }.count }
@@ -702,11 +697,11 @@ final class BatchInstallModel: ObservableObject {
     }
 
     /// Runs the optional deep pass over the current selection (or everything
-    /// when nothing is selected). By default only packages that have never been
-    /// checked are verified, so adding a new folder does not force a second
-    /// pass over titles already concluded. `force` ignores cached conclusions
-    /// and re-checks the whole pool.
-    func runDeepCheck(force: Bool = false) {
+    /// when nothing is selected). Only packages that have never been checked
+    /// are verified, so adding a new folder does not force a second pass over
+    /// titles already concluded. To re-check everything, clear the list and
+    /// scan again, then press this button once more.
+    func runDeepCheck() {
         guard !isDeepChecking, !isScanning else { return }
         guard let keyPath = keySetPath, keySetLoaded else {
             setBanner("请先选择有效的 prod.keys。没有密钥时只能做结构检查。", isError: true)
@@ -717,13 +712,10 @@ final class BatchInstallModel: ObservableObject {
             return
         }
 
-        let selected = deepPool()
-        let targets = force ? selected : selected.filter { $0.deepState == .notRun }
+        let targets = deepPool().filter { $0.deepState == .notRun }
 
         if targets.isEmpty {
-            setBanner(force
-                      ? "没有可检查的项目。"
-                      : "所选项目都已深度检查过；如需重新判定，选择「重新检查全部」。", isError: false)
+            setBanner("所选项目都已深度检查过；清空列表重新扫描后可再跑一遍。", isError: false)
             return
         }
 

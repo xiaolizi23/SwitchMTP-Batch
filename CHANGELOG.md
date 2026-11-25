@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.7.3] - 2026-11-25
+
+### Changed
+
+- **深度检查按钮恢复为普通按钮。** 上一版改成的下拉菜单（待查项 / 重新检查全部）撤回；按钮默认只跑尚未检查的项目。需要整批复检时，清空列表重新扫描后再点一次即可。
+
 ## [1.7.2] - 2026-11-25
 
 ### Fixed
