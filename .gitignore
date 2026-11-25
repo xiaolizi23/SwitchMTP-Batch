@@ -1,0 +1,39 @@
+# SwitchMTP build artifacts
+.build/
+backend/build/
+build/
+dist/
+
+# `go build ./cmd/switchmtp` from backend/ lands the binary here.
+backend/switchmtp
+
+# third_party/libusb is a build artifact of scripts/build-libusb.sh;
+# the script itself (scripts/build-libusb.sh) IS tracked.
+third_party/libusb/
+
+# Xcode
+*.xcuserstate
+xcuserdata/
+DerivedData/
+.derivedData*/
+
+# The .xcodeproj IS tracked so the repo can be opened without XcodeGen;
+# scripts/build-app.sh regenerates it from app/project.yml when xcodegen
+# is installed, so app/project.yml remains the source of truth.
+app/*.xcodeproj/project.xcworkspace/
+app/*.xcodeproj/xcuserdata/
+
+# macOS
+.DS_Store
+
+# Python bytecode from scripts/triage
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Vendored hactool: build outputs of scripts/build-hactool.sh
+third_party/hactool/*.o
+third_party/hactool/hactool
+third_party/hactool/mbedtls/library/*.o
+third_party/hactool/mbedtls/library/*.a
+third_party/hactool/mbedtls/library/*.so*
