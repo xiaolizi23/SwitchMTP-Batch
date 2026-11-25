@@ -282,7 +282,10 @@ enum DeepVerifier {
         // through as contradictory advice.
         let stale = ["内容哈希不符", "签名非官方", "签名与哈希通过", "签名通过，内容哈希未验证", "只拿到部分结论"]
         notes.append(contentsOf: inner.notes.filter { note in
-            !stale.contains { note.title.contains($0) }
+            // The unconfirmed note is re-inserted below with the flagged NCA
+            // named explicitly; keep one copy instead of duplicating it.
+            note.title != "内容无法确认"
+            && !stale.contains { note.title.contains($0) }
         })
 
         if let unconfirmed = inner.ncas.first(where: { $0.contentUnconfirmed }) {

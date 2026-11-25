@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.7.5] - 2026-11-25
+
+### Fixed
+
+- **去掉重复的「内容无法确认」备注。** NSZ 解包后校验时，NSP 校验层已生成过一条「内容无法确认」，NSZ 合并层又按 flagged NCA 重新插入了一条，详情页因此出现两条一模一样的警告。现在合并时先丢弃内层同名备注，只保留一条。
+
 ## [1.7.4] - 2026-11-25
 
 ### Fixed
