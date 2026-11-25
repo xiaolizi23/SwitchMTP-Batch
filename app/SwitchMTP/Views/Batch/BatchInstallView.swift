@@ -384,13 +384,11 @@ struct BatchInstallSheet: View {
     private func groupHeader(_ group: InstallPackageGroup) -> some View {
         HStack(spacing: 8) {
             Button {
-                model.setGroupSelection(group, selected: group.eligibleSelectedCount != group.eligibleCount)
+                model.setGroupSelection(group, selected: group.eligibleSelectedCount == 0)
             } label: {
                 Image(systemName: groupIcon(group))
                     .font(.system(size: 13))
-                    .foregroundStyle(group.eligibleSelectedCount == 0
-                        ? AnyShapeStyle(.secondary)
-                        : AnyShapeStyle(Color.accentColor))
+                    .foregroundStyle(verdictColor(group.verdict))
             }
             .buttonStyle(.plain)
             .disabled(group.eligibleCount == 0)
@@ -463,9 +461,10 @@ struct BatchInstallSheet: View {
     }
 
     private func groupIcon(_ group: InstallPackageGroup) -> String {
-        guard group.eligibleCount > 0 else { return "square" }
-        if group.eligibleSelectedCount == 0 { return "square" }
-        if group.eligibleSelectedCount == group.eligibleCount { return "checkmark.square.fill" }
+        // 三态按全组成员判断：只要还有未勾选的成员（含不可勾选的阻止项），
+        // 就保持横杠，不出现「全选对勾」。勾选动作本身只作用于可勾成员。
+        if group.selectedCount == 0 { return "square" }
+        if group.selectedCount == group.packages.count { return "checkmark.square.fill" }
         return "minus.square.fill"
     }
 
