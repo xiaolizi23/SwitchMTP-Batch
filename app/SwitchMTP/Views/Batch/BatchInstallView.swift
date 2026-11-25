@@ -502,6 +502,9 @@ struct BatchInstallSheet: View {
                 }
                 .font(.system(size: 9))
                 .foregroundStyle(.secondary)
+                if package.deepState != .notRun {
+                    rowProgressBar(package)
+                }
             }
 
             Spacer(minLength: 6)
@@ -734,7 +737,7 @@ struct BatchInstallSheet: View {
             detailRow("NCA 数量", package.report.map { "\($0.ncaCount)" } ?? "—")
             detailRow("TICKET", (package.report?.hasTicket ?? false) ? "有" : "无")
             detailRow("CNMT", (package.report?.hasCnmt ?? false) ? "有" : "无")
-            detailRow("深度检查", package.deepState.displayName)
+            detailRow("深度检查", deepCheckText(package))
         }
         .font(.system(size: 10))
     }
@@ -901,6 +904,27 @@ struct BatchInstallSheet: View {
         case .dlc: return .purple
         case .unknown: return .secondary
         }
+    }
+
+    /// Thin under-row track. While the pass runs it fills with the accent
+    /// colour at the live fraction reported by the engine; once finished the
+    /// track stays full and takes the verdict's colour (green for a full pass).
+    private func rowProgressBar(_ package: InstallPackage) -> some View {
+        let running = package.deepState == .running
+        let fraction = running ? min(max(package.deepProgress, 0), 1) : 1
+        let color = running ? Color.accentColor : deepColor(package.deepState)
+        return ProgressView(value: fraction)
+            .progressViewStyle(.linear)
+            .tint(color)
+            .frame(height: 3)
+            .padding(.top, 2)
+    }
+
+    private func deepCheckText(_ package: InstallPackage) -> String {
+        guard package.deepState == .running else { return package.deepState.displayName }
+        let percent = Int((package.deepProgress * 100).rounded())
+        let phase = package.deepPhase ?? "检查中"
+        return "\(package.deepState.displayName) · \(phase) \(percent)%"
     }
 
     private func deepIcon(_ state: DeepCheckState) -> String {

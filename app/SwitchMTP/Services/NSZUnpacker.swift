@@ -109,7 +109,8 @@ enum NSZUnpacker {
     // MARK: - Running
 
     static func unpack(url: URL, to destination: URL, tool: URL,
-                       timeout: TimeInterval = 7200) throws -> Conversion {
+                       timeout: TimeInterval = 7200,
+                       onLine: ((String) -> Void)? = nil) throws -> Conversion {
         try? FileManager.default.createDirectory(at: destination.deletingLastPathComponent(),
                                                  withIntermediateDirectories: true)
         // Leftover from a killed run: start clean so a truncated file is never
@@ -118,7 +119,8 @@ enum NSZUnpacker {
 
         let started = Date()
         let output: String
-        switch DeepVerifier.run(tool, arguments: ["unpack", url.path, destination.path], timeout: timeout) {
+        switch DeepVerifier.run(tool, arguments: ["unpack", url.path, destination.path],
+                                timeout: timeout, onLine: onLine) {
         case .failure(let message):
             throw Failure.unpackFailed(message)
         case .success(let text):

@@ -622,6 +622,20 @@ final class BatchInstallModel: ObservableObject {
         rebuildGroups()
     }
 
+    /// Mutates one package and mirrors the copy into every group snapshot that
+    /// holds it. The list renders from `groups[].packages`; without this mirror
+    /// a per-package update would stay invisible until the next `rebuildGroups()`,
+    /// which is why rows used to freeze on the old state until the whole pass
+    /// finished.
+    private func updatePackage(id: InstallPackage.ID, _ mutate: (inout InstallPackage) -> Void) {
+        guard let index = packages.firstIndex(where: { $0.id == id }) else { return }
+        mutate(&packages[index])
+        for gIndex in groups.indices {
+            guard let mIndex = groups[gIndex].packages.firstIndex(where: { $0.id == id }) else { continue }
+            groups[gIndex].packages[mIndex] = packages[index]
+        }
+    }
+
     // MARK: - Deep verification
 
     private func refreshKeySetState() {
@@ -656,7 +670,11 @@ final class BatchInstallModel: ObservableObject {
     func clearKeySet() {
         keySetPath = nil
         UserDefaults.standard.removeObject(forKey: keySetPathKey)
-        for index in packages.indices { packages[index].deepState = .notRun }
+        for index in packages.indices {
+            packages[index].deepState = .notRun
+            packages[index].deepProgress = 0
+            packages[index].deepPhase = nil
+        }
     }
 
     /// Runs the optional deep pass over the current selection (or everything
@@ -676,7 +694,9 @@ final class BatchInstallModel: ObservableObject {
         let targets = pool.isEmpty ? packages : pool
         guard !targets.isEmpty else { return }
 
-        performDeepChecks(on: targets.map { (id: $0.id, url: $0.url, format: $0.format, keyPath: keyPath) }) { [weak self] in
+        performDeepChecks(on: targets.map {
+            (id: $0.id, url: $0.url, format: $0.format, keyPath: keyPath, expectedNCAs: $0.report?.ncaCount)
+        }) { [weak self] in
             guard let self else { return }
             self.setBanner(self.deepSummary(), isError: false)
         }
@@ -699,14 +719,17 @@ final class BatchInstallModel: ObservableObject {
             return
         }
 
-        performDeepChecks(on: pending.map { (id: $0.id, url: $0.url, format: $0.format, keyPath: keyPath) }) { [weak self] in
+        performDeepChecks(on: pending.map {
+            (id: $0.id, url: $0.url, format: $0.format, keyPath: keyPath, expectedNCAs: $0.report?.ncaCount)
+        }) { [weak self] in
             guard let self else { return }
             self.setBanner(self.deepSummary(), isError: false)
             completion(self.makePlan())
         }
     }
 
-    private typealias DeepJob = (id: InstallPackage.ID, url: URL, format: PackageFormat, keyPath: String)
+    private typealias DeepJob = (id: InstallPackage.ID, url: URL, format: PackageFormat,
+                                 keyPath: String, expectedNCAs: Int?)
 
     private func performDeepChecks(on jobs: [DeepJob], completion: @escaping () -> Void) {
         guard !jobs.isEmpty, !isDeepChecking else { completion(); return }
@@ -727,17 +750,30 @@ final class BatchInstallModel: ObservableObject {
 
             for (offset, job) in frozen.enumerated() {
                 DispatchQueue.main.async {
-                    if let index = self.packages.firstIndex(where: { $0.id == job.id }) {
-                        self.packages[index].deepState = .running
+                    self.updatePackage(id: job.id) { package in
+                        package.deepState = .running
+                        package.deepProgress = 0
+                        package.deepPhase = "准备中"
                     }
                 }
 
                 let result: DeepResult
                 if let keyset {
-                    result = DeepVerifier.verify(url: job.url, format: job.format,
-                                                 keysetURL: keyset,
-                                                 titleKeysURL: titleKeys,
-                                                 hactoolURL: hactool)
+                    result = DeepVerifier.verify(
+                        url: job.url, format: job.format,
+                        keysetURL: keyset,
+                        titleKeysURL: titleKeys,
+                        hactoolURL: hactool,
+                        expectedNCAs: job.expectedNCAs,
+                        progress: { fraction, phase in
+                            DispatchQueue.main.async { [weak self] in
+                                guard let self else { return }
+                                self.updatePackage(id: job.id) { package in
+                                    package.deepProgress = min(max(fraction, 0), 1)
+                                    package.deepPhase = phase
+                                }
+                            }
+                        })
                 } else {
                     result = DeepResult(state: .unavailable, notes: [
                         .init(severity: .warning, title: "密钥文件不可读", detail: "本次只完成结构检查。")
@@ -745,18 +781,20 @@ final class BatchInstallModel: ObservableObject {
                 }
 
                 DispatchQueue.main.async {
-                    if let index = self.packages.firstIndex(where: { $0.id == job.id }) {
-                        self.packages[index].deepState = result.state
-                        self.packages[index].deepNCAs = result.ncas
-                        self.packages[index].notes.append(contentsOf: result.notes)
+                    self.updatePackage(id: job.id) { package in
+                        package.deepState = result.state
+                        package.deepNCAs = result.ncas
+                        package.notes.append(contentsOf: result.notes)
                         // The colour is now derived from (quick, deep) together;
                         // mutating quickVerdict here used to hide a failed deep
                         // pass behind a stale "通过" label.
                         if result.state == .failed {
-                            self.packages[index].isSelected = false
+                            package.isSelected = false
                         }
-                        self.deepCheckDone = offset + 1
+                        package.deepProgress = 1
+                        package.deepPhase = nil
                     }
+                    self.deepCheckDone = offset + 1
                 }
             }
 

@@ -225,6 +225,11 @@ struct InstallPackage: Identifiable, Sendable {
     var report: ContainerReport?
     var quickVerdict: PackageVerdict = .pending
     var deepState: DeepCheckState = .notRun
+    /// 0...1 for the running pass; 1 once the pass finished, whatever the verdict.
+    /// Derived from real engine markers (NCA END / unpacked entry), never invented.
+    var deepProgress: Double = 0
+    /// Stage label for the running row, e.g. "解包中" / "验签中". Nil when idle.
+    var deepPhase: String? = nil
     /// Per-NCA outcome of the last deep pass, kept for the detail pane.
     var deepNCAs: [DeepVerifier.NCACheck] = []
     var notes: [CheckNote] = []

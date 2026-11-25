@@ -93,18 +93,26 @@ enum DeepVerifier {
     /// could not run is "unavailable" — which must never be dressed up as a
     /// pass, because that is exactly how a green row turned yellow on the
     /// console.
+    ///
+    /// `progress` carries a 0...1 fraction plus a short stage label. The
+    /// fraction is computed from real engine markers (NCAs finished / total
+    /// NCAs; entries unpacked / total entries), so a row never shows a
+    /// invented "almost there" bar.
     static func verify(url: URL,
                        format: PackageFormat,
                        keysetURL: URL,
                        titleKeysURL: URL? = nil,
-                       hactoolURL: URL) -> DeepResult {
+                       hactoolURL: URL,
+                       expectedNCAs: Int? = nil,
+                       progress: ((Double, String) -> Void)? = nil) -> DeepResult {
         // NSZ is now unpacked (zstd + section re-encryption) into a temporary
         // NSP, whose NCAs are then verified exactly like a normal NSP. The
         // rebuilt NCAs are also hashed against the package's own CNMT XML,
         // which is the same evidence DBI checks on the console.
         if format == .nsz {
             return verifyNSZ(url: url, keysetURL: keysetURL,
-                             titleKeysURL: titleKeysURL, hactoolURL: hactoolURL)
+                             titleKeysURL: titleKeysURL, hactoolURL: hactoolURL,
+                             expectedNCAs: expectedNCAs, progress: progress)
         }
         if format == .xcz {
             return DeepResult(state: .unavailable, notes: [
@@ -128,8 +136,19 @@ enum DeepVerifier {
         }
         arguments += ["-t", "nsp", url.path]
 
+        var begunNCAs = 0
+        var finishedNCAs = 0
         let output: String
-        switch run(hactoolURL, arguments: arguments, timeout: 1800) {
+        switch run(hactoolURL, arguments: arguments, timeout: 1800, onLine: { line in
+            if line.hasPrefix("NSP_NCA_BEGIN:") {
+                begunNCAs += 1
+            } else if line.hasPrefix("NSP_NCA_END:") {
+                finishedNCAs += 1
+                let total = expectedNCAs ?? max(begunNCAs, 1)
+                let fraction = min(Double(finishedNCAs) / Double(max(total, 1)), 1)
+                progress?(fraction, "验签中")
+            }
+        }) {
         case .failure(let message):
             return DeepResult(state: .unavailable, notes: [
                 .init(severity: .warning, title: "校验引擎未能运行", detail: message)
@@ -152,7 +171,9 @@ enum DeepVerifier {
     ///    CNMT XML. That is byte-exact evidence: if it matches, the container
     ///    holds exactly the content the publisher signed, no matter what a
     ///    tool's own section walk thinks.
-    static func verifyNSZ(url: URL, keysetURL: URL, titleKeysURL: URL?, hactoolURL: URL) -> DeepResult {
+    static func verifyNSZ(url: URL, keysetURL: URL, titleKeysURL: URL?, hactoolURL: URL,
+                          expectedNCAs: Int? = nil,
+                          progress: ((Double, String) -> Void)? = nil) -> DeepResult {
         guard let tool = NSZUnpacker.toolURL else {
             return DeepResult(state: .unavailable, notes: [
                 .init(severity: .warning, title: "缺少 NSZ 解包工具",
@@ -160,11 +181,28 @@ enum DeepVerifier {
             ], detail: "NSZ 解包工具缺失")
         }
 
+        // Stage split: unpacking is the slow half for a compressed title, so it
+        // owns the first 60% of the bar; the rebuilt NSP's per-NCA signature
+        // walk owns the remaining 40%.
+        var unpackTotal = 0
+        var unpackedEntries = 0
         let conversion: NSZUnpacker.Conversion
         do {
-            conversion = try NSZUnpacker.unpack(url: url,
-                                                to: NSZUnpacker.scratchURL(named: url.deletingPathExtension().lastPathComponent),
-                                                tool: tool)
+            conversion = try NSZUnpacker.unpack(
+                url: url,
+                to: NSZUnpacker.scratchURL(named: url.deletingPathExtension().lastPathComponent),
+                tool: tool,
+                onLine: { line in
+                    if line.hasPrefix("NSZ_ENTRIES:") {
+                        let payload = line.dropFirst("NSZ_ENTRIES:".count)
+                            .trimmingCharacters(in: .whitespaces)
+                        unpackTotal = Int(payload) ?? unpackTotal
+                    } else if line.hasPrefix("NSZ_PROGRESS:") {
+                        unpackedEntries += 1
+                        let fraction = min(Double(unpackedEntries) / Double(max(unpackTotal, 1)), 1)
+                        progress?(0.6 * fraction, "解包中")
+                    }
+                })
         } catch {
             let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
             return DeepResult(state: .unavailable, notes: [
@@ -174,9 +212,14 @@ enum DeepVerifier {
         }
         defer { NSZUnpacker.discard(conversion.outputURL) }
 
+        let innerExpected = expectedNCAs ?? conversion.hashes.count
         let inner = verify(url: conversion.outputURL, format: .nsp,
                            keysetURL: keysetURL, titleKeysURL: titleKeysURL,
-                           hactoolURL: hactoolURL)
+                           hactoolURL: hactoolURL,
+                           expectedNCAs: innerExpected,
+                           progress: { fraction, _ in
+                               progress?(0.6 + 0.4 * fraction, "验签中")
+                           })
         return reconcileNSZ(inner: inner, conversion: conversion, source: url)
     }
 
@@ -546,27 +589,37 @@ enum DeepVerifier {
         case failure(String)
     }
 
-    static func run(_ executable: URL, arguments: [String], timeout: TimeInterval) -> RunOutcome {
+    static func run(_ executable: URL, arguments: [String], timeout: TimeInterval,
+                    onLine: ((String) -> Void)? = nil) -> RunOutcome {
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
-        // A private scratch directory keeps output out of the user's home and
-        // out of any log the app writes.
-        let outputURL = URL(fileURLWithPath: NSTemporaryDirectory())
-            .appendingPathComponent("hactool-\(UUID().uuidString).log")
-        FileManager.default.createFile(atPath: outputURL.path, contents: nil, attributes: [.posixPermissions: 0o600])
-        defer { try? FileManager.default.removeItem(at: outputURL) }
 
-        guard let handle = try? FileHandle(forWritingTo: outputURL) else {
-            return .failure("无法创建校验输出文件")
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        var buffer = ""
+        var collected = ""
+        let readHandle = pipe.fileHandleForReading
+        readHandle.readabilityHandler = { handle in
+            let data = handle.availableData
+            guard !data.isEmpty else { return }
+            let chunk = String(data: data, encoding: .utf8) ?? ""
+            buffer += chunk
+            while let newline = buffer.firstIndex(of: "\n") {
+                let line = String(buffer[buffer.startIndex..<newline])
+                buffer.removeSubrange(...newline)
+                collected += line + "\n"
+                onLine?(line)
+            }
         }
-        process.standardOutput = handle
-        process.standardError = handle
 
         do {
             try process.run()
         } catch {
-            try? handle.close()
+            readHandle.readabilityHandler = nil
+            try? readHandle.close()
             return .failure(error.localizedDescription)
         }
 
@@ -577,14 +630,19 @@ enum DeepVerifier {
 
         process.waitUntilExit()
         timeoutWork.cancel()
-        try? handle.close()
+        readHandle.readabilityHandler = nil
+        try? readHandle.close()
 
-        let data = (try? Data(contentsOf: outputURL)) ?? Data()
-        let text = String(data: data, encoding: .utf8) ?? ""
-        if process.terminationStatus != 0, text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        let remainder = buffer.trimmingCharacters(in: .newlines)
+        if !remainder.isEmpty {
+            collected += remainder
+            onLine?(remainder)
+        }
+
+        if process.terminationStatus != 0, collected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return .failure("校验引擎异常退出（\(process.terminationStatus)）")
         }
-        return .success(text)
+        return .success(collected)
     }
 }
 
