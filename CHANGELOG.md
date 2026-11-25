@@ -6,6 +6,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.6.2] - 2026-11-25
+
+### Fixed
+
+- **x86（Intel / Rosetta）上真正的零售签名不再被判 FAIL。** 根因不在解包，而在 vendored mbedtls 2.6.1 的 x86_64 内联汇编 `MULADDC`：同一个模数、同一个签名字节，`s^e mod n` 在 arm64 与 x86 上算出不同结果。已在 `mbedtls/config.h` 关掉 `MBEDTLS_HAVE_ASM` / `MBEDTLS_AESNI_C` / `MBEDTLS_PADLOCK_C`，走纯 C 大数路径；实测两架构模幂逐字节一致，`Fixed-Key Signature (GOOD)` 数量相同，翻转签名一字节两边都变 `FAIL`。
+- **内置 hactool 恢复为通用二进制**（arm64 + x86_64，各编一遍后 lipo）。`scripts/build-hactool.sh` 默认就是 universal。
+- **去掉 Intel 的降级分支**：`DeepVerifier` 不再对 x86 返回“引擎只有 arm64 / 解包但不判绿黄”。现在 Intel 上 NSP、NSZ 都走与 Apple Silicon 完全相同的验签路径，结论一致。
+
+
 ## [1.6.1] - 2026-11-25
 
 ### Fixed

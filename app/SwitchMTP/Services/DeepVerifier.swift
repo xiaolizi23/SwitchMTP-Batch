@@ -122,13 +122,6 @@ enum DeepVerifier {
             ], detail: "格式未支持逐 NCA 验签")
         }
 
-        #if arch(x86_64)
-        return DeepResult(state: .unavailable, notes: [
-            .init(severity: .warning, title: "内置引擎只有 arm64 版本",
-                  detail: "逐 NCA 验签依赖的 hactool 只有可信的 arm64 构建，Intel 进程里不做签名/哈希判定（x86 版会把真零售签名报成 FAIL）。结构预检、传输、安装不受影响。NSZ 仍可解包并对照包内 CNMT 哈希。")
-        ], detail: "内置引擎仅支持 arm64")
-        #endif
-
         var arguments = ["-i", "-y", "--disablekeywarns", "--suppresskeys", "-k", keysetURL.path]
         if let titleKeysURL {
             arguments += ["--titlekeys", titleKeysURL.path]
@@ -181,49 +174,12 @@ enum DeepVerifier {
         }
         defer { NSZUnpacker.discard(conversion.outputURL) }
 
-        #if arch(x86_64)
-        // Unpacking is byte-exact on Intel (verified against CNMT hashes), but
-        // the bundled x86 build of hactool reports "signature FAIL" for genuine
-        // retail NCAs, so its verdicts must not be used.
-        return intelNSZResult(conversion: conversion)
-        #else
         let inner = verify(url: conversion.outputURL, format: .nsp,
                            keysetURL: keysetURL, titleKeysURL: titleKeysURL,
                            hactoolURL: hactoolURL)
         return reconcileNSZ(inner: inner, conversion: conversion, source: url)
-        #endif
     }
 
-    #if arch(x86_64)
-    /// Intel path: no trustworthy signature engine, but unpacking is exact, so
-    /// report what the package's own manifest proves and say what it does not.
-    static func intelNSZResult(conversion: NSZUnpacker.Conversion) -> DeepResult {
-        var checks: [NCACheck] = []
-        for proof in conversion.hashes {
-            var check = NCACheck(name: proof.ncaName)
-            check.hash = proof.match == .yes ? .good : (proof.match == .no ? .fail : .unknown)
-            checks.append(check)
-        }
-        var notes: [CheckNote] = [
-            .init(severity: .note, title: "NSZ 已解包后校验",
-                  detail: "已用内置解包器把 NCZ 还原成 NCA 并写回 NSP（\(conversion.entries) 个条目，用时 "
-                      + String(format: "%.1f", conversion.duration) + " 秒）。\(conversion.summaryText)。")
-        ]
-        if conversion.mismatchedCount > 0 {
-            notes.append(.init(severity: .blocking, title: "解包结果与清单不符",
-                               detail: "\(conversion.mismatchedCount) 个 NCA 的 SHA-256 与包内 CNMT 声明的哈希不同：压缩流损坏或包被改写过。"))
-            return DeepResult(state: .failed, notes: notes, detail: "解包内容与清单不符", ncas: checks)
-        }
-        if conversion.matchedCount > 0 {
-            notes.append(.init(severity: .warning, title: "内容与清单一致，签名未验",
-                               detail: "解包出的字节与包内 CNMT 清单逐字节一致（\(conversion.matchedCount) 个 NCA），但签名需要可信的验签引擎，Intel 进程里没有，因此不判绿也不判黄。安装前请在 Apple Silicon 上复核，或以 DBI 实际安装结果为准。"))
-        } else {
-            notes.append(.init(severity: .warning, title: "已解包，但无清单可对照",
-                               detail: "包里没有 CNMT XML，Intel 进程里又没有可信的验签引擎，内容是否逐字节完整无法判定。"))
-        }
-        return DeepResult(state: .unavailable, notes: notes, detail: "已解包 · 签名未验", ncas: checks)
-    }
-    #endif
 
     /// Merges hactool's per-NCA verdicts with the CNMT hash proof.
     static func reconcileNSZ(inner: DeepResult, conversion: NSZUnpacker.Conversion, source: URL) -> DeepResult {

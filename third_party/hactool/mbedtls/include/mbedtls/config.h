@@ -53,7 +53,14 @@
  *
  * Comment to disable the use of assembly code.
  */
-#define MBEDTLS_HAVE_ASM
+/*
+ * Disabled for SwitchMTP Batch: the x86_64 inline-asm MULADDC path in this
+ * vendored mbedtls 2.6.1 computes a wrong RSA modexp on x86 (verified: same
+ * modulus and signature, different s^e mod n, arm64 = GOOD / x86 = FAIL).
+ * The generic C path is byte-identical across architectures, which is what
+ * signature verdicts need. RSA is a tiny fraction of the runtime here.
+ */
+// #define MBEDTLS_HAVE_ASM
 
 /**
  * \def MBEDTLS_NO_UDBL_DIVISION
@@ -1514,7 +1521,7 @@
  *
  * This modules adds support for the AES-NI instructions on x86-64
  */
-#define MBEDTLS_AESNI_C
+// #define MBEDTLS_AESNI_C /* needs MBEDTLS_HAVE_ASM, disabled above */
 
 /**
  * \def MBEDTLS_AES_C
@@ -2115,7 +2122,7 @@
  *
  * This modules adds support for the VIA PadLock on x86.
  */
-#define MBEDTLS_PADLOCK_C
+// #define MBEDTLS_PADLOCK_C /* needs MBEDTLS_HAVE_ASM, disabled above */
 
 /**
  * \def MBEDTLS_PEM_PARSE_C

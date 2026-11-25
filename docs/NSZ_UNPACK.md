@@ -127,9 +127,11 @@ Sample Game B v1.2.2）在修掉两处会导致引擎中途 `exit` 的地方后�
 
 ## 7. 已知限制
 
-* **通用二进制**：`nszunpack` 同时含 arm64 与 x86_64；Intel 上解包结果与
-  arm64 逐字节相同，但内置 `hactool` 的 x86 构建会误报签名 FAIL，所以 Intel
-  进程只输出“与 CNMT 清单一致 / 不一致”，不判绿黄。
+* **通用二进制**：`nszunpack` 与 `hactool` 都同时含 arm64 与 x86_64，两个
+  架构解包逐字节相同、签名结论也相同。x86 曾把真零售签名报成 FAIL，根因是
+  vendored mbedtls 2.6.1 的 x86_64 内联汇编 MULADDC 算错 RSA 模幂；已在
+  `mbedtls/config.h` 关掉 `MBEDTLS_HAVE_ASM`（连带 AESNI/PADLOCK），改走纯 C
+  大数路径，现在两架构 `s^e mod n` 结果一致。
 * **XCZ 还没做**。XCZ 是卡带镜像（HFS0 分区 + sparse 压缩），和 NSZ 的
   NCZ 不是一套东西，目前仍按「只验容器头」处理。
 * 解包需要和 NSZ 体积相当的临时磁盘空间（解压后通常更大 10–30%）；
