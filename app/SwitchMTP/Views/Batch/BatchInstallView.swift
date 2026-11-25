@@ -396,6 +396,10 @@ struct BatchInstallSheet: View {
             .help(group.eligibleCount == 0
                 ? "组内项目均未通过检查，不可勾选"
                 : "勾选/取消整个组（未通过项目不参与勾选）")
+            .accessibilityLabel(group.eligibleSelectedCount == 0 ? "勾选整组 \(group.name)" : "取消勾选整组 \(group.name)")
+            .accessibilityValue("\(group.selectedCount)/\(group.packages.count)")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("group-checkbox-\(group.id)")
 
             groupThumbnail(group)
 
@@ -482,6 +486,10 @@ struct BatchInstallSheet: View {
             .buttonStyle(.plain)
             .disabled(package.resolvedVerdict == .blocked || package.isSubmitted)
             .help(packageHelp(package))
+            .accessibilityLabel(package.isSelected ? "取消勾选 \(package.displayName)" : "勾选 \(package.displayName)")
+            .accessibilityValue(package.isSelected ? "已选择" : "未选择")
+            .accessibilityAddTraits(.isButton)
+            .accessibilityIdentifier("package-checkbox-\(package.id.uuidString)")
 
             Text(package.contentType.displayName)
                 .font(.system(size: 9, weight: .bold))
@@ -548,14 +556,15 @@ struct BatchInstallSheet: View {
                 .fill(isSelectedRow ? Color.accentColor.opacity(0.10) : Color.clear)
         )
         .contentShape(Rectangle())
+        .accessibilityElement(children: .contain)
         .onTapGesture { selectedPackageID = package.id }
     }
 
     private func packageHelp(_ package: InstallPackage) -> String {        if package.isSubmitted { return "已交给 DBI，本次不再重复发送" }
         switch package.resolvedVerdict {
-        case .blocked: return "检查未通过，默认不允许安装"
-        case .unverified: return "结构正常但未验签；勾选后安装前会要求确认"
-        case .caution: return "非官方签名，需 sigpatch；勾选后安装前会要求确认"
+        case .blocked: return "检查未通过（结构或内容损坏），默认不允许安装"
+        case .unverified: return "本机未能完成签名/哈希校验：证据不足，不代表文件已损坏；勾选后安装前会要求确认，最终以 DBI 实机结果为准"
+        case .caution: return "签名非官方，或容器结构需注意；通常需要 sigpatch，勾选后安装前会要求确认"
         default: return "勾选以加入安装计划"
         }
     }

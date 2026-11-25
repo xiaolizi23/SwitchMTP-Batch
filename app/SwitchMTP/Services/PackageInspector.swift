@@ -48,9 +48,9 @@ enum PackageInspector {
             } else {
                 report.contentType = contentTypeFromName(url.lastPathComponent)
                 report.issues.append(.init(
-                    severity: .warning,
+                    severity: .note,
                     title: "无法确认标题归属",
-                    detail: "容器里没有可读的 CNMT 文件名，只能按文件夹/文件名归类。安装前请自行确认这是正确的游戏。"))
+                    detail: "容器里没有可读的 CNMT 文件名，只能按文件夹/文件名归类；这不代表文件损坏，安装前请自行确认这是正确的游戏。"))
             }
             report.version = versionFromName(url.lastPathComponent)
             report.verdict = verdict(for: report)
@@ -262,8 +262,11 @@ enum PackageInspector {
                                        detail: "没有找到 .cnmt.nca。CNMT 是安装的元数据（标题 ID、版本、内容清单），DBI 缺它无法安装，所以这里按红色处理。"))
         }
         if !report.hasTicket {
-            report.issues.append(.init(severity: .warning, title: "缺少 ticket",
-                                       detail: "零售包里通常带有 .tik。没有 ticket 的包要么是解密包、要么是自制包，DBI 装完会显示黄色（能装，但需要 sigpatch）。"))
+            // 缺 ticket 只是本机核对不到签名/授权，证据不足；它不等于签名非官方
+            // （实机对照：无 ticket 的零售 XCI 在 DBI 逐 NCA 验签仍可全 OK）。
+            // 真·签名非官方由深度检查 signatureInvalid 判定并升级为 caution。
+            report.issues.append(.init(severity: .note, title: "未携带 ticket",
+                                       detail: "包内没有 .tik，本机无法核对签名与授权；这不等于签名非官方，最终以 DBI 实机安装结果为准。"))
         }
         if report.compressedContent {
             // Not a DBI yellow: DBI decompresses NSZ itself and will happily
