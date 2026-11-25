@@ -110,9 +110,6 @@ enum NSZUnpacker {
 
     static func unpack(url: URL, to destination: URL, tool: URL,
                        timeout: TimeInterval = 7200) throws -> Conversion {
-        #if arch(x86_64)
-        throw Failure.unpackFailed("内置解包器只有 arm64 版本，Intel 进程里不运行；请在本机运行 scripts/build-nszunpack.sh 自建。")
-        #else
         try? FileManager.default.createDirectory(at: destination.deletingLastPathComponent(),
                                                  withIntermediateDirectories: true)
         // Leftover from a killed run: start clean so a truncated file is never
@@ -146,7 +143,6 @@ enum NSZUnpacker {
                           entries: entries,
                           duration: Date().timeIntervalSince(started),
                           log: output)
-        #endif
     }
 
     /// A scratch path under the system temp directory. Verification uses this

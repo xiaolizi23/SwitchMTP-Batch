@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.6.1] - 2026-11-25
+
+### Fixed
+
+- **Intel（x86_64）上也能解包 NSZ 了。** `nszunpack` 现在是 arm64 + x86_64 通用二进制：解压与 AES-CTR 重加密在 x86 下跑出来的 NSP 与 arm64 逐字节相同（SHA-256 相等），某更新包 v1.1.6、Sample Game 更新（417 段 + 块压缩）都是 CNMT 4/4 一致。
+- **Intel 上不再给假签名结论。** 内置 `hactool` 的 x86 构建会把真实零售签名报成 FAIL（同一文件 arm64 是 GOOD，问题在 vendored mbedtls 的 RSA 验签路径）。应用在 x86 进程里明确不做签名判定：NSZ 走“已解包 + 与 CNMT 清单逐字节对照”，NSP 则直接说“内置引擎只有 arm64”。
+
+
 ## [1.6.0] - 2026-11-25
 
 ### Added

@@ -540,7 +540,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.6.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -560,7 +560,7 @@
 				CURRENT_PROJECT_VERSION = 16;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.6.1;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
 			};
@@ -598,7 +598,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.6.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -631,7 +631,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.6.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -663,7 +663,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.6.1;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -682,7 +682,7 @@
 				CURRENT_PROJECT_VERSION = 16;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.6.0;
+				MARKETING_VERSION = 1.6.1;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
 			};
