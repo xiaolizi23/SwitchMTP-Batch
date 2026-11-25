@@ -384,14 +384,19 @@ struct BatchInstallSheet: View {
     private func groupHeader(_ group: InstallPackageGroup) -> some View {
         HStack(spacing: 8) {
             Button {
-                model.setGroupSelection(group, selected: group.selectedCount != group.packages.count)
+                model.setGroupSelection(group, selected: group.eligibleSelectedCount != group.eligibleCount)
             } label: {
                 Image(systemName: groupIcon(group))
                     .font(.system(size: 13))
-                    .foregroundStyle(verdictColor(group.verdict))
+                    .foregroundStyle(group.eligibleSelectedCount == 0
+                        ? AnyShapeStyle(.secondary)
+                        : AnyShapeStyle(Color.accentColor))
             }
             .buttonStyle(.plain)
-            .help("勾选/取消整个组")
+            .disabled(group.eligibleCount == 0)
+            .help(group.eligibleCount == 0
+                ? "组内项目均未通过检查，不可勾选"
+                : "勾选/取消整个组（未通过项目不参与勾选）")
 
             groupThumbnail(group)
 
@@ -458,10 +463,10 @@ struct BatchInstallSheet: View {
     }
 
     private func groupIcon(_ group: InstallPackageGroup) -> String {
-        let selectedAll = group.selectedCount == group.packages.count && group.selectedCount > 0
-        let none = group.selectedCount == 0
-        if none { return "square" }
-        return selectedAll ? "checkmark.square.fill" : "minus.square.fill"
+        guard group.eligibleCount > 0 else { return "square" }
+        if group.eligibleSelectedCount == 0 { return "square" }
+        if group.eligibleSelectedCount == group.eligibleCount { return "checkmark.square.fill" }
+        return "minus.square.fill"
     }
 
     private func packageRow(_ package: InstallPackage) -> some View {

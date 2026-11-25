@@ -281,6 +281,11 @@ struct InstallPackage: Identifiable, Sendable {
         default: return true
         }
     }
+
+    /// 结构损坏或深度校验失败的项目不允许加入安装计划；手动勾选、组勾选、
+    /// 全选都必须跳过它。其余结论（通过 / 未验签 / 非官方）允许勾选，
+    /// 安装前再按口径弹确认。
+    var isSelectable: Bool { resolvedVerdict != .blocked }
 }
 
 /// A title group shown as one expandable row in the plan.
@@ -292,6 +297,10 @@ struct InstallPackageGroup: Identifiable, Sendable {
 
     var totalSize: Int64 { packages.reduce(0) { $0 + $1.fileSize } }
     var selectedCount: Int { packages.filter(\.isSelected).count }
+    /// 允许勾选的成员；阻止项不计入组勾选的三态与分母。
+    var eligiblePackages: [InstallPackage] { packages.filter(\.isSelectable) }
+    var eligibleCount: Int { eligiblePackages.count }
+    var eligibleSelectedCount: Int { eligiblePackages.filter(\.isSelected).count }
     var submittedCount: Int { packages.filter(\.isSubmitted).count }
     var hasBlocked: Bool { packages.contains { $0.resolvedVerdict == .blocked } }
     var hasCaution: Bool { packages.contains { $0.resolvedVerdict == .caution } }

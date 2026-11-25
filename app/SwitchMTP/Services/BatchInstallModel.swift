@@ -599,25 +599,31 @@ final class BatchInstallModel: ObservableObject {
     // MARK: - Selection
 
     func togglePackage(_ id: InstallPackage.ID) {
+        guard let index = packages.firstIndex(where: { $0.id == id }) else { return }
+        guard packages[index].isSelectable else {
+            // 双保险：即便视图层漏判，阻止项也永远落不到勾选状态。
+            updatePackage(id: id) { $0.isSelected = false }
+            return
+        }
         updatePackage(id: id) { $0.isSelected.toggle() }
     }
 
     func setGroupSelection(_ group: InstallPackageGroup, selected: Bool) {
-        for member in group.packages {
+        for member in group.packages where member.isSelectable {
             updatePackage(id: member.id) { $0.isSelected = selected }
         }
     }
 
     func setAllVisible(_ selected: Bool) {
         let visibleIDs = Set(visibleGroups.flatMap { $0.packages.map(\.id) })
-        for index in packages.indices where visibleIDs.contains(packages[index].id) {
+        for index in packages.indices where visibleIDs.contains(packages[index].id) && packages[index].isSelectable {
             updatePackage(id: packages[index].id) { $0.isSelected = selected }
         }
     }
 
     func selectAllPassed() {
         for index in packages.indices {
-            let shouldSelect = packages[index].quickVerdict != .blocked && packages[index].deepState != .failed
+            let shouldSelect = packages[index].isSelectable
             updatePackage(id: packages[index].id) { $0.isSelected = shouldSelect }
         }
     }
