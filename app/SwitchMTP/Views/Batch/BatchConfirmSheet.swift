@@ -92,7 +92,7 @@ struct BatchConfirmSheet: View {
                     noteRow("exclamationmark.triangle.fill", "有 \(plan.counts.caution) 个非官方项目（签名不是零售链）。DBI 装完会显示黄色，需要主机已有 sigpatch。")
                 }
                 if plan.counts.unverified > 0 {
-                    noteRow("questionmark.circle.fill", "有 \(plan.counts.unverified) 个未验签项目。结构正常，但签名/哈希没有验过（或密钥不足、个人化票据、NSZ 未解包），不能当作原版绿。")
+                    noteRow("questionmark.circle.fill", "有 \(plan.counts.unverified) 个未验签项目。结构正常，但签名/哈希没有验过（或密钥不足、个人化票据、XCZ 未解包），不能当作原版绿。")
                 }
                 if let shortfall = model.spaceShortfall {
                     noteRow("externaldrive.badge.exclamationmark", "目标空间可能不足：还差约 \(ByteCountFormatter.string(fromByteCount: shortfall, countStyle: .file))。")

@@ -533,8 +533,7 @@ struct BatchInstallSheet: View {
         .onTapGesture { selectedPackageID = package.id }
     }
 
-    private func packageHelp(_ package: InstallPackage) -> String {
-        if package.isSubmitted { return "已交给 DBI，本次不再重复发送" }
+    private func packageHelp(_ package: InstallPackage) -> String {        if package.isSubmitted { return "已交给 DBI，本次不再重复发送" }
         switch package.resolvedVerdict {
         case .blocked: return "检查未通过，默认不允许安装"
         case .unverified: return "结构正常但未验签；勾选后安装前会要求确认"
@@ -681,6 +680,15 @@ struct BatchInstallSheet: View {
                 Divider()
 
                 HStack(spacing: 10) {
+                    if package.format == .nsz {
+                        Button {
+                            chooseUnpackDestination(for: package)
+                        } label: {
+                            Label("解包为 NSP…", systemImage: "archivebox")
+                        }
+                        .controlSize(.small)
+                        .help("把 NSZ 的 NCZ 解压并按 section 重加密，写出可直接安装的 NSP；完成后会对照包内 CNMT 哈希自检。")
+                    }
                     Button {
                         NSWorkspace.shared.activateFileViewerSelecting([package.url])
                     } label: {
@@ -698,6 +706,21 @@ struct BatchInstallSheet: View {
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Saves the unpacked NSP wherever the user wants it. The panel runs
+    /// app-modal rather than as a SwiftUI sheet so it works from a window that
+    /// is itself hosted outside a document scene.
+    private func chooseUnpackDestination(for package: InstallPackage) {
+        let panel = NSSavePanel()
+        panel.title = "解包 NSZ 为 NSP"
+        panel.message = "写出的是可直接安装的 NSP（解压后通常比 NSZ 大 10–30%）。完成后会对照包内 CNMT 逐个 NCA 校验 SHA-256。"
+        panel.nameFieldStringValue = package.url.deletingPathExtension().lastPathComponent + ".nsp"
+        panel.canCreateDirectories = true
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            model.unpack(package, to: url)
         }
     }
 

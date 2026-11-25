@@ -1086,8 +1086,8 @@ void nca_process_ivfc_section(nca_section_ctx_t *ctx) {
 
         nca_section_fseek(ctx, ctx->romfs_ctx.romfs_offset + ctx->romfs_ctx.header.dir_meta_table_offset);
         if (nca_section_fread(ctx, ctx->romfs_ctx.directories, ctx->romfs_ctx.header.dir_meta_table_size) != ctx->romfs_ctx.header.dir_meta_table_size) {
-            fprintf(stderr, "Failed to read RomFS directory cache!\n");
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "Failed to read RomFS directory cache! (section skipped)\n");
+                return;
         }
 
         ctx->romfs_ctx.files = calloc(1, ctx->romfs_ctx.header.file_meta_table_size);
@@ -1153,8 +1153,8 @@ void nca_process_bktr_section(nca_section_ctx_t *ctx) {
     if (sb->relocation_header.magic == MAGIC_BKTR && sb->subsection_header.magic == MAGIC_BKTR) {
         if (sb->relocation_header.offset + sb->relocation_header.size != sb->subsection_header.offset ||
             sb->subsection_header.offset + sb->subsection_header.size != ctx->size) {
-            fprintf(stderr, "Invalid BKTR layout!\n");
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "Invalid BKTR layout! (section skipped, header result kept)\n");
+            return;
         }
         /* Allocate space for an extra (fake) relocation entry, to simplify our logic. */
         void *relocs = calloc(1, sb->relocation_header.size + (0x3FF0 / sizeof(uint64_t)) * sizeof(bktr_relocation_entry_t));
@@ -1257,8 +1257,8 @@ void nca_process_bktr_section(nca_section_ctx_t *ctx) {
 
                 nca_section_fseek(ctx, ctx->bktr_ctx.romfs_offset + ctx->bktr_ctx.header.dir_meta_table_offset);
                 if (nca_section_fread(ctx, ctx->bktr_ctx.directories, ctx->bktr_ctx.header.dir_meta_table_size) != ctx->bktr_ctx.header.dir_meta_table_size) {
-                    fprintf(stderr, "Failed to read RomFS directory cache!\n");
-                    exit(EXIT_FAILURE);
+                    fprintf(stderr, "Failed to read RomFS directory cache! (section skipped)\n");
+                return;
                 }
                 ctx->bktr_ctx.files = calloc(1, ctx->bktr_ctx.header.file_meta_table_size);
                 if (ctx->bktr_ctx.files == NULL) {

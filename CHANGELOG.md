@@ -6,6 +6,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-11-25
+
+### Added
+
+- **NSZ 能解包了，而且解完还要自证。** 新增 `tools/nszunpack`（单文件 C，链接 vendored mbedtls 与 Homebrew 静态 zstd）：把 NCZ 的 zstd 正文解出来，按 section 记录的 key/counter 用 `IV = counter[0..7] || BE(offset>>4)` 重做 AES-CTR，写成一个可直接安装的 NSP。写完还会把每个重建 NCA 的 SHA-256 和包内 `.cnmt.xml` 的 `<Id>/<Hash>` 对照，打印 `NSZ_HASH ... match=yes`——这是「解出来的字节就是发行方签过名的那份」的直接证据。
+- **多 section 与块压缩都支持。** 更新包的 NCZ 常有几百个 section（Sample Game 更新 417 个、某个更新包更新 692 个），并带 `NCZBLOCK`（1 MiB 一块、每块一条 zstd frame，压不小的块原样存放）。旧的固定 16 条 section 上限和「块压缩不支持」都已去掉。
+- **深度检查对 NSZ 全自动。** `DeepVerifier.verify` 遇到 `.nsz` 先解包到临时目录，再按 NSP 逐 NCA 验签，最后把 hactool 的结论和 CNMT 哈希证明合并成一条结论；校验完删除临时文件。界面详情页新增「解包为 NSP…」，可自己选保存位置。
+- **`docs/NSZ_UNPACK.md`**：NCZ 头结构、重加密规则、14 个真实 NSZ 的测试矩阵与已知限制。
+
+### Changed
+
+- **hactool 的密钥代重试上限从 64 MB 提到 8 GB。** NSZ 解包后是按 NCA 头里的密钥代重新加密的，大 NCA 恰恰是「ticket 代次写错」最先暴露的地方；旧上限会让 5–6 GB 的本体被误报成「内容不符」。
+- **BKTR 补丁分区**不再只是「没能读出结论」：hactool 跳过这类分区时，详情里会明说原因。
+
+### Fixed
+
+- 解包工具在输出目录不存在时会静默写出 0 字节（`fopen` 失败未检查）；现在自动 `mkdir -p` 并在失败时报 `NSZ_ERROR`。
+
+
 ## [1.5.0] - 2026-11-25
 
 ### Fixed

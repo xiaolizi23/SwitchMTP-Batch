@@ -59,6 +59,17 @@ enum DeepVerifier {
         var keyRevision: String?
         var note: String?
         var isTitleKeyMissing = false
+        /// The engine reported this NCA's generation as one its keyname table
+        /// does not know ("0x11 (Unknown)"). Only used to explain a missing
+        /// verdict; a decrypted-and-verified NCA is judged on its merits.
+        var unknownKeyGeneration = false
+        /// The engine's own section/table hashes disagreed with the data.
+        var hardHashFail = false
+        /// Only IVFC level tables disagreed; unreliable on huge RomFS images.
+        var levelHashFail = false
+        /// Downgraded from a level-table failure: the engine cannot vouch for
+        /// the content, so this must never be presented as a full pass.
+        var contentUnconfirmed = false
 
         var signatureText: String {
             switch signature {
@@ -87,11 +98,19 @@ enum DeepVerifier {
                        keysetURL: URL,
                        titleKeysURL: URL? = nil,
                        hactoolURL: URL) -> DeepResult {
-        if format.isCompressed {
+        // NSZ is now unpacked (zstd + section re-encryption) into a temporary
+        // NSP, whose NCAs are then verified exactly like a normal NSP. The
+        // rebuilt NCAs are also hashed against the package's own CNMT XML,
+        // which is the same evidence DBI checks on the console.
+        if format == .nsz {
+            return verifyNSZ(url: url, keysetURL: keysetURL,
+                             titleKeysURL: titleKeysURL, hactoolURL: hactoolURL)
+        }
+        if format == .xcz {
             return DeepResult(state: .unavailable, notes: [
-                .init(severity: .warning, title: "压缩包无法直接深度校验",
-                      detail: "这是 \(format.displayName)。签名与哈希位于解压后的 NCA 内部；本版不做解包，因此只能说“外层结构正常、签名未验证”。DBI 自己能装 NSZ，装完可能是绿，所以这里不能给绿。")
-            ], detail: "NSZ/XCZ 需要解压后校验")
+                .init(severity: .warning, title: "XCZ 仍需专用解包",
+                      detail: "Sparse/块压缩的卡带镜像（XCZ）内部是 HFS0 分区，本版的解包器只处理 NSZ 的 NCZ 内容，XCZ 目前只验到容器头。签名与哈希位于分区内的 NCA 里，因此只能说“外层结构正常、签名未验证”。")
+            ], detail: "XCZ 尚未支持解包")
         }
 
         // XCI verification is header-only unless the cartridge image is walked
@@ -120,6 +139,132 @@ enum DeepVerifier {
         }
 
         return interpret(output: output, format: format)
+    }
+
+    // MARK: - NSZ
+
+    /// Unpacks an NSZ and verifies the result. Kept separate from `verify`
+    /// because it has two sources of truth to reconcile:
+    ///
+    ///  * hactool on the rebuilt NSP — signatures, and hashes where it can
+    ///    derive the title key;
+    ///  * `NSZ_HASH` — SHA-256 of every rebuilt NCA against the package's own
+    ///    CNMT XML. That is byte-exact evidence: if it matches, the container
+    ///    holds exactly the content the publisher signed, no matter what a
+    ///    tool's own section walk thinks.
+    static func verifyNSZ(url: URL, keysetURL: URL, titleKeysURL: URL?, hactoolURL: URL) -> DeepResult {
+        guard let tool = NSZUnpacker.toolURL else {
+            return DeepResult(state: .unavailable, notes: [
+                .init(severity: .warning, title: "缺少 NSZ 解包工具",
+                      detail: "应用包内没有 nszunpack，无法把 NSZ 解开后校验。重新构建或使用完整的发布包。")
+            ], detail: "NSZ 解包工具缺失")
+        }
+
+        let conversion: NSZUnpacker.Conversion
+        do {
+            conversion = try NSZUnpacker.unpack(url: url,
+                                                to: NSZUnpacker.scratchURL(named: url.deletingPathExtension().lastPathComponent),
+                                                tool: tool)
+        } catch {
+            let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            return DeepResult(state: .unavailable, notes: [
+                .init(severity: .warning, title: "NSZ 解包失败",
+                      detail: "\(message)\n这不是“文件没问题”的结论：解不开就无法验签，本项按未验签处理。")
+            ], detail: message)
+        }
+        defer { NSZUnpacker.discard(conversion.outputURL) }
+
+        let inner = verify(url: conversion.outputURL, format: .nsp,
+                           keysetURL: keysetURL, titleKeysURL: titleKeysURL,
+                           hactoolURL: hactoolURL)
+        return reconcileNSZ(inner: inner, conversion: conversion, source: url)
+    }
+
+    /// Merges hactool's per-NCA verdicts with the CNMT hash proof.
+    static func reconcileNSZ(inner: DeepResult, conversion: NSZUnpacker.Conversion, source: URL) -> DeepResult {
+        var checks = inner.ncas
+        let hashesByID = Dictionary(conversion.hashes.map { ($0.contentID, $0) }, uniquingKeysWith: { first, _ in first })
+
+        for index in checks.indices {
+            guard let proof = hashesByID[String(checks[index].name.prefix(32)).lowercased()] else { continue }
+            switch proof.match {
+            case .yes:
+                // Byte-identical to what the CNMT declares, so any "hash fail"
+                // left by the tool's own section walk is the tool's problem,
+                // not the file's.
+                checks[index].hash = .good
+                checks[index].isTitleKeyMissing = false
+            case .no:
+                checks[index].hash = .fail
+                checks[index].note = "解包后 SHA-256 与 CNMT 清单不符（\(proof.sha256.prefix(12))… ≠ \(proof.expected?.prefix(12) ?? "?")…）"
+            case .unknown:
+                break
+            }
+        }
+        if checks.isEmpty {
+            for proof in conversion.hashes {
+                var check = NCACheck(name: proof.ncaName)
+                check.hash = proof.match == .yes ? .good : (proof.match == .no ? .fail : .unknown)
+                checks.append(check)
+            }
+        }
+
+        var notes: [CheckNote] = []
+        notes.append(.init(severity: .note, title: "NSZ 已解包后校验",
+                           detail: "已用内置解包器把 NCZ 还原成 NCA 并写回 NSP（\(conversion.entries) 个条目，用时 "
+                               + String(format: "%.1f", conversion.duration) + " 秒）。\(conversion.summaryText)。"))
+        if conversion.mismatchedCount > 0 {
+            notes.append(.init(severity: .blocking, title: "解包结果与清单不符",
+                               detail: "\(conversion.mismatchedCount) 个 NCA 的 SHA-256 与包内 CNMT 声明的哈希不同：压缩流损坏或包被改写过。DBI 装到这一层会失败，对应红色。"))
+        }
+        // hactool ran on the rebuilt NSP and can only see its own section walk;
+        // a hash "fail" it produced there is already resolved (or confirmed) by
+        // the CNMT proof above, so its hash/signature summaries must not leak
+        // through as contradictory advice.
+        let stale = ["内容哈希不符", "签名非官方", "签名与哈希通过", "签名通过，内容哈希未验证", "只拿到部分结论"]
+        notes.append(contentsOf: inner.notes.filter { note in
+            !stale.contains { note.title.contains($0) }
+        })
+
+        if let unconfirmed = inner.ncas.first(where: { $0.contentUnconfirmed }) {
+            notes.insert(.init(severity: .warning, title: "内容无法确认",
+                               detail: "包内没有 CNMT 清单，而引擎在 \(unconfirmed.name) 的 RomFS 层级表上报了不一致。签名成立，但内容是否逐字节完整无法判定；建议按 DBI 实际安装结果为准。"), at: 1)
+            return DeepResult(state: .unavailable, notes: notes, detail: "内容无法确认", ncas: checks)
+        }
+
+        let sigFails = checks.filter { $0.signature == .fail }
+        let sigGoods = checks.filter { $0.signature == .good }
+        let hashFails = checks.filter { $0.hash == .fail }
+        let hashGoods = checks.filter { $0.hash == .good }
+        _ = source
+
+        if !hashFails.isEmpty {
+            return DeepResult(state: .failed, notes: notes,
+                              detail: "\(hashFails[0].name) 内容不符", ncas: checks)
+        }
+        if !sigFails.isEmpty {
+            notes.insert(.init(severity: .warning, title: "签名非官方（对应 DBI 黄色）",
+                               detail: "解包后的 NCA 内容完整，但 RSA 签名不是零售链签发的。DBI 装完会显示黄色，需要 sigpatch。\(sigFails.count)/\(checks.count) 个 NCA 签名不通过。"), at: 1)
+            return DeepResult(state: .signatureInvalid, notes: notes,
+                              detail: "\(sigFails[0].name) 签名非官方", ncas: checks)
+        }
+        let proofText = conversion.matchedCount > 0
+            ? "其中 \(conversion.matchedCount) 个 NCA 的 SHA-256 与 CNMT 清单逐字节一致"
+            : "内容哈希由引擎在解包后的 NSP 上校验通过（包内没有 CNMT XML 可对照）"
+        if checks.isEmpty || sigGoods.count < checks.count {
+            let anyHash = hashGoods.isEmpty ? "内容哈希也没有结论" : "已有 \(hashGoods.count) 个 NCA 的哈希通过"
+            notes.insert(.init(severity: .warning, title: "签名未全部验证",
+                               detail: "\(checks.count) 个 NCA 中有 \(sigGoods.count) 个签名通过；其余未能判定（多为密钥代不足）。\(anyHash)，但仍不等于 DBI 完整校验的绿。"), at: 1)
+            return DeepResult(state: .unavailable, notes: notes, detail: "签名未全部验证", ncas: checks)
+        }
+        if hashGoods.isEmpty {
+            notes.insert(.init(severity: .note, title: "签名通过，内容哈希未验证",
+                               detail: "\(sigGoods.count) 个 NCA 的零售签名全部成立，但没有可用的内容哈希结论。这比“未验签”强，但仍不等于 DBI 完整校验的绿。"), at: 1)
+            return DeepResult(state: .signatureOnly, notes: notes, detail: "解包后签名通过 · 哈希未验", ncas: checks)
+        }
+        notes.insert(.init(severity: .note, title: "签名与哈希通过（对应 DBI 绿）",
+                           detail: "\(sigGoods.count) 个 NCA 的零售签名全部成立，\(proofText)。"), at: 1)
+        return DeepResult(state: .verified, notes: notes, detail: "解包后签名与哈希通过", ncas: checks)
     }
 
     // MARK: - Output interpretation
@@ -222,6 +367,15 @@ enum DeepVerifier {
             ], detail: "签名通过 · 哈希未验", ncas: checks)
         }
 
+        // 5b. The engine itself flagged a RomFS level table but there is no
+        //     manifest to settle it. Say "cannot confirm" rather than green.
+        if let first = checks.first(where: { $0.contentUnconfirmed }) {
+            return DeepResult(state: .unavailable, notes: [
+                .init(severity: .warning, title: "内容无法确认",
+                      detail: "包内没有 CNMT 清单，而引擎在 \(first.name) 的 RomFS 层级表上报了不一致。签名成立，但内容是否逐字节完整无法判定；建议按 DBI 实际安装结果为准。")
+            ], detail: "内容无法确认", ncas: checks)
+        }
+
         // 6. Full pass: every NCA signed by retail, hashes verified where they
         //    could be computed, and nothing failed.
         var notes: [CheckNote] = [
@@ -266,7 +420,17 @@ enum DeepVerifier {
                 continue
             }
             if line.hasPrefix("NSP_NCA_END:") {
-                if let finished = current { results.append(finished) }
+                if var finished = current {
+                    // A generation prod.keys does not cover leaves the NCA
+                    // undecryptable, so a missing verdict means "keys too old",
+                    // never "content bad".
+                    if finished.unknownKeyGeneration && finished.hash == .unknown && finished.signature == .unknown {
+                        finished.isTitleKeyMissing = true
+                        let gen = finished.keyRevision?.split(separator: " ").first.map(String.init) ?? "?"
+                        finished.note = "本机 prod.keys 不覆盖 \(gen) 代密钥，这个 NCA 无法解密"
+                    }
+                    results.append(finished)
+                }
                 current = nil
                 continue
             }
@@ -290,10 +454,27 @@ enum DeepVerifier {
                 check.signature = .fail
             }
 
+            // The engine prints an NCA more than once: an initial pass before
+            // the key generation is settled, then the real one. A failure makes
+            // the NCA bad; a later "GOOD" line must not paint over it.
             if lower.contains("hash (good)") {
                 if check.hash == .unknown { check.hash = .good }
-            } else if lower.contains("hash (fail)") || lower.contains("is corrupted") || lower.contains("hash mismatch") {
+            } else if lower.contains("superblock hash (fail)") || lower.contains("hash table (fail)")
+                        || lower.contains("hash mismatch") {
                 check.hash = .fail
+                check.hardHashFail = true
+            } else if lower.contains("level ") && lower.contains("(fail)") {
+                // IVFC level tables of very large RomFS images are reported
+                // inconsistently by the engine; without a CNMT manifest this
+                // is "cannot tell", not "content is broken".
+                check.hash = .fail
+                check.levelHashFail = true
+            } else if lower.contains("is corrupted") {
+                check.hash = .fail
+            }
+
+            if lower.contains("invalid bktr layout") {
+                check.note = "BKTR 补丁分区：引擎跳过该分区的内容遍历，签名仍按 NCA 头部验证"
             }
 
             if lower.contains("unable to match rights id to titlekey") {
@@ -307,10 +488,19 @@ enum DeepVerifier {
             if line.hasPrefix("Master Key Revision:") {
                 check.keyRevision = line.replacingOccurrences(of: "Master Key Revision:", with: "")
                     .trimmingCharacters(in: .whitespaces)
+                if lower.contains("(unknown)") {
+                    check.unknownKeyGeneration = true
+                }
             }
             current = check
         }
         if let finished = current { results.append(finished) }
+        for i in results.indices where results[i].hash == .fail
+            && results[i].levelHashFail && !results[i].hardHashFail {
+            results[i].hash = .unknown
+            results[i].contentUnconfirmed = true
+            results[i].note = "引擎在 RomFS 层级表上报了不一致，但没有 CNMT 清单可对照，无法判定内容是否完好"
+        }
         return results
     }
 

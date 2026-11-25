@@ -826,6 +826,42 @@ final class BatchInstallModel: ObservableObject {
     var submittedCount: Int { packages.filter(\.isSubmitted).count }
     var remainingCount: Int { packages.filter { !$0.isSubmitted }.count }
 
+    // MARK: - NSZ unpacking
+
+    /// Converts one NSZ to NSP at a user-chosen path. Runs off the main thread
+    /// because a big title takes tens of seconds; the banner carries progress
+    /// and the final CNMT hash summary.
+    func unpack(_ package: InstallPackage, to destination: URL) {
+        guard package.format == .nsz else {
+            setBanner("只有 NSZ 需要解包；这个文件是 \(package.format.displayName)。", isError: true)
+            return
+        }
+        guard let tool = NSZUnpacker.toolURL else {
+            setBanner("应用包内缺少 nszunpack，无法解包。请用完整的发布包或重新构建。", isError: true)
+            return
+        }
+        let source = package.url
+        let name = package.displayName
+        setBanner("正在解包 \(name)（zstd 解压 + 按 section 重加密）…", isError: false)
+
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            do {
+                let conversion = try NSZUnpacker.unpack(url: source, to: destination, tool: tool)
+                let size = (try? FileManager.default.attributesOfItem(atPath: destination.path))?[.size] as? NSNumber
+                let sizeText = size.map { ByteCountFormatter.string(fromByteCount: $0.int64Value, countStyle: .file) } ?? "NSP"
+                DispatchQueue.main.async {
+                    self?.setBanner("已解包：\(destination.path)（\(sizeText)，用时 \(String(format: "%.1f", conversion.duration)) 秒）。\(conversion.summaryText)。",
+                                    isError: conversion.mismatchedCount > 0)
+                }
+            } catch {
+                let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+                DispatchQueue.main.async {
+                    self?.setBanner("解包失败：\(message)", isError: true)
+                }
+            }
+        }
+    }
+
     func setBanner(_ text: String, isError: Bool) {
         banner = text
         bannerIsError = isError

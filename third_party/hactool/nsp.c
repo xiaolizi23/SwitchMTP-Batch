@@ -244,8 +244,10 @@ void nsp_process(nsp_ctx_t *ctx) {
 
         /* If the content will not decrypt with the ticket's generation but the
          * NCA header promises a different one, try that before calling the
-         * package corrupt. Small NCAs only: a 15 GB retry is not worth it, and
-         * the real-corruption case (某样本 repack) still has to be reported. */
+         * package corrupt. The cap is generous: NSZ-derived packages re-encrypt
+         * with the key generation stored in the NCA header, so a large NCA is
+         * exactly where a stale ticket generation shows up first, and a wrong
+         * generation would otherwise read as "content corrupt". */
         int hash_bad = 0;
         for (unsigned int s = 0; s < 4; s++) {
             if (nca.section_contexts[s].header != NULL &&
@@ -253,7 +255,7 @@ void nsp_process(nsp_ctx_t *ctx) {
                 hash_bad = 1;
             }
         }
-        if (hash_bad && nca.has_rights_id && entry_size <= (64ULL << 20)) {
+        if (hash_bad && nca.has_rights_id && entry_size <= (8ULL << 30)) {
             ticket_record_t *rec = ticket_record_for(nca.header.rights_id);
             if (rec != NULL && rec->gen != nca.crypto_type) {
                 unsigned char alt[0x10];

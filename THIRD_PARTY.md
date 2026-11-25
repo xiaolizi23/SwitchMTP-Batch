@@ -258,6 +258,26 @@ licence and has not been done.
 
 ---
 
+## 8. zstd — BSD-3-Clause (linked by the bundled NSZ unpacker)
+
+`tools/nszunpack/nszunpack` (part of this repository, GPL-2.0) links a **static**
+`libzstd` from Homebrew to decompress NCZ payloads. The library is not modified.
+The bundled binary is arm64-only because the Homebrew static library is arm64-only.
+
+> Copyright (c) Meta Platforms, Inc. and affiliates.
+>
+> BSD License: Redistribution and use in source and binary forms, with or without
+> modification, are permitted provided that the copyright notice, the list of conditions
+> and the disclaimer are retained. zstd is distributed "AS IS", without warranty of any
+> kind.
+
+- **Upstream:** https://github.com/facebook/zstd
+- **Licence text:** `LICENSES/zstd-BSD-3-Clause.txt` in the Homebrew installation,
+  reproduced in the app bundle as `Contents/Resources/bin/nszunpack-LICENSE.txt` when
+  packaging permits; otherwise see the upstream `LICENSE` file.
+
+---
+
 ## Adding GPL-2.0 Copyright Headers to SwitchMTP Source Files
 
 Per GPL-2.0 §1, each modified Swift/Go source file in this repository that derives from

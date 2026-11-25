@@ -26,7 +26,7 @@ FRAMEWORKS="${APP}/Contents/Frameworks"
 RESOURCES="${APP}/Contents/Resources"
 BINARY="${MACOS_DIR}/SwitchMTPBatch"
 
-VERSION="${VERSION:-1.5.0}"
+VERSION="${VERSION:-1.6.0}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 BUNDLE_ID="${BUNDLE_ID:-me.fratei.switchmtp.batch}"
 DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-12.0}"
@@ -140,6 +140,16 @@ assemble_bundle() {
     chmod +x "${RESOURCES}/bin/hactool"
   else
     info "WARNING: tools/hactool/hactool missing; deep checks will report 'engine unavailable'"
+  fi
+
+  # NSZ unpacker. Links Homebrew's static zstd and the vendored mbedtls;
+  # arm64-only, same as the rest of the bundle.
+  if [[ -x "${ROOT}/tools/nszunpack/nszunpack" ]]; then
+    cp "${ROOT}/tools/nszunpack/nszunpack" "${RESOURCES}/bin/nszunpack"
+    chmod +x "${RESOURCES}/bin/nszunpack"
+    cp /opt/homebrew/opt/zstd/LICENSE "${RESOURCES}/bin/nszunpack-LICENSE.txt" 2>/dev/null || true
+  else
+    info "WARNING: tools/nszunpack/nszunpack missing; run scripts/build-nszunpack.sh (NSZ deep checks will be unavailable)"
   fi
 
   compile_localizations
