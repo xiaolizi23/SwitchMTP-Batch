@@ -167,6 +167,18 @@ final class BatchInstallModel: ObservableObject {
 
     var totalSizeText: String { ByteCountFormatter.string(fromByteCount: totalBytes, countStyle: .file) }
 
+    /// The pool the deep pass acts on: the current selection, or everything
+    /// when nothing is ticked.
+    private func deepPool() -> [InstallPackage] {
+        let pool = packages.filter { $0.isSelected }
+        return pool.isEmpty ? packages : pool
+    }
+
+    /// Packages in the pool that still need a deep pass. A terminal conclusion
+    /// (verified, signature-only, non-retail, failed, unavailable) is reused
+    /// instead of being re-verified every time the button is pressed.
+    var deepPendingCount: Int { deepPool().filter { $0.deepState == .notRun }.count }
+
     var passedCount: Int { packages.filter { $0.resolvedVerdict == .passed }.count }
     var unverifiedCount: Int { packages.filter { $0.resolvedVerdict == .unverified }.count }
     var cautionCount: Int { packages.filter { $0.resolvedVerdict == .caution }.count }
@@ -662,24 +674,39 @@ final class BatchInstallModel: ObservableObject {
         panel.message = "选择你从自己主机提取的 prod.keys。它只在本机读取，不会上传，也不会写进日志。"
         panel.prompt = "使用此密钥文件"
         if panel.runModal() == .OK, let url = panel.url {
+            let changed = keySetPath != url.path
             keySetPath = url.path
             UserDefaults.standard.set(url.path, forKey: keySetPathKey)
+            // Conclusions were derived under the old keyset; they cannot be
+            // trusted against a different one, so drop the cached deep state.
+            if changed { invalidateDeepResults() }
         }
     }
 
     func clearKeySet() {
         keySetPath = nil
         UserDefaults.standard.removeObject(forKey: keySetPathKey)
+        invalidateDeepResults()
+    }
+
+    /// Drops every cached deep conclusion. Called when the keyset changes or
+    /// is removed; structural (quick) verdicts are kept.
+    private func invalidateDeepResults() {
         for index in packages.indices {
             packages[index].deepState = .notRun
             packages[index].deepProgress = 0
             packages[index].deepPhase = nil
+            packages[index].deepNCAs = []
         }
+        rebuildGroups()
     }
 
     /// Runs the optional deep pass over the current selection (or everything
-    /// when nothing is selected).
-    func runDeepCheck() {
+    /// when nothing is selected). By default only packages that have never been
+    /// checked are verified, so adding a new folder does not force a second
+    /// pass over titles already concluded. `force` ignores cached conclusions
+    /// and re-checks the whole pool.
+    func runDeepCheck(force: Bool = false) {
         guard !isDeepChecking, !isScanning else { return }
         guard let keyPath = keySetPath, keySetLoaded else {
             setBanner("请先选择有效的 prod.keys。没有密钥时只能做结构检查。", isError: true)
@@ -690,9 +717,15 @@ final class BatchInstallModel: ObservableObject {
             return
         }
 
-        let pool = packages.filter { $0.isSelected }
-        let targets = pool.isEmpty ? packages : pool
-        guard !targets.isEmpty else { return }
+        let selected = deepPool()
+        let targets = force ? selected : selected.filter { $0.deepState == .notRun }
+
+        if targets.isEmpty {
+            setBanner(force
+                      ? "没有可检查的项目。"
+                      : "所选项目都已深度检查过；如需重新判定，选择「重新检查全部」。", isError: false)
+            return
+        }
 
         performDeepChecks(on: targets.map {
             (id: $0.id, url: $0.url, format: $0.format, keyPath: keyPath, expectedNCAs: $0.report?.ncaCount)
