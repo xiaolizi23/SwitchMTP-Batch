@@ -60,10 +60,11 @@ struct BatchInstallSheet: View {
             Divider()
             footer
         }
-        // 880 x 520 is the smallest this stays readable at, and it is also
-        // what keeps the workspace smaller than the 1000 x 620 main window it
-        // is opened over. The three columns keep their own minimums (520 / 300).
-        .frame(minWidth: 880, minHeight: 520)
+        // The floor comes from WindowMetrics so it cannot drift away from the
+        // main window's floor again. The three columns keep their own
+        // minimums (520 / 300).
+        .frame(minWidth: WindowMetrics.workspaceMinFrame.width,
+               minHeight: WindowMetrics.workspaceMinFrame.height)
         .background(Color(nsColor: .windowBackgroundColor))
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: handleDrop(providers:))
         .overlay(dropOverlay)

@@ -6,6 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.7.8] - 2026-11-25
+
+### Fixed
+
+- **主窗口缩回 900×450，批量安装窗口把主窗口整个盖住。** 根因是主窗口放大只做了一次性 seed（`batch.windowSeedApplied` 早已置位，之后不再纠正），而窗口 frame 又被系统自动恢复成上游默认 900×450；批量工作区固定 880×520，打开即覆盖。现在主窗口 frame 每次启动强制不低于 1000×620：设好 `contentMinSize`、把恢复出来的小 frame 撑回（保持左上角并夹在屏幕内）、并在窗口被改小时兜底纠正；打开批量工作区前再校正一次父窗口。批量工作区尺寸改为从父窗口 frame 推导，限制在父窗口 −120/−100 以内，并通过代理在窗口缩放时兜底 clamp。
+- **窗口尺寸常量统一。** 新增 `Views/WindowMetrics.swift` 作为唯一尺寸来源，全部按 window frame 计算，避免 content / frame 两套坐标混用（之前按内容区写 1000×620 会把窗口抬到 1000×672，且下限时灵时不灵）。
+
 ## [1.7.7] - 2026-11-25
 
 ### Fixed

@@ -5,19 +5,25 @@
 // under the terms of the GNU General Public License version 2 as published by
 // the Free Software Foundation.
 
-// Seeds the very first window at a slightly roomier size than upstream's
-// 900 x 450.
+// Enforces the main window's minimum size on every launch.
 //
-// The batch workspace is 880 x 540 and is meant to read as a panel layered on
-// the main window rather than a replacement of it, so the parent has to be
-// bigger than the child with its edges visible. `Scene.defaultSize` would say
-// this in one line, but it is macOS 13 and this app still deploys to 12, and
-// SceneBuilder rejects an `if #available` branch. Setting the frame from
-// AppKit keeps one code path for every supported version.
+// `Scene.defaultSize` would state the preferred size in one line, but it is
+// macOS 13 and this app still deploys to 12, and SceneBuilder rejects an
+// `if #available` branch. Setting the frame from AppKit keeps one code path
+// for every supported version.
 //
-// Deliberately conservative: it runs exactly once per installation, and only
-// when the window still has upstream's untouched 900 x 450 size. A window the
-// user has resized is left alone and simply marks the one-time seed as done.
+// This used to be a one-time seed guarded by `batch.windowSeedApplied`. That
+// flag survives reinstalls while the window frame is autosaved and restored
+// separately, so once the flag was set the app could come back at upstream's
+// 900 x 450 forever — the workspace (880 x 520) then covered the whole window.
+// The floor is now unconditional:
+//
+//   - contentMinSize is always 1000 x 620;
+//   - a restored frame smaller than that is grown back, top edge anchored;
+//   - the preferred 1000 x 620 is applied (and centred) only on a virgin
+//     install, so a user's own larger window is never touched.
+//
+// See WindowMetrics and AGENTS.md §5.
 
 import SwiftUI
 import AppKit
@@ -26,32 +32,79 @@ struct InitialWindowSize: NSViewRepresentable {
     let size: NSSize
 
     private static let seedKey = "batch.windowSeedApplied"
-    private static let upstreamSize = NSSize(width: 900, height: 450)
+
+    final class Coordinator {
+        fileprivate var resizeObserver: NSObjectProtocol?
+        fileprivate var isEnforcing = false
+
+        deinit {
+            if let resizeObserver {
+                NotificationCenter.default.removeObserver(resizeObserver)
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView(frame: .zero)
         // The window is not attached yet while makeNSView runs.
-        DispatchQueue.main.async {
-            guard let window = view.window else { return }
-            Self.apply(to: window, size: size)
+        DispatchQueue.main.async { [weak view] in
+            guard let view, let window = view.window else { return }
+            Self.apply(to: window, minimum: size)
+            Self.observeResizes(of: window, minimum: size, coordinator: context.coordinator)
         }
         return view
     }
 
     func updateNSView(_ nsView: NSView, context: Context) {}
 
-    private static func apply(to window: NSWindow, size: NSSize) {
+    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
+        if let observer = coordinator.resizeObserver {
+            NotificationCenter.default.removeObserver(observer)
+            coordinator.resizeObserver = nil
+        }
+    }
+
+    /// `contentMinSize` is not reliably enforced for SwiftUI windows (frame
+    /// restoration and Accessibility resizing can both slip under it), so the
+    /// floor is also re-applied whenever the window resizes below it. The
+    /// reentrancy flag stops our own setFrame from feeding back.
+    private static func observeResizes(of window: NSWindow,
+                                       minimum: NSSize,
+                                       coordinator: Coordinator) {
+        guard coordinator.resizeObserver == nil else { return }
+        coordinator.resizeObserver = NotificationCenter.default.addObserver(
+            forName: NSWindow.didResizeNotification,
+            object: window,
+            queue: .main
+        ) { [weak window, weak coordinator] _ in
+            guard let window, let coordinator, !coordinator.isEnforcing else { return }
+            guard window.frame.width < minimum.width || window.frame.height < minimum.height else {
+                return
+            }
+            coordinator.isEnforcing = true
+            WindowMetrics.enforceMainFloor(on: window)
+            coordinator.isEnforcing = false
+        }
+    }
+
+    private static func apply(to window: NSWindow, minimum: NSSize) {
         let defaults = UserDefaults.standard
-        // One-time: after this the window frame is whatever the user left it as.
-        guard !defaults.bool(forKey: seedKey) else { return }
 
-        defer { defaults.set(true, forKey: seedKey) }
-        // Never touch a window the user has already sized themselves; 900 x 450
-        // is upstream's untouched default and the only case worth seeding.
-        // Compared as frames: the title bar is part of the 450.
-        guard window.frame.size == upstreamSize else { return }
+        // A fresh install still at upstream's untouched frame gets the
+        // preferred size and is centred. This is the only time we move a
+        // window the user has not touched.
+        if !defaults.bool(forKey: seedKey),
+           window.frame.size == WindowMetrics.upstreamFrame {
+            defaults.set(true, forKey: seedKey)
+            window.setFrame(NSRect(origin: window.frame.origin, size: minimum), display: false)
+            window.center()
+            return
+        }
+        defaults.set(true, forKey: seedKey)
 
-        window.setContentSize(size)
-        window.center()
+        // The floor applies no matter what state the window was restored in.
+        WindowMetrics.enforceMainFloor(on: window)
     }
 }

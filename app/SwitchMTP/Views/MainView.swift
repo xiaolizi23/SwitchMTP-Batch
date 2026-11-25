@@ -129,7 +129,7 @@ struct MainView: View {
         .focusedSceneValue(\.showUSBDisclosureAction, { isShowingUSBDisclosure = true })
         .focusedSceneValue(\.isStarted, manager.isStarted)
         .toolbar { toolbarContent }
-        .background(InitialWindowSize(size: NSSize(width: 1000, height: 620)))
+        .background(InitialWindowSize(size: WindowMetrics.mainMinFrame))
         .onChange(of: manager.connectionState) { newState in
             if case .disconnected = newState {
                 selection = []
