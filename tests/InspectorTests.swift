@@ -154,6 +154,9 @@ struct InspectorTests {
             // A hash mismatch without a derived title key only means "could not
             // decrypt": it must never be reported as corruption.
             ("hash-without-key", block("  Fixed-Key Signature (GOOD): AA\n  Superblock Hash (FAIL): CC", keys: 0), .unavailable),
+            // Unknown key generation: the FAIL may be a decryption/key gap, not
+            // corruption. Downgrade to cannot-confirm instead of red.
+            ("hash-unknown-generation", block("  Fixed-Key Signature (GOOD): AA\n  Superblock Hash (FAIL): CC\n  Master Key Revision: 0x11 (Unknown)"), .unavailable),
         ]
         for (label, text, state) in outputs {
             let result = DeepVerifier.interpret(output: text, format: .nsp)

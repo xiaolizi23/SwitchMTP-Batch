@@ -377,19 +377,31 @@ enum DeepVerifier {
         // ticket key is derived, which is how this distinction was calibrated.)
         let registeredKeys = Self.markerValue("NSP_KEYSTATE", field: "registered", in: output) ?? 1
 
-        // 2. A hash mismatch that is *not* explained by a missing title key is
-        //    corruption: DBI would fail to install it. Red.
-        if let first = hashFails.first {
-            if registeredKeys == 0 {
-                return DeepResult(state: .unavailable, notes: [
-                    .init(severity: .warning, title: "未取得标题密钥，哈希无从校验",
-                          detail: "引擎没能从包内 ticket 解出标题密钥（个人化票据或缺少 ticket）。哈希不符只是“没解开”，不代表文件损坏。")
-                ], detail: "\(first.name) 无法解密", ncas: checks)
-            }
+        // A hash failure only counts as "confirmed corruption" when the key was
+        // settled and the NCA's own key generation is known. If the generation
+        // is unknown, or the package as a whole could not derive its title keys,
+        // a FAIL reads as "could not decrypt / engine walk unreliable" and must
+        // stay off the red verdict — it is "cannot confirm", not "content bad".
+        let packageKeyGap = !keyGaps.isEmpty || registeredKeys == 0
+        let confirmedBad = hashFails.filter { nca in
+            !nca.unknownKeyGeneration && !(packageKeyGap && nca.signature == .good)
+        }
+        let suspectFails = hashFails.filter { !confirmedBad.contains($0) }
+
+        // 2a. Confirmed content mismatch: DBI would fail to install it. Red.
+        if !confirmedBad.isEmpty {
             return DeepResult(state: .failed, notes: [
                 .init(severity: .blocking, title: "签名保留、内容哈希不符（DBI 会安装失败）",
-                      detail: "NCA 头签名是真的，但解出来的内容与清单哈希对不上：典型特征是该 NCA 被替换、重打包不完整或传输损坏。DBI 装到这一层会报错，对应红色。")
-            ], detail: "\(first.name) 哈希校验失败", ncas: checks)
+                      detail: "NCA 头签名是真的、密钥代已确认，但解出来的内容与清单哈希对不上：典型特征是该 NCA 被替换、重打包不完整或传输损坏。DBI 装到这一层会报错，对应红色。")
+            ], detail: "\(confirmedBad[0].name) 哈希校验失败", ncas: checks)
+        }
+
+        // 2b. Hash FAIL riding on an unresolved key: cannot confirm, never red.
+        if !suspectFails.isEmpty {
+            return DeepResult(state: .unavailable, notes: [
+                .init(severity: .warning, title: "哈希存疑，暂不判损坏",
+                      detail: "\(suspectFails[0].name) 的哈希校验未通过，但伴随密钥代未知或整包标题密钥未派生；FAIL 可能源于解密偏差或引擎遍历不可靠，不能据此判定内容损坏。最终以 DBI 实机安装结果为准。")
+            ], detail: "哈希存疑", ncas: checks)
         }
 
         // 3. Signature actually checked and not retail — DBI's yellow.

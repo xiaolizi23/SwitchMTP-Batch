@@ -26,7 +26,7 @@ FRAMEWORKS="${APP}/Contents/Frameworks"
 RESOURCES="${APP}/Contents/Resources"
 BINARY="${MACOS_DIR}/SwitchMTPBatch"
 
-VERSION="${VERSION:-1.7.10}"
+VERSION="${VERSION:-1.7.11}"
 BUILD_NUMBER="${BUILD_NUMBER:-1}"
 BUNDLE_ID="${BUNDLE_ID:-me.fratei.switchmtp.batch}"
 DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-12.0}"

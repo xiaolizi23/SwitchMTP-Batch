@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.7.11] - 2026-11-26
+
+### Changed
+
+- **硬损坏判定加存疑护栏。** 哈希 FAIL 先分层：superblock / hash table FAIL、`hash mismatch` 记硬损坏；IVFC level 表 FAIL 单独降级“内容无法确认”。判红前先排查解密存疑旁证——密钥代未知、或整包标题密钥未派生（`registered=0` / 同包有缺密钥 NCA）时，哈希 FAIL 降级为“无法确认”，不直接判红；只有密钥代已确认、仍与清单哈希对不上的才判红。CNMT SHA-256 逐字节不符、结构损坏（`is corrupted`）仍维持红色。
+
 ## [1.7.10] - 2026-11-26
 
 ### Added
