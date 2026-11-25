@@ -13,8 +13,8 @@ settings:
   base:
     MACOSX_DEPLOYMENT_TARGET: "12.0"
     SWIFT_VERSION: "5.10"
-    MARKETING_VERSION: "1.4.2"
-    CURRENT_PROJECT_VERSION: "14"
+    MARKETING_VERSION: "1.6.0"
+    CURRENT_PROJECT_VERSION: "16"
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
@@ -74,8 +74,8 @@ targets:
         GCC_PREPROCESSOR_DEFINITIONS:
           - $(inherited)
           - SWIFT_PACKAGE=0
-        MARKETING_VERSION: "1.4.2"
-        CURRENT_PROJECT_VERSION: "14"
+        MARKETING_VERSION: "1.6.0"
+        CURRENT_PROJECT_VERSION: "16"
     dependencies:
       - sdk: IOKit.framework
       - framework: ../backend/build/nxmtp.dylib
@@ -94,7 +94,9 @@ targets:
           mkdir -p "$dest"
           cp -f "$SRCROOT/../tools/hactool/hactool" "$dest/hactool"
           cp -f "$SRCROOT/../tools/hactool/LICENSE" "$dest/hactool-LICENSE.txt"
-          chmod +x "$dest/hactool"
+          cp -f "$SRCROOT/../tools/nszunpack/nszunpack" "$dest/nszunpack"
+          cp -f "/opt/homebrew/opt/zstd/LICENSE" "$dest/nszunpack-LICENSE.txt" 2>/dev/null || true
+          chmod +x "$dest/hactool" "$dest/nszunpack"
 
   switchmtp-cli:
     type: tool
@@ -127,8 +129,8 @@ targets:
           - "@executable_path"
           - "@executable_path/../Frameworks"
         ENABLE_HARDENED_RUNTIME: YES
-        MARKETING_VERSION: "1.4.2"
-        CURRENT_PROJECT_VERSION: "14"
+        MARKETING_VERSION: "1.6.0"
+        CURRENT_PROJECT_VERSION: "16"
     dependencies:
       - sdk: IOKit.framework
     postBuildScripts:

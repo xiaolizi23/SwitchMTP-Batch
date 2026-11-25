@@ -102,6 +102,17 @@ enum DeepVerifier {
         // NSP, whose NCAs are then verified exactly like a normal NSP. The
         // rebuilt NCAs are also hashed against the package's own CNMT XML,
         // which is the same evidence DBI checks on the console.
+        #if arch(x86_64)
+        // The bundled hactool/nszunpack are Apple Silicon builds. Running their
+        // x86_64 slices is not trustworthy (the vendored RSA path returns
+        // "signature FAIL" for real retail NCAs), so refuse rather than hand
+        // back a wrong verdict.
+        return DeepResult(state: .unavailable, notes: [
+            .init(severity: .warning, title: "内置引擎只有 arm64 版本",
+                  detail: "深度检查依赖的 hactool 与 nszunpack 目前是 Apple Silicon 构建，Intel 进程里没有可信的 x86_64 版本，因此不做签名/哈希判定。结构预检、传输、安装都不受影响。需要 Intel 上也能深检时，请在本机运行 scripts/build-hactool.sh 与 scripts/build-nszunpack.sh 自建工具。")
+        ], detail: "内置引擎仅支持 arm64")
+        #endif
+
         if format == .nsz {
             return verifyNSZ(url: url, keysetURL: keysetURL,
                              titleKeysURL: titleKeysURL, hactoolURL: hactoolURL)
