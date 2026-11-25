@@ -1,7 +1,9 @@
 #include <string.h>
+#include <strings.h>
 #include "rsa.h"
 #include "aes.h"
 #include "xci.h"
+#include "nca.h"
 
 /* This RSA-PKCS1 public key is only accessible to the gamecard controller. */
 /* However, it (and other XCI keys) can be dumped with a GCD attack on two signatures. */
@@ -24,6 +26,40 @@ static const unsigned char xci_header_pubk[0x100] = {
     0xD2, 0x3A, 0x8B, 0xB0, 0x8A, 0x42, 0xE3, 0x3D, 0xF1, 0x92, 0x23, 0x42, 0x2E, 0xBA, 0xCC, 0x9C,
     0x9A, 0xC1, 0xDD, 0x62, 0x86, 0x9C, 0x2E, 0xE1, 0x2D, 0x6F, 0x62, 0x67, 0x51, 0x08, 0x0E, 0xCF
 };
+
+/* Verify every NCA inside one cartridge partition, reusing the same NCA walk
+ * the NSP handler uses. The caller already opened the HFS0 directory; here we
+ * only open each NCA at its absolute offset and let nca_process check its
+ * signature and section hashes. */
+static void xci_walk_partition_ncas(hfs0_ctx_t *partition, hactool_ctx_t *tool_ctx) {
+    if (partition->header == NULL) return;
+    for (uint32_t i = 0; i < partition->header->num_files; i++) {
+        hfs0_file_entry_t *entry = hfs0_get_file_entry(partition->header, i);
+        char *name = hfs0_get_file_name(partition->header, i);
+        if (entry == NULL || name == NULL) continue;
+        size_t len = strlen(name);
+        if (len < 4 || strcasecmp(name + len - 4, ".nca") != 0) continue;
+
+        uint64_t entry_start = partition->offset + hfs0_get_header_size(partition->header) + entry->offset;
+
+        printf("\nNSP_NCA_BEGIN: %s\n", name);
+        fflush(stdout);
+
+        nca_ctx_t nca;
+        nca_init(&nca);
+        nca.file = partition->file;
+        nca.tool_ctx = tool_ctx;
+        nca.is_cli_target = true;
+        nca.base_offset = entry_start;
+        nca.file_size = (size_t)entry->size;
+        nca_process(&nca);
+        fflush(stdout);
+        nca_free_section_contexts(&nca);
+
+        printf("\nNSP_NCA_END: %s\n", name);
+        fflush(stdout);
+    }
+}
 
 void xci_process(xci_ctx_t *ctx) {
     fseeko64(ctx->file, 0, SEEK_SET);
@@ -131,6 +167,11 @@ void xci_process(xci_ctx_t *ctx) {
         cur_ctx->hash_suffix = NULL;
         hfs0_process(cur_ctx);
     }
+
+    /* Walk the secure partition's NCAs for per-NCA signature/hash checks, the
+     * same way the NSP walker does. XCI NCAs are standard-crypto (no ticket),
+     * so the title-key generation retry does not apply here. */
+    xci_walk_partition_ncas(&ctx->secure_ctx, ctx->tool_ctx);
 
 
     if (ctx->tool_ctx->action & ACTION_INFO) {

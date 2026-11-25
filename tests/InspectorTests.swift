@@ -52,7 +52,7 @@ struct InspectorTests {
         } else { expect(false, "dlc.nsp readable") }
 
         if let r = report("no_ticket.nsp") {
-            expect(r.verdict == .caution, "missing ticket downgrades to caution")
+            expect(r.verdict == .unverified, "missing ticket stays unverified, not non-retail")
             expect(r.issues.contains { $0.title.contains("ticket") }, "missing ticket is explained")
         } else { expect(false, "no_ticket.nsp readable") }
 
@@ -150,10 +150,10 @@ struct InspectorTests {
             ("keys", "Failed to read NCA header!\nInvalid NCA header! Are keys correct?\nDone!", .unavailable),
             ("sig", block("  Fixed-Key Signature (FAIL): BB\n  Hash (GOOD): CC"), .signatureInvalid),
             ("good", block("  Fixed-Key Signature (GOOD): AA\n  Hash (GOOD): CC"), .verified),
-            ("hash", block("  Fixed-Key Signature (GOOD): AA\n  Hash (FAIL): CC"), .failed),
+            ("hash", block("  Fixed-Key Signature (GOOD): AA\n  Superblock Hash (FAIL): CC"), .failed),
             // A hash mismatch without a derived title key only means "could not
             // decrypt": it must never be reported as corruption.
-            ("hash-without-key", block("  Fixed-Key Signature (GOOD): AA\n  Hash (FAIL): CC", keys: 0), .unavailable),
+            ("hash-without-key", block("  Fixed-Key Signature (GOOD): AA\n  Superblock Hash (FAIL): CC", keys: 0), .unavailable),
         ]
         for (label, text, state) in outputs {
             let result = DeepVerifier.interpret(output: text, format: .nsp)

@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+## [1.7.10] - 2026-11-26
+
+### Added
+
+- **XCI 卡带镜像支持逐 NCA 深度验签。** 引擎遍历 XCI secure 分区的 HFS0 条目，复用 NSP 同一条 NCA 签名 / 哈希校验通路；深检对 `.xci` 也调用引擎并解析逐 NCA 结论。无 ticket 的 XCI 不再只验容器头，结论不再等同于“未验签”。
+
+### Fixed
+
+- **修复超大 NCA 因 titlekey 代次重试被跳过而离线误判红。** 包内 ticket 用某一代 titlekek 包裹 titlekey、NCA 内容实际用另一代加密时，引擎本会按 NCA 头代次重试一次；早先重试触发条件带 8GB 尺寸上限，11GB 的 某本体 本体超线被跳过，错误密钥一路解成乱码、哈希全 FAIL 被判红。去掉尺寸上限后，大包换代次重解密校验即可通过。
+
+### 备注
+
+- 本轮未改动红 / 绿判定主逻辑。DBI 实机对照与根因记录见 `docs/REAL_SAMPLE_CROSSCHECK_2026-11-25.md`。
+
 ## [1.7.9] - 2026-11-25
 
 ### Changed

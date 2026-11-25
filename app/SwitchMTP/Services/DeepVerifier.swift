@@ -122,12 +122,12 @@ enum DeepVerifier {
             ], detail: "XCZ 尚未支持解包")
         }
 
-        // XCI verification is header-only unless the cartridge image is walked
-        // partition by partition; claiming more than that would be a lie.
-        guard format == .nsp else {
+        // NSP and XCI are both walked NCA by NCA by the patched engine. XCZ
+        // still needs its own unpacker (see above).
+        guard format == .nsp || format == .xci else {
             return DeepResult(state: .unavailable, notes: [
                 .init(severity: .note, title: "该格式尚未做逐 NCA 验签",
-                      detail: "当前引擎只能对 NSP 逐个 NCA 验签名与哈希。\(format.displayName) 只验到容器头，结论等于“未验签”，不等于 DBI 的绿色。")
+                      detail: "当前引擎只能对 NSP / XCI 逐个 NCA 验签名与哈希。\(format.displayName) 只验到容器头，结论等于“未验签”，不等于 DBI 的绿色。")
             ], detail: "格式未支持逐 NCA 验签")
         }
 
@@ -135,7 +135,8 @@ enum DeepVerifier {
         if let titleKeysURL {
             arguments += ["--titlekeys", titleKeysURL.path]
         }
-        arguments += ["-t", "nsp", url.path]
+        let intype: String = (format == .xci) ? "xci" : "nsp"
+        arguments += ["-t", intype, url.path]
 
         var begunNCAs = 0
         var finishedNCAs = 0
