@@ -290,6 +290,30 @@ struct SidebarView: View {
 
     // MARK: – No Device
     private var noDeviceView: some View {
+        Group {
+            if let holder = manager.deviceLeaseHolder {
+                VStack(spacing: 12) {
+                    Image(systemName: "person.crop.circle.badge.exclamationmark")
+                        .font(.system(size: 36))
+                        .foregroundStyle(.orange)
+                    Text(String(localized: "Device In Use By Another Instance"))
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(.secondary)
+                    Text(String(localized: "Held by \(holder)."))
+                        .font(.system(size: 11))
+                        .foregroundStyle(.tertiary)
+                        .multilineTextAlignment(.center)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 32)
+                .listRowBackground(Color.clear)
+            } else {
+                noDeviceIdle
+            }
+        }
+    }
+
+    private var noDeviceIdle: some View {
         VStack(spacing: 12) {
             Image(systemName: "cable.connector")
                 .font(.system(size: 36))

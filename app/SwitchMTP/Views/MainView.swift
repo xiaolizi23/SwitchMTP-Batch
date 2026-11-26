@@ -432,6 +432,32 @@ struct MainView: View {
     }
 
     private var noDeviceChecklist: some View {
+        Group {
+            if let holder = manager.deviceLeaseHolder {
+                leaseNotice(holder: holder)
+            } else {
+                noDeviceHints
+            }
+        }
+    }
+
+    private func leaseNotice(holder: String) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: "person.crop.circle.badge.exclamationmark")
+                .font(.system(size: 46))
+                .foregroundStyle(.orange)
+            Text(String(localized: "Device In Use By Another Instance"))
+                .font(.system(size: 16, weight: .semibold))
+            Text(String(localized: "Another copy of SwitchMTP Batch (\(holder)) is using the Switch. Quit it, or this window takes over automatically when it exits."))
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var noDeviceHints: some View {
         VStack(spacing: 14) {
             Image(systemName: "cable.connector")
                 .font(.system(size: 46))
