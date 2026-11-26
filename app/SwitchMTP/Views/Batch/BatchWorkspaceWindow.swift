@@ -8,7 +8,7 @@
 // Presents the batch workspace as its own window.
 //
 // It used to be a `.sheet`. A sheet on macOS is attached under the title bar,
-// cannot be dragged, and — because its content asks for 880 x 520 — it came
+// cannot be dragged, and — because its content asks for 890 x 520 — it came
 // out larger than the 900 x 450 main window it hung from, so it spilled past
 // the bottom edge and read as a panel that had slid off. A workspace this big
 // is also what Apple's own guidance calls a window rather than a sheet, so it
@@ -16,9 +16,9 @@
 //
 // Size comes from WindowMetrics and is clamped against the parent's frame, so
 // it always reads as a panel layered on a window rather than a replacement of
-// it: 880 x 520 inside a 1000 x 620 window (60pt left/right, 24pt above and
+// it: 890 x 520 inside a 1000 x 620 window (55pt left/right, 24pt above and
 // below the content area). Do not hard-code a size here: the last regression
-// came from exactly that (880 x 520 hard-coded against a parent that had
+// came from exactly that (890 x 520 hard-coded against a parent that had
 // silently shrunk to 900 x 450).
 
 import SwiftUI
@@ -134,8 +134,8 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
     /// Centre on the main window's content area — not on its whole frame, or
     /// the workspace ends up flush under the parent's toolbar with all the
     /// spare space at the bottom. The window is sized in frame coordinates
-    /// (880 x 520) and then centred in a 1000 x 568 content area, which leaves
-    /// 60pt left/right and 24pt top/bottom.
+    /// (890 x 520) and then centred in a 1000 x 568 content area, which leaves
+    /// 55pt left/right and 24pt top/bottom.
     private func position(_ window: NSWindow, over parent: NSWindow?) {
         guard let parent else {
             window.center()

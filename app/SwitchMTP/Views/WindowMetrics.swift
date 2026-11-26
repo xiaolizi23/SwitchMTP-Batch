@@ -25,7 +25,7 @@
 //   main frame >= 1000 x 620
 //   workspace frame <= main frame - (120 x 100)
 //
-// On the default sizes the workspace is 880 x 520 inside a 1000 x 620 parent:
+// On the default sizes the workspace is 890 x 520 inside a 1000 x 620 parent:
 // 60pt visible left/right and 24pt above/below inside the 1000 x 568 content
 // area. See AGENTS.md §5 before changing anything here.
 
@@ -40,13 +40,15 @@ enum WindowMetrics {
     /// recognise a fresh install that has never been sized.
     static let upstreamFrame = NSSize(width: 900, height: 450)
 
-    /// Default workspace window frame. Deliberately 880 x 520 against the
-    /// 1000 x 620 parent.
-    static let workspaceFrame = NSSize(width: 880, height: 520)
+    /// Default workspace window frame. Deliberately 890 x 520 against the
+    /// 1000 x 620 parent, which leaves 55pt left/right and 24pt top/bottom.
+    static let workspaceFrame = NSSize(width: 890, height: 520)
 
     /// The workspace must stay readable, so it may shrink only this far when
-    /// the parent itself is smaller than expected (small screens).
-    static let workspaceMinFrame = NSSize(width: 860, height: 470)
+    /// the parent itself is smaller than expected (small screens). 890 is the
+    /// width at which the filter row (全部 / 有问题 / 仅更新DLC / 仅本体 / 排序 /
+    /// 全选 / 全不选 / 仅可选 / 导出) stops clipping its trailing buttons.
+    static let workspaceMinFrame = NSSize(width: 890, height: 470)
 
     /// Space that must stay visible around the workspace.
     static let workspaceInset = NSSize(width: 120, height: 100)
