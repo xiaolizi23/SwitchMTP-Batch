@@ -29,7 +29,7 @@ nobody mentions is a bug that never gets fixed.
 | Form | Use it when |
 | --- | --- |
 | **Bug report** | Something behaves differently from how it is documented or how it obviously should. |
-| **Feature request** | You want SwitchMTP to do something it does not do. |
+| **Feature request** | You want SwitchMTP Batch to do something it does not do. |
 | **Compatibility report** | You tried a console, firmware, responder, cable or dock that may not have been tested. **Including when it all worked** — that is how the compatibility notes become trustworthy. |
 
 Questions and half-formed ideas belong in
@@ -46,7 +46,7 @@ Not "exporting is broken" but:
 
 ```
 1. Launch DBI in title mode and choose "MTP responder"
-2. Open SwitchMTP and wait for the console to appear
+2. Open SwitchMTP Batch and wait for the console to appear
 3. Select SD Card, open /switch
 4. Select three .nro files and press Export
 5. Choose ~/Desktop, press "Export Here"
@@ -87,7 +87,7 @@ without it.
 Only worth collecting for transfer problems, because it is noisy. There is a
 switch for it in the app:
 
-1. **SwitchMTP ▸ Settings ▸ General ▸ Write a diagnostic log**.
+1. **SwitchMTP Batch ▸ Settings ▸ General ▸ Write a diagnostic log**.
 2. Quit and reopen the app — the setting is read once at launch.
 3. Reproduce the problem.
 4. **Show Log in Finder**, on that same Settings screen.
@@ -151,7 +151,7 @@ macOS version: 26.6
 
 **Steps to reproduce**:
 1. Launch DBI in title mode and pick MTP responder
-2. Open SwitchMTP and wait for the console to appear
+2. Open SwitchMTP Batch and wait for the console to appear
 3. Select every file on the SD card and press Download
 ```
 

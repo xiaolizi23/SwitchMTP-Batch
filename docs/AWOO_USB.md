@@ -1,16 +1,16 @@
 # Awoo-Installer / Tinfoil USB support — evaluation and deferral
 
-**Status:** deferred to a future release. SwitchMTP v1 detects these devices and explains the
+**Status:** deferred to a future release. SwitchMTP Batch v1 detects these devices and explains the
 situation, but does not implement their protocol.
 
-**Question this answers:** *"Do I need ns-usbloader?"* — **No.** Neither for SwitchMTP, nor for
-anything SwitchMTP plans to do. See [Why ns-usbloader is not required](#why-ns-usbloader-is-not-required).
+**Question this answers:** *"Do I need ns-usbloader?"* — **No.** Neither for SwitchMTP Batch, nor for
+anything SwitchMTP Batch plans to do. See [Why ns-usbloader is not required](#why-ns-usbloader-is-not-required).
 
 ---
 
 ## 1. What this is about
 
-SwitchMTP talks **MTP** to **DBI's MTP responder**. There is a second, unrelated ecosystem of
+SwitchMTP Batch talks **MTP** to **DBI's MTP responder**. There is a second, unrelated ecosystem of
 Switch USB installers — **Awoo-Installer**, **Tinfoil**, **GoldLeaf** — that do *not* speak MTP.
 They speak their own protocols over a vendor-specific USB interface.
 
@@ -29,7 +29,7 @@ application. Every homebrew that opens a vendor-specific USB interface shows up 
 | Awoo-Installer | "Install from USB" | Tinfoil `TUL0`/`TUC0` |
 | GoldLeaf | USB mode | Quark |
 
-**Consequence:** from USB identity alone we *cannot* tell which one is running. SwitchMTP
+**Consequence:** from USB identity alone we *cannot* tell which one is running. SwitchMTP Batch
 therefore reports the neutral profile `homebrewUSB` and gives advice that is correct in all
 three cases ("exit it, open DBI, press X, Run MTP responder"). An earlier version of this
 project incorrectly claimed the device was in DBIbackend mode specifically; that was wrong and
@@ -145,11 +145,11 @@ Read this before writing any code.
 protocol described above. It is one client of an open protocol, not a component, driver or
 dependency.
 
-SwitchMTP does not use it, does not need it, and requires no Java runtime of any kind:
+SwitchMTP Batch does not use it, does not need it, and requires no Java runtime of any kind:
 
-- For **browsing, downloading, uploading, saves, album and gamecard**, SwitchMTP speaks MTP
+- For **browsing, downloading, uploading, saves, album and gamecard**, SwitchMTP Batch speaks MTP
   directly to DBI. ns-usbloader cannot do any of these things.
-- For **installing**, SwitchMTP uses DBI's own MTP install storages.
+- For **installing**, SwitchMTP Batch uses DBI's own MTP install storages.
 - If the Tinfoil transport is ever added, it will be implemented natively in Go inside
   `nxmtp`, from the protocol specification in §3 — still with no Java dependency.
 

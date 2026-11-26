@@ -7,7 +7,7 @@ files, back up and restore save data, copy screenshots and videos to your Mac, s
 NSP/NSZ/XCI/XCZ files to DBI's install targets, and dump your inserted game card — all
 over a standard USB-C cable.
 
-**Legitimate use only.** SwitchMTP is for managing files you own: your saves,
+**Legitimate use only.** SwitchMTP Batch is for managing files you own: your saves,
 screenshots, homebrew, and personal backups of games you legally possess. The project has
 no connection to piracy and ships no copyrighted content. The install flow is DBI's own
 standard MTP mechanism.
@@ -40,7 +40,7 @@ standard MTP mechanism.
 - A **USB-C data cable** — charge-only cables do not carry USB data and will not work
 
 `ns-usbloader` is not required. It is a separate Java host app for the Tinfoil USB
-protocol; SwitchMTP talks MTP to DBI directly and has no Java dependency.
+protocol; SwitchMTP Batch talks MTP to DBI directly and has no Java dependency.
 
 ---
 
@@ -55,7 +55,7 @@ protocol; SwitchMTP talks MTP to DBI directly and has no Java dependency.
    xattr -dr com.apple.quarantine "/Applications/SwitchMTP Batch.app"
    ```
 
-   **Why is this step needed?** SwitchMTP is signed with an ad-hoc certificate (not an
+   **Why is this step needed?** SwitchMTP Batch is signed with an ad-hoc certificate (not an
    Apple Developer Program certificate). macOS Gatekeeper quarantines apps downloaded from
    the internet that are not notarized by Apple. Running the command above tells macOS you
    have reviewed and trust this binary. You can also right-click
@@ -69,7 +69,7 @@ protocol; SwitchMTP talks MTP to DBI directly and has no Java dependency.
 
 1. On your Switch, open DBI and press **X → "Run MTP responder"**.
 2. Connect the Switch to your Mac with a USB-C data cable.
-3. SwitchMTP should detect the Switch and show its storages in the sidebar.
+3. SwitchMTP Batch should detect the Switch and show its storages in the sidebar.
 
 > **Trouble connecting?** See [`docs/DBI_SETUP.md`](docs/DBI_SETUP.md) for a step-by-step
 > guide, and [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md) for common problems.
@@ -83,7 +83,7 @@ protocol; SwitchMTP talks MTP to DBI directly and has no Java dependency.
   Installed Games, Game Card, custom storages, and more)
 - Upload and download files with progress tracking and transfer cancellation
 - Send `.nsp`, `.nsz`, `.xci`, and `.xcz` files to DBI's SD or NAND install targets
-  (DBI reports install progress on the Switch screen; SwitchMTP can only report that
+  (DBI reports install progress on the Switch screen; SwitchMTP Batch can only report that
   the file was sent)
 - Back up the Saves storage to a timestamped folder
 - Restore Saves with a destructive confirmation when DBI exposes writable save access
@@ -200,7 +200,7 @@ scripts/build-deb.sh && sudo apt install ./build/switchmtp_*.deb
 ```
 
 The rule matters: `/dev/bus/usb` is root-only by default, and your desktop's own MTP
-handlers (gvfs, kio-mtp) claim the console before SwitchMTP can. One rule fixes both. If
+handlers (gvfs, kio-mtp) claim the console before SwitchMTP Batch can. One rule fixes both. If
 you install the binary some other way, see [`packaging/linux/README.md`](packaging/linux/README.md)
 or run `switchmtp doctor`, which checks for the rule and prints it if it is missing.
 
@@ -242,11 +242,11 @@ telemetry — you can read exactly what it will do before you file.
 
 ## Credits
 
-SwitchMTP exists because of other people's work. Everything below was used in some form —
+SwitchMTP Batch exists because of other people's work. Everything below was used in some form —
 either as code that ships in the app, or as documentation that made the protocol
 understandable.
 
-### Code that ships in SwitchMTP
+### Code that ships in SwitchMTP Batch
 
 | Project | Author | Licence | What it does here |
 |---|---|---|---|
@@ -256,10 +256,10 @@ understandable.
 | [ganeshrvel/usb](https://github.com/ganeshrvel/usb) | Ganesh Rathinavel, from [hanwen/usb](https://github.com/hanwen/usb) | New BSD | Go bindings to libusb. |
 | [libusb](https://libusb.info) | The libusb project | LGPL-2.1-or-later | All USB access. Built from source and bundled as a shared library, so it can be replaced — see [`THIRD_PARTY.md`](THIRD_PARTY.md). |
 
-### What SwitchMTP talks to
+### What SwitchMTP Batch talks to
 
 - **[DBI](https://github.com/rashevskyv/dbi)** by duckbill / rashevskyv — the MTP responder
-  that runs on the Switch. SwitchMTP is an unaffiliated client and bundles no part of DBI;
+  that runs on the Switch. SwitchMTP Batch is an unaffiliated client and bundles no part of DBI;
   you install it yourself.
 
 ### Documentation and research sources
@@ -272,7 +272,7 @@ them:
   [`docs/AWOO_USB.md`](docs/AWOO_USB.md). The USB install code it inherits is originally by
   **Adubbz** (Tinfoil).
 - **[ns-usbloader](https://github.com/developersu/ns-usbloader)** by developersu — reference
-  for the same protocol. **Not a dependency**: SwitchMTP needs no Java and no external
+  for the same protocol. **Not a dependency**: SwitchMTP Batch needs no Java and no external
   loader, and its GPL-3.0 licence would in any case be incompatible with this project's
   GPL-2.0. The reasoning is documented in [`docs/AWOO_USB.md`](docs/AWOO_USB.md).
 - **[libnx](https://github.com/switchbrew/libnx)** and
@@ -283,7 +283,7 @@ them:
 - The **MTP** (Media Transfer Protocol) and **PTP** (ISO 15740) specifications — the
   operation codes, property codes and container format the whole backend is built on, and
   the basis for handling files larger than 4 GB, where MTP's 32-bit size field overflows.
-- **Android's MTP extensions**, which DBI advertises by default. SwitchMTP detects them for
+- **Android's MTP extensions**, which DBI advertises by default. SwitchMTP Batch detects them for
   diagnostics but deliberately never calls them; see `backend/nxmtp/caps.go`.
 
 See [`THIRD_PARTY.md`](THIRD_PARTY.md) for full attribution and license texts.

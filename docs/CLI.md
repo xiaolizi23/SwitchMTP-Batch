@@ -7,7 +7,7 @@
 > this one goes through the FFI and needs the app bundle; the Go one is a single static
 > binary and is the only option on Linux.
 
-`switchmtp-cli` is the command-line interface for SwitchMTP's Go MTP backend. It targets
+`switchmtp-cli` is the command-line interface for SwitchMTP Batch's Go MTP backend. It targets
 a Nintendo Switch running DBI's MTP responder.
 
 The CLI ships inside the app bundle:

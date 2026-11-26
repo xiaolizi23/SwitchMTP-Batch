@@ -21,7 +21,7 @@ Only the latest release. There are no maintenance branches.
 
 ## What is in scope
 
-SwitchMTP parses data that comes off a USB device and writes files to your Mac.
+SwitchMTP Batch parses data that comes off a USB device and writes files to your Mac.
 Anything in that path is in scope:
 
 - Memory-safety or parsing faults in the Go backend or the vendored MTP code
@@ -39,18 +39,18 @@ Anything in that path is in scope:
   Developer ID, so Gatekeeper warns and you have to clear the quarantine
   attribute yourself. This is a documented, deliberate trade-off, not a
   vulnerability.
-- **The USB port reset.** SwitchMTP resets the USB port to reclaim the still-image
+- **The USB port reset.** SwitchMTP Batch resets the USB port to reclaim the still-image
   interface from macOS's own `ptpcamerad`. It is a documented, unprivileged
   operation available to any application, it affects only the port the console is
   attached to, and the app quits no processes on your Mac. See
-  **Help ▸ How SwitchMTP connects** in the app.
+  **Help ▸ How SwitchMTP Batch connects** in the app.
 - **Bugs in DBI, Atmosphère or Nintendo's firmware.** Report those upstream.
-  Something in SwitchMTP that a hostile *device* can exploit is in scope; a flaw
+  Something in SwitchMTP Batch that a hostile *device* can exploit is in scope; a flaw
   in the responder itself is not.
 - **The debug log containing filenames.** It is off by default, it must be turned
   on with a `defaults write`, and both the app and the docs say what it records.
 
-## What SwitchMTP does not do
+## What SwitchMTP Batch does not do
 
 Stated plainly, because these come up:
 

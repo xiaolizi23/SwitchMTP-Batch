@@ -1,6 +1,6 @@
 # Linux packaging
 
-This directory holds the Linux-side assets for SwitchMTP. There is no Linux GUI
+This directory holds the Linux-side assets for SwitchMTP Batch. There is no Linux GUI
 and, on current evidence, there should not be one — see "How this fits alongside
 your desktop" below. The Go backend and the `switchmtp` command line tool both
 run on Linux today, and the CLI is the Linux product. What is here is the piece
@@ -150,7 +150,7 @@ only needs installing once. The `deck` user has passwordless `sudo` by default.
 ### This cannot ship inside a Flatpak or AppImage
 
 A sandboxed package cannot write to `/etc/udev/rules.d/`, and udev is a host
-service — there is no in-sandbox equivalent. However SwitchMTP is eventually
+service — there is no in-sandbox equivalent. However SwitchMTP Batch is eventually
 distributed, first-run setup will include this one-time step with `sudo`. Native
 packages (`.deb`, `.rpm`, AUR) can install it from a post-install hook.
 

@@ -97,7 +97,7 @@ The pull request template asks for this; it is short and it is not a formality.
 
 ## Licensing
 
-SwitchMTP is GPL-2.0, inherited from
+SwitchMTP Batch is GPL-2.0, inherited from
 [Neighbor-Z/SwiftMTP](https://github.com/Neighbor-Z/SwiftMTP). By contributing
 you agree your work is licensed the same way.
 

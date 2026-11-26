@@ -1,7 +1,7 @@
 # DBI Setup Guide
 
 This page walks you through getting DBI onto your Nintendo Switch and starting its MTP
-responder so SwitchMTP can connect.
+responder so SwitchMTP Batch can connect.
 
 ---
 
@@ -34,9 +34,9 @@ Album applet; see the critical note below.
 ## Step 3 — Connect to your Mac
 
 Connect the Switch to your Mac using a **USB-C data cable**. Charge-only cables do not
-carry data — if SwitchMTP does not detect the device, try a different cable.
+carry data — if SwitchMTP Batch does not detect the device, try a different cable.
 
-SwitchMTP should detect the Switch within a few seconds and populate the sidebar with
+SwitchMTP Batch should detect the Switch within a few seconds and populate the sidebar with
 the available storages.
 
 ---
@@ -69,16 +69,16 @@ homebrew USB protocols. None of these modes is MTP:
 
 | Homebrew / menu option | USB PID | Protocol |
 |---|---|---|
-| **X → "Run MTP responder"** ← *use this* | `0x201D` | Standard MTP — SwitchMTP works here |
+| **X → "Run MTP responder"** ← *use this* | `0x201D` | Standard MTP — SwitchMTP Batch works here |
 | DBI → "Install title from DBIbackend" | `0x3000` | DBI's own binary protocol — **not MTP** |
 | Awoo-Installer → "Install from USB" | `0x3000` | Tinfoil TUL0/TUC0 — **not MTP** |
 | GoldLeaf USB mode | `0x3000` | Quark — **not MTP** |
 
 If you select one of those modes, the Switch presents USB PID `0x3000`. USB identity
-alone does not say which homebrew owns it, but it does tell SwitchMTP that the device is
+alone does not say which homebrew owns it, but it does tell SwitchMTP Batch that the device is
 not speaking MTP.
 
-SwitchMTP detects this non-MTP homebrew USB mode and tells you to switch modes:
+SwitchMTP Batch detects this non-MTP homebrew USB mode and tells you to switch modes:
 
 > Exit the current homebrew, open DBI, then press X on DBI's main menu → "Run MTP responder".
 
@@ -89,11 +89,11 @@ exit whatever homebrew is running, open DBI, and select the MTP responder.
 
 ## DBI storages exposed over MTP
 
-Once connected, SwitchMTP classifies each DBI storage by what it actually is and by the
+Once connected, SwitchMTP Batch classifies each DBI storage by what it actually is and by the
 capabilities the device exposes. The sidebar groups storages as **Storage**,
 **Install**, **Dumps**, and **System**.
 
-| Kind shown by SwitchMTP | Typical capability | Notes |
+| Kind shown by SwitchMTP Batch | Typical capability | Notes |
 |---|---|---|
 | **SD Card** | Browse / read / write, plus delete/rename/mkdir when DBI advertises them | General file management on the microSD card. |
 | **Saves** | Browse / read; write only when DBI exposes writable save access | Used by **Back Up Saves…** and **Restore Saves…**. Writing here overwrites console save data. |
@@ -102,7 +102,7 @@ capabilities the device exposes. The sidebar groups storages as **Storage**,
 | **Game Card** | Browse / read | Virtual/generated storage for the inserted game card. Dumping can be slow; leave the card inserted until the transfer ends. |
 | **Install to SD Card** | Write-only install target | Drop `.nsp`, `.nsz`, `.xci`, or `.xcz` files here to send them to DBI's SD install target. |
 | **Install to Internal** | Write-only install target | Same, but targets NAND/internal storage. |
-| **Internal (User)** / **Internal (System)** | Browse / read | System storages. SwitchMTP treats them conservatively. |
+| **Internal (User)** / **Internal (System)** | Browse / read | System storages. SwitchMTP Batch treats them conservatively. |
 | Custom/unknown storages | Based on the storage's advertised MTP access flags | User-defined DBI storages fall back to normal MTP capability detection. |
 
 > **Write-only install storages:** SD Card install and NAND install are not folders you
@@ -113,7 +113,7 @@ capabilities the device exposes. The sidebar groups storages as **Storage**,
 
 ## Switch menu workflows
 
-SwitchMTP's menu bar includes a top-level **Switch** menu:
+SwitchMTP Batch's menu bar includes a top-level **Switch** menu:
 
 - **Back Up Saves…** asks for a parent folder, creates a timestamped `Switch Saves
   yyyy-MM-dd HH-mm-ss` folder inside it, then downloads the whole Saves storage.
@@ -134,12 +134,12 @@ SwitchMTP's menu bar includes a top-level **Switch** menu:
 
 ## Installing an NSP / NSZ / XCI / XCZ
 
-1. In SwitchMTP, select **"Install to SD Card"** or **"Install to Internal"** in the
+1. In SwitchMTP Batch, select **"Install to SD Card"** or **"Install to Internal"** in the
    sidebar, or use **Switch → Install to SD Card…** / **Install to NAND…**.
 2. Drag your file(s) onto the storage, or use the upload button.
-3. SwitchMTP transfers the file. DBI starts installing when the file lands in the install
+3. SwitchMTP Batch transfers the file. DBI starts installing when the file lands in the install
    target and shows progress on the Switch screen.
-4. There is **no MTP-level completion event** for installation. SwitchMTP can report only
+4. There is **no MTP-level completion event** for installation. SwitchMTP Batch can report only
    that the file was sent; it cannot report "installed" or verify final install success.
 
 ### The install queue
@@ -176,7 +176,7 @@ live throughout — that is what makes queueing mid-install possible.
 
 Some DBI virtual files are larger than MTP's 32-bit `ObjectInfo` size field. When that
 field overflows, DBI may report `0xFFFFFFFF`, and it does not always provide a reliable
-64-bit `ObjectSize` property. SwitchMTP shows `—` instead of pretending the file is a
+64-bit `ObjectSize` property. SwitchMTP Batch shows `—` instead of pretending the file is a
 wrong 4 GiB size.
 
 ---
@@ -184,4 +184,4 @@ wrong 4 GiB size.
 ## Cable quality
 
 Use a USB-C **data** cable. Charge-only cables do not carry USB data, so the Switch will
-not appear to SwitchMTP.
+not appear to SwitchMTP Batch.
