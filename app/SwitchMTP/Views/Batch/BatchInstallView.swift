@@ -219,13 +219,9 @@ struct BatchInstallSheet: View {
                 Button("取消") { model.cancelScan() }
                     .controlSize(.small)
             } else if !model.roots.isEmpty {
-                if model.catalogStatus != nil {
-                    ProgressView().controlSize(.small)
-                }
-                Text(model.catalogStatus
-                     ?? (model.scanHeadline.isEmpty
-                         ? "\(model.packages.count) 个包 · \(model.totalSizeText)"
-                         : model.scanHeadline))
+                Text(model.scanHeadline.isEmpty
+                     ? "\(model.packages.count) 个包 · \(model.totalSizeText)"
+                     : model.scanHeadline)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
@@ -433,7 +429,7 @@ struct BatchInstallSheet: View {
                     // `List` nested disclosure content 17 pt deeper than the
                     // group row (51.5 vs 34.5 pt); 46 pt lands the checkbox
                     // on the same pixel.
-                    packageRow(package)
+                    packageRow(package, in: group)
                         .padding(.leading, 46)
                         .padding(.trailing, 8)
                         .padding(.vertical, 2)
@@ -629,8 +625,9 @@ struct BatchInstallSheet: View {
         return "minus.square.fill"
     }
 
-    private func packageRow(_ package: InstallPackage) -> some View {
+    private func packageRow(_ package: InstallPackage, in group: InstallPackageGroup) -> some View {
         let isSelectedRow = selectedPackageID == package.id
+        let title = model.displayTitle(for: package)
         return HStack(spacing: 8) {
             Button {
                 model.togglePackage(package.id)
@@ -642,7 +639,7 @@ struct BatchInstallSheet: View {
             .buttonStyle(.plain)
             .disabled(package.resolvedVerdict == .blocked || package.isSubmitted)
             .help(packageHelp(package))
-            .accessibilityLabel(package.isSelected ? "取消勾选 \(package.displayName)" : "勾选 \(package.displayName)")
+            .accessibilityLabel(package.isSelected ? "取消勾选 \(title)" : "勾选 \(title)")
             .accessibilityValue(package.isSelected ? "已选择" : "未选择")
             .accessibilityAddTraits(.isButton)
             .accessibilityIdentifier("package-checkbox-\(package.id.uuidString)")
@@ -654,7 +651,7 @@ struct BatchInstallSheet: View {
                 .foregroundStyle(typeColor(package.contentType))
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(package.displayName)
+                Text(title)
                     .font(.system(size: 12))
                     .lineLimit(1)
                     .foregroundStyle(package.isSubmitted ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
@@ -830,7 +827,7 @@ struct BatchInstallSheet: View {
                                 .padding(.horizontal, 5).padding(.vertical, 1)
                                 .background(Capsule().fill(typeColor(package.contentType).opacity(0.16)))
                                 .foregroundStyle(typeColor(package.contentType))
-                            Text(package.displayName)
+                            Text(model.displayTitle(for: package))
                                 .font(.system(size: 10))
                                 .lineLimit(1)
                             if let version = package.version {
@@ -891,7 +888,7 @@ struct BatchInstallSheet: View {
                             .font(.system(size: 10, weight: .semibold))
                             .foregroundStyle(verdictColor(package.resolvedVerdict))
                     }
-                    Text(package.displayName)
+                    Text(model.displayTitle(for: package))
                         .font(.system(size: 15, weight: .semibold))
                         .fixedSize(horizontal: false, vertical: true)
                     Text(package.url.path)

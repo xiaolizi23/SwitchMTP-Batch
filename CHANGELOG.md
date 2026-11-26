@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.15 — 2026-11-26
+
+批量清单的游戏名统一成英文官方名，不再中英混杂。
+
+- **组名英文优先**：`titleNames[id] ?? 文件名`。之前是中文名库优先，为此要下载 16MB 的
+  `CN.zh.json` / `HK.zh.json`，下载期间界面还挂着「中文名加载中」。
+- **包行标题同源**：新增 `BatchInstallModel.displayTitle(for:)`，包行、详情面板、组详情
+  成员清单、确认安装表都用组名做标题；同组同类型多个包追加 `· Base/Update/Add-on N`，
+  例如 `Sample Game · Add-on 1`。
+- **移除中文名库**：删除 `startCatalogLoad()`、`catalogReady` 等状态与界面提示，不再下载
+  中文库；`requestMissingNames()` 对所有缺英文名的组发请求，命中 `CatalogNames.json` 缓存。
+- 已知边界：目录未收录的 title 回退文件名（可能仍是中文）；无缓存首次运行会逐条异步替换，
+  十几秒内补齐。记录见 `docs/ENGLISH_TITLE_NAMING_2026-11-26.md`。
+- 版本 `1.7.15` / build 41。
+
 ## 1.7.14 — 2026-11-26
 
 批量清单组行的点击语义调整：单击只选中，展开改到双击或箭头。

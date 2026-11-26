@@ -69,7 +69,7 @@ struct BatchConfirmSheet: View {
                                 .font(.system(size: 9, weight: .bold))
                                 .padding(.horizontal, 5).padding(.vertical, 1)
                                 .background(Capsule().fill(Color.secondary.opacity(0.12)))
-                            Text(package.displayName)
+                            Text(model.displayTitle(for: package))
                                 .font(.system(size: 11))
                                 .lineLimit(1)
                             Spacer()

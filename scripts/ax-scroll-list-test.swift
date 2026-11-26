@@ -444,7 +444,7 @@ if let searchField {
     Thread.sleep(forTimeInterval: 0.2)
     // ⌘A is a menu key equivalent and needs a key window; delete does not.
     for _ in 0..<12 { keyStroke(51) }
-    typeText("塞尔达")
+    typeText("Sample")
 
     let filtered = waitUntil(3) {
         let groups = groupBoxes(in: workspace)
@@ -453,7 +453,7 @@ if let searchField {
     check("TC7.1 搜索后只剩匹配组", filtered,
           "groups=\(groupBoxes(in: workspace).count) baseline=\(baselineGroups)")
     check("TC7.2 剩下的组都命中关键字",
-          groupBoxes(in: workspace).allSatisfy { description($0).contains("塞尔达") })
+          groupBoxes(in: workspace).allSatisfy { description($0).contains("Sample") })
 
     AXUIElementSetAttributeValue(searchField, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     for _ in 0..<12 { keyStroke(51) }
