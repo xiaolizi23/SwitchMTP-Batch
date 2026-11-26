@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.16 — 2026-11-26
+
+批量清单的包行后缀改成更紧凑的写法，把标题宽度让给游戏名本身。
+
+- **本体**：保持组名原样，例如 `Sample Game`。
+- **更新**：`<组名>-update`；同一组有多个更新时依次 `-update1`、`-update2`。
+- **DLC**：`<组名>-DLC1`、`-DLC2`…，按组内顺序编号。
+- 1.7.15 用的是 `Sample Game · Add-on 1`，空格加中点占掉一截宽度，长标题在 890
+  宽的清单里更容易被截断；新后缀更短，主标题能多显示几个字符。
+- 版本 `1.7.16` / build 42。
+
 ## 1.7.15 — 2026-11-26
 
 批量清单的游戏名统一成英文官方名，不再中英混杂。

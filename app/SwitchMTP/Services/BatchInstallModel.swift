@@ -463,18 +463,27 @@ final class BatchInstallModel: ObservableObject {
     }
 
     /// The English title every surface shows for a package: the plan row, the
-    /// detail pane and the confirmation sheet all agree. A group with several
-    /// packages of one kind (add-ons, usually) gets the kind and its ordinal.
+    /// detail pane and the confirmation sheet all agree. Base games keep the
+    /// plain title, a patch adds `-update`, and add-ons add `-DLC1`, `-DLC2`.
     func displayTitle(for package: InstallPackage) -> String {
         guard let group = groups.first(where: { $0.id == package.groupKey }) else {
             return package.displayName
         }
-        let sameKind = group.packages.filter { $0.contentType == package.contentType }
-        guard sameKind.count > 1,
-              let index = sameKind.firstIndex(where: { $0.id == package.id }) else {
+        switch package.contentType {
+        case .base, .unknown:
             return group.name
+        case .update:
+            let updates = group.packages.filter { $0.contentType == .update }
+            guard updates.count > 1,
+                  let index = updates.firstIndex(where: { $0.id == package.id }) else {
+                return "\(group.name)-update"
+            }
+            return "\(group.name)-update\(index + 1)"
+        case .dlc:
+            let addOns = group.packages.filter { $0.contentType == .dlc }
+            let index = addOns.firstIndex(where: { $0.id == package.id }) ?? 0
+            return "\(group.name)-DLC\(index + 1)"
         }
-        return "\(group.name) · \(package.contentType.englishName) \(index + 1)"
     }
 
     /// Kicks off cover art for any group that does not have one yet. The icon
