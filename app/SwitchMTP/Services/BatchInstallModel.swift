@@ -101,6 +101,11 @@ final class BatchInstallModel: ObservableObject {
     /// that a shared connection does not start dropping requests.
     private let maxIconConcurrency = 4
 
+    /// Progress line for the one-off Chinese name catalogue download.
+    @Published private(set) var catalogStatus: String? = nil
+    private var catalogLoadInFlight = false
+    private var catalogReady = LocalizedTitleCatalog.shared.isLoaded
+
     /// True while any group still shows a placeholder, which is when the
     /// "重新获取封面" button is worth its toolbar space.
     var hasMissingCovers: Bool {
@@ -280,6 +285,9 @@ final class BatchInstallModel: ObservableObject {
         failedNameIDs.removeAll()
         iconQueue.removeAll()
         isFetchingIcons = false
+        catalogLoadInFlight = false
+        catalogStatus = nil
+        catalogReady = LocalizedTitleCatalog.shared.isLoaded
         scannedFileCount = 0
         scannedBytes = 0
         scanHeadline = ""
@@ -446,11 +454,14 @@ final class BatchInstallModel: ObservableObject {
                 return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
             }
             let base = sorted.first { $0.contentType == .base } ?? sorted.first!
-            // One naming rule for the whole list: the catalogue's English
-            // title. The local file/folder name is only a fallback for titles
-            // the catalogue does not know, so rows never mix scripts.
+            // Group titles keep the Chinese-first order: Simplified, then the
+            // Traditional name converted to Simplified, then English. The local
+            // file name is the last resort. Package rows stay English so a row
+            // never mixes scripts.
             let titleID = base.baseTitleID
-            let official = titleID.flatMap { titleNames[$0] }
+            let official = titleID.flatMap { id in
+                LocalizedTitleCatalog.shared.preferredDisplayName(for: id) ?? titleNames[id]
+            }
             let name = official ?? base.displayName
             return InstallPackageGroup(
                 id: key,
@@ -460,30 +471,61 @@ final class BatchInstallModel: ObservableObject {
         }
         requestMissingIcons()
         requestMissingNames()
+        if !catalogReady {
+            startCatalogLoad()
+        }
     }
 
-    /// The English title every surface shows for a package: the plan row, the
-    /// detail pane and the confirmation sheet all agree. Base games keep the
-    /// plain title, a patch adds `-update`, and add-ons add `-DLC1`, `-DLC2`.
+    /// One-off download of the Chinese catalogues. Group names switch over as
+    /// soon as the table lands, so the list shows file names for a second or
+    /// two and then settles on the official Chinese ones.
+    private func startCatalogLoad() {
+        guard !catalogLoadInFlight else { return }
+        catalogLoadInFlight = true
+        catalogStatus = "正在下载官方中文名称库（约 16 MB，只需一次）…"
+        LocalizedTitleCatalog.shared.loadIfNeeded(progress: { [weak self] text in
+            self?.catalogStatus = text
+        }, completion: { [weak self] ok in
+            guard let self else { return }
+            self.catalogLoadInFlight = false
+            self.catalogReady = true
+            self.catalogStatus = nil
+            self.rebuildGroups()
+        })
+    }
+
+    /// The English title a package row shows. Group rows keep the Chinese name;
+    /// rows stay English so a single row never mixes scripts. Base games keep
+    /// the plain title, a patch adds `-update`, add-ons add `-dlc1`, `-dlc2`.
     func displayTitle(for package: InstallPackage) -> String {
         guard let group = groups.first(where: { $0.id == package.groupKey }) else {
             return package.displayName
         }
+        let baseName = englishName(for: group)
         switch package.contentType {
         case .base, .unknown:
-            return group.name
+            return baseName
         case .update:
             let updates = group.packages.filter { $0.contentType == .update }
             guard updates.count > 1,
                   let index = updates.firstIndex(where: { $0.id == package.id }) else {
-                return "\(group.name)-update"
+                return "\(baseName)-update"
             }
-            return "\(group.name)-update\(index + 1)"
+            return "\(baseName)-update\(index + 1)"
         case .dlc:
             let addOns = group.packages.filter { $0.contentType == .dlc }
             let index = addOns.firstIndex(where: { $0.id == package.id }) ?? 0
-            return "\(group.name)-DLC\(index + 1)"
+            return "\(baseName)-dlc\(index + 1)"
         }
+    }
+
+    /// Catalogue English title for a group, used by the package rows; falls
+    /// back to the group name when the English catalogue does not know it.
+    private func englishName(for group: InstallPackageGroup) -> String {
+        guard let titleID = group.baseTitleID, let name = titleNames[titleID] else {
+            return group.name
+        }
+        return name
     }
 
     /// Kicks off cover art for any group that does not have one yet. The icon

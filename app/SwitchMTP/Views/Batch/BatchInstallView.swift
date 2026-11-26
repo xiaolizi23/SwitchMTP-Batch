@@ -219,9 +219,13 @@ struct BatchInstallSheet: View {
                 Button("取消") { model.cancelScan() }
                     .controlSize(.small)
             } else if !model.roots.isEmpty {
-                Text(model.scanHeadline.isEmpty
-                     ? "\(model.packages.count) 个包 · \(model.totalSizeText)"
-                     : model.scanHeadline)
+                if model.catalogStatus != nil {
+                    ProgressView().controlSize(.small)
+                }
+                Text(model.catalogStatus
+                     ?? (model.scanHeadline.isEmpty
+                         ? "\(model.packages.count) 个包 · \(model.totalSizeText)"
+                         : model.scanHeadline))
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
