@@ -104,7 +104,7 @@ struct BatchConfirmSheet: View {
                     }
                     .toggleStyle(.checkbox)
                 }
-                noteRow("info.circle.fill", "SwitchMTP 只能确认“文件已发送给 DBI”。最终安装成功与否、DBI 屏幕上显示什么颜色，只能看主机本身；本应用不会代你宣称安装成功。")
+                noteRow("info.circle.fill", "SwitchMTP Batch 只能确认“文件已发送给 DBI”。最终安装成功与否、DBI 屏幕上显示什么颜色，只能看主机本身；本应用不会代你宣称安装成功。")
                 noteRow("exclamationmark.triangle.fill", "安装过程中请保持 USB 连接、不要锁屏休眠。中断可能让主机留下半个游戏。")
             }
             .padding(.horizontal, 18)

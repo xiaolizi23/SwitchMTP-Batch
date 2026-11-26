@@ -236,7 +236,7 @@ struct GoMenuCommands: Commands {
         }
 
         CommandGroup(replacing: .help) {
-            Button(String(localized: "How SwitchMTP Connects to Your Switch")) {
+            Button(String(localized: "How SwitchMTP Batch Connects to Your Switch")) {
                 showUSBDisclosureAction?()
             }
             .disabled(showUSBDisclosureAction == nil)
@@ -255,7 +255,7 @@ struct GoMenuCommands: Commands {
             Button(String(localized: "Report an Issue…")) {
                 Self.reportIssue(manager: mtpManager)
             }
-            Button(String(localized: "SwitchMTP on GitHub")) {
+            Button(String(localized: "SwitchMTP Batch on GitHub")) {
                 Self.openDocs("")
             }
         }
@@ -275,7 +275,7 @@ struct GoMenuCommands: Commands {
         alert.alertStyle = .informational
         alert.messageText = String(localized: "Report an issue")
         alert.informativeText = canCollect
-            ? String(localized: "GitHub opens with your version (\(IssueReporter.appVersion())) and macOS version already filled in. This Mac is \(IssueReporter.architecture()).\n\nSwitchMTP can also copy a diagnostics report to the clipboard for you to paste into the report. It lists connected USB devices, any process holding the USB interface, and what the console said it can do. It contains no file contents.")
+            ? String(localized: "GitHub opens with your version (\(IssueReporter.appVersion())) and macOS version already filled in. This Mac is \(IssueReporter.architecture()).\n\nSwitchMTP Batch can also copy a diagnostics report to the clipboard for you to paste into the report. It lists connected USB devices, any process holding the USB interface, and what the console said it can do. It contains no file contents.")
             : String(localized: "GitHub opens with your version (\(IssueReporter.appVersion())) and macOS version already filled in. This Mac is \(IssueReporter.architecture()).\n\nDiagnostics are not available until the app has started scanning for a console.")
 
         if canCollect {

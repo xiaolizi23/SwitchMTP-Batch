@@ -54,7 +54,7 @@ struct SettingsView: View {
                     VStack(alignment: .leading, spacing: 6) {
                         Toggle(String(localized: "Write a diagnostic log", comment: "Setting that enables verbose logging to a file"), isOn: $debugLogEnabled)
                             .help(String(localized: "Records transfer activity to a file. Attach it when reporting a failed transfer.", comment: "Tooltip for the diagnostic log setting"))
-                        Text(String(localized: "Records connections, transfers and errors to a file so a failed transfer can be diagnosed. Takes effect after you quit and reopen SwitchMTP.", comment: "Explanation of the diagnostic log setting"))
+                        Text(String(localized: "Records connections, transfers and errors to a file so a failed transfer can be diagnosed. Takes effect after you quit and reopen SwitchMTP Batch.", comment: "Explanation of the diagnostic log setting"))
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
@@ -74,7 +74,7 @@ struct SettingsView: View {
             Form {
                 VStack(alignment: .leading, spacing: 12) {
                     Image(colorScheme == .dark ? "favicon-32x32-dark" : "favicon-32x32")
-                    Text("SwitchMTP")
+                    Text("SwitchMTP Batch")
                         .font(.system(size: 20, weight: .semibold))
                     Text(String(localized: "A macOS file manager for Nintendo Switch via DBI MTP responder.", comment: "Settings App Description"))
                         .font(.body)

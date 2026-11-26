@@ -404,8 +404,8 @@ struct MainView: View {
                     ? String(localized: "Showing this folder as it was last seen")
                     : String(localized: "This folder opens when the transfer finishes"),
                 message: manager.showingCachedListing
-                    ? String(localized: "The console can only do one thing at a time over USB, so it cannot check this folder while it is copying. This is the last view SwitchMTP has of it, and it refreshes as soon as the transfer finishes.")
-                    : String(localized: "The console can only do one thing at a time over USB, so it cannot list a folder while it is copying. SwitchMTP will open this folder as soon as the transfer is done."),
+                    ? String(localized: "The console can only do one thing at a time over USB, so it cannot check this folder while it is copying. This is the last view SwitchMTP Batch has of it, and it refreshes as soon as the transfer finishes.")
+                    : String(localized: "The console can only do one thing at a time over USB, so it cannot list a folder while it is copying. SwitchMTP Batch will open this folder as soon as the transfer is done."),
                 systemImage: "clock",
                 tint: .accentColor
             )
@@ -415,7 +415,7 @@ struct MainView: View {
             SwitchMTPBanner(
                 title: String(localized: "Switch is in a homebrew USB mode"),
                 message: device.advice.isEmpty
-                    ? String(localized: "SwitchMTP needs DBI's MTP responder. On the Switch, open DBI, press X, and choose “Run MTP responder”. Awoo-Installer and GoldLeaf also appear this way — exit them and start DBI instead.")
+                    ? String(localized: "SwitchMTP Batch needs DBI's MTP responder. On the Switch, open DBI, press X, and choose “Run MTP responder”. Awoo-Installer and GoldLeaf also appear this way — exit them and start DBI instead.")
                     : device.advice,
                 systemImage: "exclamationmark.triangle.fill",
                 tint: .orange

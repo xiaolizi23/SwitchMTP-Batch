@@ -36,7 +36,7 @@ struct USBAccessDisclosureView: View {
                     Image(systemName: "cable.connector")
                         .font(.system(size: 20, weight: .medium))
                         .foregroundStyle(.secondary)
-                    Text("How SwitchMTP connects to your Switch")
+                    Text("How SwitchMTP Batch connects to your Switch")
                         .font(.system(size: 15, weight: .semibold))
                 }
                 .padding(.horizontal, 20)
@@ -50,7 +50,7 @@ struct USBAccessDisclosureView: View {
                     Text("macOS automatically connects your Switch to its own photo-import service, ptpcamerad, because DBI's file transfer mode looks like a camera. While that service holds the connection, no other app can use it.")
                         .fixedSize(horizontal: false, vertical: true)
 
-                    Text("To get past this, SwitchMTP briefly resets the USB port your Switch is plugged into. macOS releases the connection, and SwitchMTP takes it immediately.")
+                    Text("To get past this, SwitchMTP Batch briefly resets the USB port your Switch is plugged into. macOS releases the connection, and SwitchMTP Batch takes it immediately.")
                         .fixedSize(horizontal: false, vertical: true)
 
                     VStack(alignment: .leading, spacing: 8) {
