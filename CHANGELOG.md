@@ -4,6 +4,20 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.19-ax — 2026-11-26
+
+测试分支，仍不替换正式包。
+
+- **组行选中补一条灰色底纹，和包行的蓝色底纹区分开。** 1.7.12 根本没有组选中态
+  （`List` 里组行点不出来），所以这条不是复刻、是新增：同样的圆角 6、同样的行内
+  padding，颜色换成中性灰。深浅取到和包行那一层视觉等重——包行是 10% accent
+  `(235,241,254)`，所以组行用 8% 纯黑，实测底纹 `(238,238,238)`，亮度基本持平，
+  一眼能分出"灰的是游戏、蓝的是安装包"。
+- 选中包行时组行底纹自动消失（`selectedGroupID` / `selectedPackageID` 互斥，行为
+  没变，只是现在两边都有可见反馈）。
+- AX 回归 PASS 25 / FAIL 0。
+- 版本 `1.7.19-ax` / build 38。
+
 ## 1.7.18-ax — 2026-11-26
 
 测试分支，仍不替换正式包。

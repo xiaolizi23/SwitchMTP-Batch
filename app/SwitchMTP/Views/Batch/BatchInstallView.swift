@@ -481,6 +481,7 @@ struct BatchInstallSheet: View {
     /// does, so the first click no longer feels like it only changed the pane.
     private func groupRow(_ group: InstallPackageGroup) -> some View {
         let expanded = expandedGroups.contains(group.id)
+        let isSelectedRow = selectedGroupID == group.id
         return HStack(spacing: 8.5) {
             Button {
                 if expanded {
@@ -509,6 +510,14 @@ struct BatchInstallSheet: View {
         .padding(.leading, 12.5)
         .padding(.trailing, 8)
         .padding(.vertical, 4)
+        // 1.7.12 had no group selection, so there was no group tint to copy.
+        // Same depth as the package row but neutral: the package tint is 10%
+        // accent (#EBF1FE-ish), so 8% of pure black lands on the same lightness
+        // (235,235,235) and stays clearly distinguishable from it.
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelectedRow ? Color(nsColor: .labelColor).opacity(0.08) : Color.clear)
+        )
         .contentShape(Rectangle())
         .onTapGesture {
             if expanded {
@@ -691,7 +700,7 @@ struct BatchInstallSheet: View {
         .padding(.vertical, 3)
         .padding(.horizontal, 4)
         // 1.7.12 tints the chosen package row with 10% accent; the group row
-        // stays untinted because `List` never had a group selection there.
+        // gets the same depth in gray (see `groupRow`).
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(isSelectedRow ? Color.accentColor.opacity(0.10) : Color.clear)
