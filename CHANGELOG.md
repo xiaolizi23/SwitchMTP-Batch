@@ -27,9 +27,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   不符 + 无 CNMT 清单可对照」，继续按证据不足处理，不冒充绿。
 - 报告与数据：`docs/REAL_SAMPLE_CROSSCHECK_2026-11-26.md`、
   `docs/扫描结果_1.7.20_2026-11-26.xlsx`、`docs/实机证据_2026-11-26/`。
-- 补完的真机结论：**某本体本体 DBI 报「安装完成」但内容没落地**——主机应用清单、
-  虚拟目录、SD（16 个）与内置（236 个）`Contents/registered` 目录三处都查不到它的
-  NCA。传输完成 + 逐 NCA 验签 OK ≠ 装上，这条以后按「三处交叉」验。
+- 补完的真机结论：**某本体本体 DBI 报「安装完成」但内容没落地，两次复装都是同样结果**
+  ——主机应用清单、虚拟目录、SD（16 个）与内置（236 个）`Contents/registered` 目录
+  三处都查不到它的 NCA；第二次复装时 DBI 还先删掉了第一次写进去的 4 个文件，说明
+  「写进去→注册→收尾回滚」是循环。传输完成 + 逐 NCA 验签 OK ≠ 装上，以后按「三处交叉」验。
 - BKTR 全量遍历试到根因后放弃：hactool 的 `Invalid BKTR layout` 是尾部 0x4200
   字节导致的误报，但放宽后仍因缺 titlekey 整个分区读不出来（`Titlekey: Unknown`）。
   13 个更新包继续标「补丁分区未遍历」，源码改动已回滚。
