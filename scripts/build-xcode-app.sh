@@ -91,7 +91,10 @@ info "Verifying"
 lipo -info "${DEST}/Contents/MacOS/SwitchMTPBatch"
 lipo -info "${DEST}/Contents/Resources/bin/switchmtp-cli"
 codesign --verify --deep --strict "${DEST}"
-"${DEST}/Contents/Resources/bin/hactool" 2>&1 | head -2
+# hactool exits non-zero when run with no arguments (it just prints its usage
+# banner); this is only a "the binary launches" smoke check, so tolerate that
+# expected exit code under set -o pipefail.
+"${DEST}/Contents/Resources/bin/hactool" 2>&1 | head -2 || true
 "${DEST}/Contents/Resources/bin/switchmtp-cli" version
 
 info "Done: ${DEST}"
