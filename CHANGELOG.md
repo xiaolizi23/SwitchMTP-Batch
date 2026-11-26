@@ -26,8 +26,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - 自动化：`scripts/ax-scroll-list-test.swift` 新增 TC2b.1/2b.2、TC8.1–8.4，
   共 24 用例，`PASS 24 / FAIL 0`。记录见 `docs/AX_SCROLL_LIST_TEST_2026-11-26.md`，
   截图 `docs/ax-group-detail-2026-11-26.png`。
-- 真机：连接 DBI 时被正式版实例（pid 25523）占用设备租约，测试版正确提示
-  「设备被另一个实例占用」，未做写入操作；安装回归待正式版退出后补跑。
+- 真机回归（同日 18:19）：连上 DBI（USB 2.0 High Speed），只勾选
+  `[DLC][01007EF00011F002].nsp`（122 KB）发送到 SD 卡，DBI 屏幕判绿
+  （magic/传输/签名/tiket/注册全 OK，末行「Установка игры завершена」）。
+  证据：`docs/dbi-install-dlc-2026-11-26.png`、`docs/batch-sent-2026-11-26.png`。
+  另记：租约被占时第二个实例启动仍是插头态；只有「连接设备」被拒才换成整屏黄色
+  占用提示，属体验问题，未改。
 
 ## 1.7.12-ax — 2026-11-26
 
