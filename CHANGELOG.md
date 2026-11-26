@@ -4,6 +4,31 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.20 — 2026-11-26
+
+数十包全量深检 × DBI 实机对照后，收敛深度检查的判定口径：能说清的精确到层，
+说不清的一律降级表述。
+
+- **IVFC 层级精确化**：`NCACheck` 新增 `failedLevels`，从引擎输出解析具体的
+  `Level N (FAIL)`。note 文案由「RomFS 层级表不一致」改为「仅 IVFC Level N 不符
+  （其余层级与 Superblock 均通过）」。区分 Level 4（文件级内容被动过）和
+  Level 0（分块表本身坏了）——前者通常仍可正常玩，后者装上会报 CRC，风险等级不同。
+- **密钥代重试保留证据**：`NSP_NCA_RETRY` 旧逻辑重验成功后整块重建 check，把
+  「按 ticket 报的 keygen 首次验失败」这个事实抹掉；现在保留原 check、只清判定位，
+  note 写明「已按内容实际密钥代重验（18 → 17）」。明文与实测密钥代不一致本身是
+  转换包/非官方重打包的诊断线索，不能丢。
+- **BKTR 补丁分区标 `partialHash`**：遇到 `invalid bktr layout` 时置位，包级新增
+  note「补丁分区未做内容遍历」，主 note 的哈希计数改为扣除补丁分区的全量通过数。
+  13 个带补丁分区的更新包不再被表述成「全量哈希通过」，改为「部分覆盖」（颜色仍绿：
+  签名全过、主体分区哈希全过）。某个更新档 实机 DBI 4 NCA 签名全 OK、
+  16 秒装完，证实补丁分区未遍历不等于有风险，只是本地没证据。
+- 全量复扫 数十包 / 约百 GB / 14.0 分钟：39 绿、3 黄、2 灰、0 红，与 1.7.17
+  基线逐项一致。两个「灰」（智慧再现本体、空前盛会本体）确认是「仅 IVFC Level 4
+  不符 + 无 CNMT 清单可对照」，继续按证据不足处理，不冒充绿。
+- 报告与数据：`docs/REAL_SAMPLE_CROSSCHECK_2026-11-26.md`、
+  `docs/扫描结果_1.7.20_2026-11-26.xlsx`、`docs/实机证据_2026-11-26/`。
+- 版本 `1.7.20` / build 44。
+
 ## 1.7.17 — 2026-11-26
 
 修正 1.7.15 的过度改动：组名恢复中文优先，只有包行保持英文。

@@ -70,6 +70,12 @@ enum DeepVerifier {
         /// Downgraded from a level-table failure: the engine cannot vouch for
         /// the content, so this must never be presented as a full pass.
         var contentUnconfirmed = false
+        /// A BKTR patch section is deliberately not walked without the base
+        /// RomFS, so this NCA's "hash good" only covers its other sections.
+        var partialHash = false
+        /// Which IVFC levels disagreed (1-based, as the engine prints them),
+        /// so the note can say "only level 4" instead of "the RomFS is off".
+        var failedLevels: [Int] = []
 
         var signatureText: String {
             switch signature {
@@ -291,7 +297,9 @@ enum DeepVerifier {
 
         if let unconfirmed = inner.ncas.first(where: { $0.contentUnconfirmed }) {
             notes.insert(.init(severity: .warning, title: "内容无法确认",
-                               detail: "包内没有 CNMT 清单，而引擎在 \(unconfirmed.name) 的 RomFS 层级表上报了不一致。签名成立，但内容是否逐字节完整无法判定；建议按 DBI 实际安装结果为准。"), at: 1)
+                               detail: "包内没有 CNMT 清单，而引擎在 \(unconfirmed.name) 的 RomFS 层级表上报了不一致"
+                                   + levelDetail(unconfirmed)
+                                   + "。签名成立，但内容是否逐字节完整无法判定；建议按 DBI 实际安装结果为准（DBI 只验签，不看内容哈希，它能装不代表内容没改过）。"), at: 1)
             return DeepResult(state: .unavailable, notes: notes, detail: "内容无法确认", ncas: checks)
         }
 
@@ -447,16 +455,24 @@ enum DeepVerifier {
         if let first = checks.first(where: { $0.contentUnconfirmed }) {
             return DeepResult(state: .unavailable, notes: [
                 .init(severity: .warning, title: "内容无法确认",
-                      detail: "包内没有 CNMT 清单，而引擎在 \(first.name) 的 RomFS 层级表上报了不一致。签名成立，但内容是否逐字节完整无法判定；建议按 DBI 实际安装结果为准。")
+                      detail: "包内没有 CNMT 清单，而引擎在 \(first.name) 的 RomFS 层级表上报了不一致"
+                          + levelDetail(first)
+                          + "。签名成立，但内容是否逐字节完整无法判定；建议按 DBI 实际安装结果为准（DBI 只验签，不看内容哈希，它能装不代表内容没改过）。")
             ], detail: "内容无法确认", ncas: checks)
         }
 
         // 6. Full pass: every NCA signed by retail, hashes verified where they
         //    could be computed, and nothing failed.
+        let partials = checks.filter(\.partialHash)
+        let fullHashCount = hashGoods.count - partials.count
         var notes: [CheckNote] = [
             .init(severity: .note, title: "签名与哈希通过（对应 DBI 绿）",
-                  detail: "\(signatureGoods.count) 个 NCA 的零售签名全部成立，\(hashGoods.count) 个 NCA 的内容哈希通过。")
+                  detail: "\(signatureGoods.count) 个 NCA 的零售签名全部成立，\(max(fullHashCount, 0)) 个 NCA 的内容哈希通过。")
         ]
+        if !partials.isEmpty {
+            notes.append(.init(severity: .note, title: "补丁分区未做内容遍历",
+                               detail: "\(partials.count) 个 NCA 是 BKTR 补丁分区，离线只验到 NCA 头部与其余分区，补丁内容要靠本体对照或实机安装确认。本机 DBI 对这类补丁包的实测结果是逐 NCA 签名 OK。"))
+        }
         if hashGoods.count < checks.count {
             notes.append(.init(severity: .note, title: "部分内容哈希未覆盖",
                                detail: "有 \(checks.count - hashGoods.count) 个 NCA 没有哈希结论（多为不含可校验分区），签名仍然有效。"))
@@ -485,12 +501,21 @@ enum DeepVerifier {
                 // titlekek generation than the ticket claimed; it is re-reading
                 // the same NCA with the header's generation, so drop whatever
                 // the discarded first attempt produced.
-                if let previous = current {
-                    var fresh = NCACheck(name: previous.name)
+                if var previous = current {
                     let detail = line.replacingOccurrences(of: "NSP_NCA_RETRY:", with: "")
                         .trimmingCharacters(in: .whitespaces)
-                    fresh.note = "已按内容实际密钥代重验（\(detail)）"
-                    current = fresh
+                    // Only the verdicts of the discarded attempt are dropped;
+                    // the fact that a retry happened is real evidence and has
+                    // to survive the second pass.
+                    previous.signature = .unknown
+                    previous.hash = .unknown
+                    previous.hardHashFail = false
+                    previous.levelHashFail = false
+                    previous.contentUnconfirmed = false
+                    previous.partialHash = false
+                    previous.failedLevels.removeAll()
+                    previous.note = "已按内容实际密钥代重验（\(detail)）"
+                    current = previous
                 }
                 continue
             }
@@ -544,11 +569,15 @@ enum DeepVerifier {
                 // is "cannot tell", not "content is broken".
                 check.hash = .fail
                 check.levelHashFail = true
+                if let level = Self.levelNumber(in: line), !check.failedLevels.contains(level) {
+                    check.failedLevels.append(level)
+                }
             } else if lower.contains("is corrupted") {
                 check.hash = .fail
             }
 
             if lower.contains("invalid bktr layout") {
+                check.partialHash = true
                 check.note = "BKTR 补丁分区：引擎跳过该分区的内容遍历，签名仍按 NCA 头部验证"
             }
 
@@ -574,9 +603,27 @@ enum DeepVerifier {
             && results[i].levelHashFail && !results[i].hardHashFail {
             results[i].hash = .unknown
             results[i].contentUnconfirmed = true
-            results[i].note = "引擎在 RomFS 层级表上报了不一致，但没有 CNMT 清单可对照，无法判定内容是否完好"
+            let levels = results[i].failedLevels.map(String.init).joined(separator: "、")
+            results[i].note = levels.isEmpty
+                ? "引擎在 RomFS 层级表上报了不一致，但没有 CNMT 清单可对照，无法判定内容是否完好"
+                : "引擎只在 RomFS IVFC Level \(levels) 上报了不一致（其余层级与 Superblock 均通过），但没有 CNMT 清单可对照，无法判定内容是否完好"
         }
         return results
+    }
+
+    /// Pulls the IVFC level number out of a line like "Level 4 (FAIL):".
+    static func levelNumber(in line: String) -> Int? {
+        guard let range = line.range(of: "Level ", options: .caseInsensitive) else { return nil }
+        let digits = line[range.upperBound...].prefix { $0.isNumber }
+        return Int(digits)
+    }
+
+    /// "（仅 IVFC Level 4，Superblock 与其余层级通过）" — empty when no level
+    /// was flagged, so the caller's sentence still reads normally.
+    static func levelDetail(_ check: NCACheck) -> String {
+        guard !check.failedLevels.isEmpty else { return "" }
+        let levels = check.failedLevels.sorted().map(String.init).joined(separator: "、")
+        return "（仅 IVFC Level \(levels)，Superblock 与其余层级通过）"
     }
 
     /// Reads `NAME: key=value ...` marker lines the patched engine prints
