@@ -193,6 +193,62 @@ class USBMonitor {
     }
     
     /// Gets the device name from IOKit device object
+    /// Read-only look for a Nintendo Switch on the USB bus.
+    ///
+    /// This never opens or claims the device: it only walks the IORegistry for
+    /// the Switch vendor ID and checks whether DBI's MTP (still-image) interface
+    /// is present. That makes it safe to run from several copies at once, which
+    /// the MTP session itself is not.
+    struct ConsoleUSBState {
+        let model: String
+        let mtpReady: Bool
+    }
+
+    func probeConsolePresence() -> ConsoleUSBState? {
+        var found: ConsoleUSBState? = nil
+        for serviceClass in [monitoredServiceClass, "IOUSBDevice"] {
+            guard let matchingDict = IOServiceMatching(serviceClass) else { continue }
+            var iterator: io_iterator_t = IO_OBJECT_NULL
+            guard IOServiceGetMatchingServices(kIOMainPortDefault, matchingDict, &iterator) == KERN_SUCCESS else { continue }
+            defer { IOObjectRelease(iterator) }
+
+            var device = IOIteratorNext(iterator)
+            while device != IO_OBJECT_NULL {
+                defer { IOObjectRelease(device); device = IOIteratorNext(iterator) }
+                guard let vendor = numericProperty(from: device, keys: ["idVendor", "vendor-id"]),
+                      vendor == 1406 else { continue }
+                let product = stringProperty(from: device, keys: ["USB Product Name", "Product Name", "kUSBProductString"]) ?? "Nintendo Switch"
+                let state = ConsoleUSBState(model: product, mtpReady: hasMTPInterface(device))
+                // Prefer a unit whose MTP responder is actually running.
+                if found == nil || (state.mtpReady && found?.mtpReady == false) {
+                    found = state
+                }
+            }
+        }
+        return found
+    }
+
+    private func hasMTPInterface(_ device: io_object_t) -> Bool {
+        var iterator: io_iterator_t = IO_OBJECT_NULL
+        let options = IOOptionBits(kIORegistryIterateRecursively)
+        guard IORegistryEntryCreateIterator(device, kIOServicePlane, options, &iterator) == KERN_SUCCESS else { return false }
+        defer { IOObjectRelease(iterator) }
+
+        var entry = IOIteratorNext(iterator)
+        while entry != IO_OBJECT_NULL {
+            defer { IOObjectRelease(entry); entry = IOIteratorNext(iterator) }
+            var className = [CChar](repeating: 0, count: 128)
+            guard IOObjectGetClass(entry, &className) == KERN_SUCCESS else { continue }
+            let name = String(cString: className)
+            guard name == "IOUSBHostInterface" || name == "IOUSBInterface" else { continue }
+            let ifClass = numericProperty(from: entry, keys: ["bInterfaceClass", "InterfaceClass"])
+            let ifSub = numericProperty(from: entry, keys: ["bInterfaceSubClass", "InterfaceSubClass"])
+            let ifProto = numericProperty(from: entry, keys: ["bInterfaceProtocol", "InterfaceProtocol"])
+            if ifClass == 6 && (ifSub ?? 1) == 1 && (ifProto ?? 1) == 1 { return true }
+        }
+        return false
+    }
+
     private func getDeviceName(_ device: io_object_t) -> String? {
         var name = [CChar](repeating: 0, count: 128)
         let result = IORegistryEntryGetName(device, &name)

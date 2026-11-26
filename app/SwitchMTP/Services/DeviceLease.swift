@@ -68,6 +68,18 @@ final class DeviceLease {
         return false
     }
 
+    /// True when nobody holds the lease, without keeping it afterwards.
+    func isAvailable() -> Bool {
+        lock.lock(); defer { lock.unlock() }
+        if fd >= 0 { return true }
+        let newFD = open(fileURL.path, O_CREAT | O_RDWR, 0o600)
+        guard newFD >= 0 else { return true }
+        defer { close(newFD) }
+        guard flock(newFD, LOCK_EX | LOCK_NB) == 0 else { return false }
+        flock(newFD, LOCK_UN)
+        return true
+    }
+
     func release() {
         lock.lock(); defer { lock.unlock() }
         guard fd >= 0 else { return }

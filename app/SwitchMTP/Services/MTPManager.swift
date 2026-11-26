@@ -335,6 +335,40 @@ final class MTPManager: ObservableObject {
     /// instead of a generic "not connected" so the user knows why.
     @Published private(set) var deviceLeaseHolder: String?
 
+    enum ConsolePresence: Equatable {
+        case absent
+        case usbOnly(model: String)
+        case mtpReady(model: String)
+
+        var isPresent: Bool {
+            if case .absent = self { return false }
+            return true
+        }
+
+        var model: String? {
+            switch self {
+            case .absent: return nil
+            case .usbOnly(let model), .mtpReady(let model): return model
+            }
+        }
+
+        var mtpReady: Bool {
+            if case .mtpReady = self { return true }
+            return false
+        }
+    }
+
+    /// Read-only USB presence. Updated without ever opening the device, so any
+    /// number of copies can show the console; only Connect touches MTP.
+    @Published private(set) var consolePresence: ConsolePresence = .absent
+    private var presenceTimer: Timer?
+    private let presenceInterval: TimeInterval = 2.0
+    /// Set while a user-initiated Connect is waiting for the device scan.
+    private var pendingUserConnect = false
+
+    /// True when the app was launched by the AX UI test (`SWITCHMTP_BATCH_TEST_FOLDER`).
+    static let isUITestFixture = ProcessInfo.processInfo.environment["SWITCHMTP_BATCH_TEST_FOLDER"] != nil
+
     init() {
         CallbackRouter.manager = self
 
@@ -354,40 +388,43 @@ final class MTPManager: ObservableObject {
     func start() {
         guard !isStarted else { return }
         isStarted = true
-        // Only the lease holder may touch USB; the probe below retries the
-        // lease every few seconds so the app takes over when the holder quits.
-        guard ensureDeviceLease() else {
-            startLivenessProbe()
-            return
-        }
-        fetchAvailableDevices()
-        startLivenessProbe()
+        // Discovery is read-only now: no device scan here, because a scan opens
+        // the device and resets the USB port. The console is connected only on
+        // an explicit Connect, which is also where the lease is taken.
+        refreshConsolePresence()
+        startPresenceProbe()
     }
 
-    /// Probes for the console while nothing is connected.
+    /// Re-reads USB presence and retries a lease that was refused earlier.
     ///
-    /// The USB monitor only fires on attach/detach, so a console whose MTP
-    /// responder died without re-enumerating (a DBI error, a stuck install) is
-    /// invisible to it. Without this probe the only way back was unplugging the
-    /// cable by hand. Each probe is a plain device scan; `mayAutoConnect` still
-    /// caps the attempts per device so a console that cannot be opened is not
-    /// hammered forever.
-    private func startLivenessProbe() {
-        livenessTimer?.invalidate()
-        let timer = Timer.scheduledTimer(withTimeInterval: livenessInterval, repeats: true) { [weak self] _ in
+    /// Nothing here opens the device: it only walks IORegistry, so it is safe
+    /// to run from every copy. A refused lease is retried quietly so the
+    /// "in use by another instance" notice clears when the holder quits.
+    private func startPresenceProbe() {
+        presenceTimer?.invalidate()
+        let timer = Timer.scheduledTimer(withTimeInterval: presenceInterval, repeats: true) { [weak self] _ in
             guard let self, self.isStarted else { return }
-            guard !self.userDisconnected else { return }
-            guard !self.connectionState.isConnected, self.operation == .none else { return }
-            // A failed open (console busy, DBI still starting) parks the state in
-            // `.error`, and auto-connect only runs from `.disconnected`. Let the
-            // probe re-arm so the console can come back without a manual click.
-            if case .error = self.connectionState {
-                self.connectionState = .disconnected
+            self.refreshConsolePresence()
+            if self.deviceLeaseHolder != nil, !self.connectionState.isConnected,
+               self.operation == .none, DeviceLease.shared.isAvailable() {
+                self.deviceLeaseHolder = nil
+                DebugLog.write("device lease: became free")
             }
-            DebugLog.write("liveness probe: nothing connected and idle — scanning for devices")
-            self.fetchAvailableDevices()
         }
-        livenessTimer = timer
+        presenceTimer = timer
+    }
+
+    private func refreshConsolePresence() {
+        guard !Self.isUITestFixture, let state = usbMonitor?.probeConsolePresence() else {
+            if consolePresence != .absent { consolePresence = .absent }
+            return
+        }
+        let model = state.model.lowercased().contains("dbi") ? "Nintendo Switch" : state.model
+        let next: ConsolePresence = state.mtpReady ? .mtpReady(model: model) : .usbOnly(model: model)
+        if next != consolePresence {
+            DebugLog.write("console presence: \(model) mtp=\(state.mtpReady)")
+            consolePresence = next
+        }
     }
 
     deinit {
@@ -396,6 +433,8 @@ final class MTPManager: ObservableObject {
         retryTimer = nil
         livenessTimer?.invalidate()
         livenessTimer = nil
+        presenceTimer?.invalidate()
+        presenceTimer = nil
         usbMonitor?.stopMonitoring()
         usbMonitor = nil
         DeviceLease.shared.release()
@@ -554,6 +593,16 @@ final class MTPManager: ObservableObject {
         
         if let errorString = parseEnvelopeErrorOnly(jsonString) {
             print("MTPManager: Error fetching available devices: \(errorString)")
+            if pendingUserConnect {
+                pendingUserConnect = false
+                // The scan never opened anything; give the lease back so
+                // another copy can try instead of staying locked out.
+                DeviceLease.shared.release()
+                DispatchQueue.main.async { [weak self] in
+                    self?.connectionState = .disconnected
+                    self?.errorMessage = ErrorStringLocalizer.localize(errorString)
+                }
+            }
             return
         }
         
@@ -598,20 +647,28 @@ final class MTPManager: ObservableObject {
                     print("MTPManager: Active device \(self.deviceId) no longer present — disconnecting")
                     self.handleDeviceDisconnected()
                     self.operation = .none
-                    
-                    // If there are remaining devices, auto-connect to the first one.
-                    if let nextDevice = devices.first, self.mayAutoConnect(to: nextDevice.id) {
-                        print("MTPManager: Auto-connecting to remaining device \(nextDevice.id)")
-                        self.switchDevice(to: nextDevice.id)
-                    }
                     return
                 }
             }
-            
-            // Auto-connect logic: if disconnected and devices available, connect to the first one.
-            if case .disconnected = self.connectionState, self.operation != .initializing, let first = devices.first,
-               self.mayAutoConnect(to: first.id) {
-                print("MTPManager: Auto-connecting to \(first.id)")
+
+            // A scan only happens because the user pressed Connect. Finish that
+            // request here instead of auto-connecting on every scan result.
+            if self.pendingUserConnect {
+                self.pendingUserConnect = false
+                guard let first = devices.first else {
+                    DeviceLease.shared.release()
+                    self.connectionState = .disconnected
+                    self.errorMessage = String(
+                        localized: "No console found. Check the cable, then launch DBI and choose \"Run MTP responder\".",
+                        comment: "Shown when Connect is pressed with no device attached"
+                    )
+                    return
+                }
+                print("MTPManager: user connect → \(first.id)")
+                self.deviceId = first.id
+                // switchDevice bails out when .connecting already refers to this
+                // id; the scan is done, so hand over from a clean state.
+                self.connectionState = .disconnected
                 self.switchDevice(to: first.id)
             }
         }
@@ -872,6 +929,10 @@ final class MTPManager: ObservableObject {
             // connection.
             transferKind = nil
             operation = .none
+            if pendingDeviceId == nil {
+                // Disconnected: nobody should stay locked out of the console.
+                DeviceLease.shared.release()
+            }
             if let nextDeviceId = pendingDeviceId {
                 pendingDeviceId = nil
                 self.deviceId = nextDeviceId
@@ -1007,13 +1068,32 @@ final class MTPManager: ObservableObject {
         // An explicit Connect overrides an earlier Disconnect.
         userDisconnected = false
 
-        // Connect stays enabled with nothing attached, because retrying after
-        // waking the console or starting the responder is the normal thing to
-        // do. Without this the empty id reached ParseDeviceID, which failed and
-        // put its own diagnostics on screen -- "malformed device id" is not an
-        // answer to "why can't it see my Switch", and it is the first thing
-        // anyone who opens the app before launching DBI would have seen.
+        // This click is the first moment the app is allowed to touch USB. Take
+        // the lease first; if another copy holds it, say so and do nothing else.
+        guard ensureDeviceLease() else {
+            DispatchQueue.main.async {
+                self.connectionState = .disconnected
+                self.errorMessage = String(
+                    localized: "The Switch is in use by another SwitchMTP Batch instance. Quit it, then press Connect again.",
+                    comment: "Shown when Connect is pressed while another copy holds the device"
+                )
+            }
+            return
+        }
+
+        // Nothing has been scanned yet at launch; scan once, then connect in
+        // handleDeviceListDone. No console may be attached yet, in which case
+        // the scan legitimately comes back empty.
         var target = deviceId
+        if target.isEmpty && availableDevices.isEmpty {
+            pendingUserConnect = true
+            DispatchQueue.main.async {
+                self.connectionState = .disconnected
+                self.errorMessage = nil
+            }
+            fetchAvailableDevices()
+            return
+        }
         if target.isEmpty {
             guard let candidate = availableDevices.first else {
                 DispatchQueue.main.async {
@@ -1078,14 +1158,10 @@ final class MTPManager: ObservableObject {
             }
         }
         
-        // Debounce USB events - many events fire rapidly during plug/unplug.
-        // This prevents rapid-fire scans that could overwhelm the USB bus.
+        // Attach/detach only refreshes the read-only presence badge. A scan
+        // would open the device, which must wait for an explicit Connect.
         deviceScanWorkItem?.cancel()
-        let workItem = DispatchWorkItem { [weak self] in
-            self?.fetchAvailableDevices()
-        }
-        deviceScanWorkItem = workItem
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8, execute: workItem)
+        refreshConsolePresence()
     }
     
     /// Attempts to connect with retry logic

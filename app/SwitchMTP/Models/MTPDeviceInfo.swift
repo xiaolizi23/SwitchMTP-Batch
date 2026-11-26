@@ -28,6 +28,8 @@ struct MTPDeviceInfo: Codable, Identifiable, Hashable {
     
     /// User-friendly name to display in the UI.
     var displayName: String {
+        // DBI reports its own name as the USB product string; call it what it is.
+        if model.caseInsensitiveCompare("DBI") == .orderedSame { return "Nintendo Switch" }
         if model.isEmpty && manufacturer.isEmpty {
             return String(localized: "Unknown Device")
         }

@@ -15249,6 +15249,144 @@
           }
         }
       }
+    },
+    "MTP responder ready": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MTP responder ready"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MTP 已就绪"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MTP 已就緒"
+          }
+        }
+      }
+    },
+    "Switch detected — start DBI MTP responder": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch detected — start DBI MTP responder"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发现 Switch — 请在 DBI 启动 MTP"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已發現 Switch — 請在 DBI 啟動 MTP"
+          }
+        }
+      }
+    },
+    "MTP responder ready. Press the plug to connect.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MTP responder ready. Press the plug to connect."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MTP 已就绪，点击插头建立连接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "MTP 已就緒，點擊插頭建立連線。"
+          }
+        }
+      }
+    },
+    "Switch detected. Launch DBI and choose “Run MTP responder”, then press the plug.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch detected. Launch DBI and choose “Run MTP responder”, then press the plug."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已发现 Switch。请在 DBI 选择“Run MTP responder”，再点击插头。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已發現 Switch。請在 DBI 選擇「Run MTP responder」，再點擊插頭。"
+          }
+        }
+      }
+    },
+    "Nintendo Switch": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nintendo Switch"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nintendo Switch"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nintendo Switch"
+          }
+        }
+      }
+    },
+    "The Switch is in use by another SwitchMTP Batch instance. Quit it, then press Connect again.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The Switch is in use by another SwitchMTP Batch instance. Quit it, then press Connect again."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch 正被另一个 SwitchMTP Batch 实例使用。退出它后再点连接。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Switch 正被另一個 SwitchMTP Batch 執行個體使用。結束它後再點連線。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

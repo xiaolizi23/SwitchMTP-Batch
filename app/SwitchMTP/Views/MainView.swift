@@ -435,6 +435,8 @@ struct MainView: View {
         Group {
             if let holder = manager.deviceLeaseHolder {
                 leaseNotice(holder: holder)
+            } else if manager.consolePresence.isPresent {
+                presenceView
             } else {
                 noDeviceHints
             }
@@ -453,6 +455,32 @@ struct MainView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: 380)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var presenceView: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "cable.connector")
+                .font(.system(size: 46))
+                .foregroundStyle(.secondary)
+            Text(manager.consolePresence.model ?? String(localized: "Nintendo Switch"))
+                .font(.system(size: 16, weight: .semibold))
+            Text(manager.consolePresence.mtpReady
+                 ? String(localized: "MTP responder ready. Press the plug to connect.")
+                 : String(localized: "Switch detected. Launch DBI and choose “Run MTP responder”, then press the plug."))
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: 380)
+            Button {
+                manager.connectDevice()
+            } label: {
+                Label(String(localized: "Connect Device"), systemImage: "cable.connector.horizontal")
+                    .padding(.horizontal, 4)
+            }
+            .buttonStyle(.borderedProminent)
+            .disabled(manager.connectionState == .connecting)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }

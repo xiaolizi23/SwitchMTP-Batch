@@ -29,7 +29,8 @@ struct SidebarView: View {
 
     var body: some View {
         List {
-            if manager.availableDevices.isEmpty {
+            let deviceRows = displayedDevices
+            if deviceRows.isEmpty {
                 noDeviceView
             } else {
                 // MARK: – Favorites Section
@@ -50,7 +51,7 @@ struct SidebarView: View {
 
                 // MARK: – Devices Section
                 Section(String(localized: "Devices")) {
-                    ForEach(manager.availableDevices) { device in
+                    ForEach(deviceRows) { device in
                         deviceSection(device)
                     }
                 }
@@ -131,10 +132,22 @@ struct SidebarView: View {
         
         Group {
             HStack {
-                Label(info.displayName, systemImage: "smartphone")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(isConnected ? .primary : .secondary)
-                
+                VStack(alignment: .leading, spacing: 1) {
+                    Label(info.displayName, systemImage: "smartphone")
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(isConnected ? .primary : .secondary)
+                    if !isConnected {
+                        Text(manager.deviceLeaseHolder != nil
+                             ? String(localized: "Device In Use By Another Instance")
+                             : (manager.consolePresence.mtpReady
+                                ? String(localized: "MTP responder ready")
+                                : String(localized: "Switch detected — start DBI MTP responder")))
+                            .font(.system(size: 10))
+                            .foregroundStyle(.tertiary)
+                            .lineLimit(2)
+                    }
+                }
+
                 Spacer()
                 
                 if isConnecting {
@@ -142,7 +155,13 @@ struct SidebarView: View {
                         .controlSize(.small)
                 } else if !isConnected {
                     Button {
-                        manager.switchDevice(to: info.id)
+                        // A presence-only row has no MTP id yet; asking the
+                        // manager to scan and connect is the safe path.
+                        if info.serialNumber.isEmpty {
+                            manager.connectDevice()
+                        } else {
+                            manager.switchDevice(to: info.id)
+                        }
                     } label: {
                         Image(systemName: "cable.connector.horizontal")
                             .font(.system(size: 18, weight: .bold))
@@ -289,6 +308,16 @@ struct SidebarView: View {
     }
 
     // MARK: – No Device
+    /// Devices to show in the sidebar. When nothing is connected yet the list
+    /// comes from the read-only USB presence, so a second copy still sees the
+    /// console and gets the plug button instead of an empty sidebar.
+    private var displayedDevices: [MTPDeviceInfo] {
+        if !manager.availableDevices.isEmpty { return manager.availableDevices }
+        guard let model = manager.consolePresence.model else { return [] }
+        return [MTPDeviceInfo(vendorId: 1406, productId: 0, serialNumber: "",
+                              manufacturer: "", model: model)]
+    }
+
     private var noDeviceView: some View {
         Group {
             if let holder = manager.deviceLeaseHolder {
