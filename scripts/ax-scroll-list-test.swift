@@ -493,24 +493,33 @@ if allowHIDClicks {
     syntheticClickWindow = frame(workspace).flatMap { windowNumber(matching: $0) }
     print("      click window=\(syntheticClickWindow.map(String.init) ?? "nil")")
     if let group = groupBoxes(in: workspace).first, let groupFrame = frame(group) {
-        hidClickPoint(CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY))
-        let overviewShown = waitUntil(3) {
+        let point = CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY)
+        // A single click must select and show the overview without expanding.
+        hidClickPoint(point)
+        let overviewOnce = waitUntil(2) {
             find(workspace) { el in
                 role(el) == kAXStaticTextRole as String && stringValue(el).contains("包含的安装包")
             } != nil
         }
-        check("TC8.2 点组行在详情区显示游戏概览", overviewShown)
-        check("TC8.3 点组行同时展开该组", waitUntil(3) { !packageBoxes(in: workspace).isEmpty },
+        check("TC8.2 单击组行只显示概览", overviewOnce && packageBoxes(in: workspace).isEmpty,
+              "overview=\(overviewOnce) rows=\(packageBoxes(in: workspace).count)")
+        // Expansion is on a double click now.
+        hidClickPoint(point)
+        Thread.sleep(forTimeInterval: 0.12)
+        hidClickPoint(point)
+        check("TC8.3 双击组行展开该组", waitUntil(3) { !packageBoxes(in: workspace).isEmpty },
               "count=\(packageBoxes(in: workspace).count)")
-        hidClickPoint(CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY))
-        check("TC8.4 再点一次收起该组", waitUntil(3) { packageBoxes(in: workspace).isEmpty },
+        hidClickPoint(point)
+        Thread.sleep(forTimeInterval: 0.12)
+        hidClickPoint(point)
+        check("TC8.4 再双击收起该组", waitUntil(3) { packageBoxes(in: workspace).isEmpty },
               "count=\(packageBoxes(in: workspace).count)")
     } else {
-        check("TC8.2 点组行在详情区显示游戏概览", false, "没有组复选框可比对")
+        check("TC8.2 单击组行只显示概览", false, "没有组复选框可比对")
     }
 } else {
-    skip("TC8.2 点组行在详情区显示游戏概览", "行本体没有常驻 AX action；默认运行不碰硬件光标")
-    skip("TC8.3 点组行同时展开该组", "同上")
+    skip("TC8.2 单击组行只显示概览", "行本体没有常驻 AX action；默认运行不碰硬件光标")
+    skip("TC8.3 双击组行展开该组", "同上")
     if let expand = findAll(workspace, where: { identifier($0).hasPrefix("group-expand-") }).first {
         _ = press(expand)
         check("TC8.4 展开箭头展开该组", waitUntil(3) { !packageBoxes(in: workspace).isEmpty },

@@ -519,12 +519,20 @@ struct BatchInstallSheet: View {
                 .fill(isSelectedRow ? Color(nsColor: .labelColor).opacity(0.08) : Color.clear)
         )
         .contentShape(Rectangle())
-        .onTapGesture {
+        // Single click only selects and shows the overview. Expansion lives on
+        // the chevron and on a double click, so browsing a group never reflows
+        // the list under the pointer — which is the whole reason the chevron
+        // stays a separate control.
+        .onTapGesture(count: 2) {
             if expanded {
                 expandedGroups.remove(group.id)
             } else {
                 expandedGroups.insert(group.id)
             }
+            selectedGroupID = group.id
+            selectedPackageID = nil
+        }
+        .onTapGesture {
             selectedGroupID = group.id
             selectedPackageID = nil
         }

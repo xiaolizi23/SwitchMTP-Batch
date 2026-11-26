@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.14 — 2026-11-26
+
+批量清单组行的点击语义调整：单击只选中，展开改到双击或箭头。
+
+- **点整行不再展开**：1.7.13 的一次点击同时选中并展开，导致小三角失去独立意义，
+  浏览组详情时列表还会在指针下重排（数十包的长清单滚动位置会跳）。现在单击行只
+  选中并显示组概览；双击行才展开/收起；点箭头只展开、不改变选中，三种意图分开。
+- AX 回归脚本跟随更新：默认仍 24 PASS / 2 SKIP（点击语义两项因行本体无常驻 AX
+  action 而跳过，用箭头覆盖展开/收起）；`AX_TEST_HID_CLICKS=1` 下以单击 / 双击
+  验证完整交互，25 PASS。记录见 `docs/GROUP_ROW_CLICK_SEMANTICS_2026-11-26.md`。
+- 版本 `1.7.14` / build 40。
+
 ## 1.7.13 — 2026-11-26
 
 批量安装清单从 `List` 换成可自动化点击的自绘滚动栈，并把之前一串测试版（1.7.12-ax
