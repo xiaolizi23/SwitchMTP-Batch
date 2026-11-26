@@ -475,10 +475,10 @@ struct BatchInstallSheet: View {
         .background(.bar)
     }
 
-    /// Clicking a group row selects the whole game for the detail pane (cover,
-    /// name, counts, member list); only the chevron expands or collapses it.
-    /// That mirrors how a Finder outline row behaves, and fixes the dead click
-    /// a collapsed group row used to produce.
+    /// Clicking a group row does both things at once: it expands (or collapses)
+    /// the group and selects the game for the detail pane (cover, name, counts,
+    /// member list). Expanding on the row click is what a Finder outline row
+    /// does, so the first click no longer feels like it only changed the pane.
     private func groupRow(_ group: InstallPackageGroup) -> some View {
         let expanded = expandedGroups.contains(group.id)
         return HStack(spacing: 8.5) {
@@ -511,6 +511,11 @@ struct BatchInstallSheet: View {
         .padding(.vertical, 4)
         .contentShape(Rectangle())
         .onTapGesture {
+            if expanded {
+                expandedGroups.remove(group.id)
+            } else {
+                expandedGroups.insert(group.id)
+            }
             selectedGroupID = group.id
             selectedPackageID = nil
         }
@@ -608,6 +613,7 @@ struct BatchInstallSheet: View {
     }
 
     private func packageRow(_ package: InstallPackage) -> some View {
+        let isSelectedRow = selectedPackageID == package.id
         return HStack(spacing: 8) {
             Button {
                 model.togglePackage(package.id)
@@ -684,6 +690,12 @@ struct BatchInstallSheet: View {
         }
         .padding(.vertical, 3)
         .padding(.horizontal, 4)
+        // 1.7.12 tints the chosen package row with 10% accent; the group row
+        // stays untinted because `List` never had a group selection there.
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelectedRow ? Color.accentColor.opacity(0.10) : Color.clear)
+        )
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .onTapGesture {
@@ -755,8 +767,7 @@ struct BatchInstallSheet: View {
     /// click on a group row answers "what is this, and what would I install"
     /// without expanding it first.
     private func groupDetail(for group: InstallPackageGroup) -> some View {
-        let expanded = expandedGroups.contains(group.id)
-        return ScrollView {
+        ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 HStack(alignment: .top, spacing: 12) {
                     groupCover(group, side: 88)
@@ -822,34 +833,6 @@ struct BatchInstallSheet: View {
                     }
                 }
 
-                Divider()
-
-                HStack(spacing: 10) {
-                    Button("勾选整组") {
-                        model.setGroupSelection(group, selected: true)
-                    }
-                    .controlSize(.small)
-                    .disabled(group.eligibleCount == 0)
-
-                    Button("取消勾选整组") {
-                        model.setGroupSelection(group, selected: false)
-                    }
-                    .controlSize(.small)
-                    .disabled(group.eligibleSelectedCount == 0)
-
-                    Button(expanded ? "收起" : "展开") {
-                        if expanded {
-                            expandedGroups.remove(group.id)
-                        } else {
-                            expandedGroups.insert(group.id)
-                        }
-                    }
-                    .controlSize(.small)
-                }
-
-                Text("展开后可以逐项勾选本体 / 更新 / DLC。")
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
             }
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)

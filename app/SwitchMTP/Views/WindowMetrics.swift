@@ -25,7 +25,7 @@
 //   main frame >= 1000 x 620
 //   workspace frame <= main frame - (120 x 100)
 //
-// On the default sizes the workspace is 890 x 520 inside a 1000 x 620 parent:
+// On the default sizes the workspace is 890 x 520 inside a 1010 x 620 parent:
 // 60pt visible left/right and 24pt above/below inside the 1000 x 568 content
 // area. See AGENTS.md §5 before changing anything here.
 
@@ -33,15 +33,16 @@ import AppKit
 
 enum WindowMetrics {
     /// The main window's minimum window frame, enforced on every launch and
-    /// again whenever the workspace is opened.
-    static let mainMinFrame = NSSize(width: 1000, height: 620)
+    /// again whenever the workspace is opened. 1010 wide so the 890 workspace
+    /// still leaves 60 pt of the parent visible on either side.
+    static let mainMinFrame = NSSize(width: 1010, height: 620)
 
     /// Upstream's untouched window frame (title bar included). Used only to
     /// recognise a fresh install that has never been sized.
     static let upstreamFrame = NSSize(width: 900, height: 450)
 
     /// Default workspace window frame. Deliberately 890 x 520 against the
-    /// 1000 x 620 parent, which leaves 55pt left/right and 24pt top/bottom.
+    /// 1010 x 620 parent, which leaves 60pt left/right and 24pt top/bottom.
     static let workspaceFrame = NSSize(width: 890, height: 520)
 
     /// The workspace must stay readable, so it may shrink only this far when

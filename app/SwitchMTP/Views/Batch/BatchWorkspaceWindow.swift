@@ -16,7 +16,7 @@
 //
 // Size comes from WindowMetrics and is clamped against the parent's frame, so
 // it always reads as a panel layered on a window rather than a replacement of
-// it: 890 x 520 inside a 1000 x 620 window (55pt left/right, 24pt above and
+// it: 890 x 520 inside a 1010 x 620 window (60pt left/right, 24pt above and
 // below the content area). Do not hard-code a size here: the last regression
 // came from exactly that (890 x 520 hard-coded against a parent that had
 // silently shrunk to 900 x 450).
@@ -29,6 +29,15 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
     private var minSize = NSSize.zero
     private var maxSize = NSSize.zero
     private var isClampingSize = false
+    /// The parent window whose frame caps the workspace. Tracked so the cap
+    /// follows the parent when it is resized after the workspace opened —
+    /// a stale cap made the workspace look unresizable.
+    private weak var host: NSWindow?
+    private var hostObserver: NSObjectProtocol?
+
+    deinit {
+        if let hostObserver { NotificationCenter.default.removeObserver(hostObserver) }
+    }
 
     /// Bring an already-open workspace forward instead of opening a second one.
     func show(manager: MTPManager) {
@@ -38,6 +47,14 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
         }
 
         let host = hostWindow()
+        self.host = host
+        if let host {
+            hostObserver = NotificationCenter.default.addObserver(
+                forName: NSWindow.didResizeNotification, object: host, queue: .main
+            ) { [weak self] _ in
+                self?.refreshCeiling()
+            }
+        }
         // The workspace must never open over a parent that has slipped below
         // the floor (restored frame, accessibility resize). Grow the parent
         // first, then size against its real content area.
@@ -77,10 +94,12 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
         // at parent frame minus the same inset used for the default size.
         let ceiling = host?.frame.size ?? WindowMetrics.mainMinFrame
         let maximum = NSSize(
-            width: max(size.width, ceiling.width - WindowMetrics.workspaceInset.width),
-            height: max(size.height, ceiling.height - WindowMetrics.workspaceInset.height)
+            width: max(WindowMetrics.workspaceMinFrame.width,
+                       ceiling.width - WindowMetrics.workspaceInset.width),
+            height: max(WindowMetrics.workspaceMinFrame.height,
+                       ceiling.height - WindowMetrics.workspaceInset.height)
         )
-        window.maxSize = maximum
+        window.maxSize = NSSize(width: 10000, height: 10000)
         minSize = WindowMetrics.workspaceMinFrame
         maxSize = maximum
         window.setFrame(NSRect(origin: window.frame.origin, size: size), display: false)
@@ -96,10 +115,45 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
     func close() {
         windowController?.window?.close()
         windowController = nil
+        dropHostObserver()
     }
 
     func windowWillClose(_ notification: Notification) {
         windowController = nil
+        dropHostObserver()
+    }
+
+    private func dropHostObserver() {
+        if let hostObserver { NotificationCenter.default.removeObserver(hostObserver) }
+        hostObserver = nil
+    }
+
+    /// Recompute the ceiling from the parent's current frame, then pull the
+    /// workspace back inside it. Called whenever the parent is resized.
+    private func refreshCeiling() {
+        guard let window = windowController?.window else { return }
+        let ceiling = host?.frame.size ?? WindowMetrics.mainMinFrame
+        let maximum = NSSize(
+            width: max(WindowMetrics.workspaceMinFrame.width,
+                       ceiling.width - WindowMetrics.workspaceInset.width),
+            height: max(WindowMetrics.workspaceMinFrame.height,
+                       ceiling.height - WindowMetrics.workspaceInset.height)
+        )
+        maxSize = maximum
+        // AppKit applies maxSize before the delegate runs, and its frame/content
+        // bookkeeping does not track a parent that grows after the window
+        // opened. Leave AppKit's cap out of the way and rely on the live
+        // clamp below so the workspace can actually be enlarged.
+        window.maxSize = NSSize(width: 10000, height: 10000)
+
+        var frame = window.frame
+        let width = min(max(frame.width, minSize.width), maximum.width)
+        let height = min(max(frame.height, minSize.height), maximum.height)
+        guard width != frame.width || height != frame.height else { return }
+        isClampingSize = true
+        frame.size = NSSize(width: width, height: height)
+        window.setFrame(frame, display: true)
+        isClampingSize = false
     }
 
     /// `contentMinSize` / `maxSize` are not consulted on every resize path
@@ -107,6 +161,14 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
     /// keeps the workspace inside its parent no matter how it is resized.
     func windowDidResize(_ notification: Notification) {
         guard let window = notification.object as? NSWindow, !isClampingSize else { return }
+        if let ceiling = host?.frame.size {
+            maxSize = NSSize(
+                width: max(WindowMetrics.workspaceMinFrame.width,
+                           ceiling.width - WindowMetrics.workspaceInset.width),
+                height: max(WindowMetrics.workspaceMinFrame.height,
+                           ceiling.height - WindowMetrics.workspaceInset.height)
+            )
+        }
         var frame = window.frame
         let width = min(max(frame.width, minSize.width), maxSize.width)
         let height = min(max(frame.height, minSize.height), maxSize.height)
@@ -134,8 +196,8 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
     /// Centre on the main window's content area — not on its whole frame, or
     /// the workspace ends up flush under the parent's toolbar with all the
     /// spare space at the bottom. The window is sized in frame coordinates
-    /// (890 x 520) and then centred in a 1000 x 568 content area, which leaves
-    /// 55pt left/right and 24pt top/bottom.
+    /// (890 x 520) and then centred in a 1010 x 568 content area, which leaves
+    /// 60pt left/right and 24pt top/bottom.
     private func position(_ window: NSWindow, over parent: NSWindow?) {
         guard let parent else {
             window.center()

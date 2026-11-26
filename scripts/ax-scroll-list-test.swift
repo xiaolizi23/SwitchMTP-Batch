@@ -378,7 +378,7 @@ if let searchField {
     check("TC7.1 搜索后只剩匹配组", false, "找不到搜索框")
 }
 
-// MARK: - TC8: a collapsed group row opens the game overview, and does not expand
+// MARK: - TC8: a collapsed group row opens the game overview and expands it
 
 if let collapseAll = find(workspace, where: { help($0).contains("展开/收起全部") }) {
     _ = press(collapseAll)
@@ -398,12 +398,15 @@ if let group = groupBoxes(in: workspace).first, let groupFrame = frame(group) {
         } != nil
     }
     check("TC8.2 点组行在详情区显示游戏概览", overviewShown)
-    check("TC8.3 点组行不会顺手展开它", packageBoxes(in: workspace).isEmpty,
+    check("TC8.3 点组行同时展开该组", waitUntil(3) { !packageBoxes(in: workspace).isEmpty },
+          "count=\(packageBoxes(in: workspace).count)")
+    clickPoint(CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY))
+    check("TC8.4 再点一次收起该组", waitUntil(3) { packageBoxes(in: workspace).isEmpty },
           "count=\(packageBoxes(in: workspace).count)")
     if let expandAll = find(workspace, where: { help($0).contains("展开/收起全部") }) {
         _ = press(expandAll)
     }
-    check("TC8.4 再展开恢复 44 行", waitUntil(3) { packageBoxes(in: workspace).count >= 44 },
+    check("TC8.5 再展开恢复 44 行", waitUntil(3) { packageBoxes(in: workspace).count >= 44 },
           "count=\(packageBoxes(in: workspace).count)")
 } else {
     check("TC8.2 点组行在详情区显示游戏概览", false, "没有组复选框可比对")
