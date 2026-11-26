@@ -127,6 +127,7 @@ targets:
         # `switchmtp-cli`.
         PRODUCT_MODULE_NAME: SwitchMTPBatchCLI
         EXECUTABLE_NAME: switchmtp-cli
+        CODE_SIGN_ENTITLEMENTS: Resources/switchmtp-cli.entitlements
         SWIFT_OBJC_BRIDGING_HEADER: switchmtp-cli/SwitchMTP-Bridging-Header.h
         HEADER_SEARCH_PATHS:
           - $(inherited)
@@ -144,6 +145,9 @@ targets:
           - $(inherited)
           - "@executable_path"
           - "@executable_path/../Frameworks"
+          # When embedded in the GUI bundle at Contents/Resources/bin/, resolve
+          # nxmtp/libusb from the host's Contents/Frameworks (two levels up).
+          - "@executable_path/../../Frameworks"
         ENABLE_HARDENED_RUNTIME: YES
         MARKETING_VERSION: "1.7.21"
         CURRENT_PROJECT_VERSION: "45"

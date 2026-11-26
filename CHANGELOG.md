@@ -24,6 +24,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **格式口径**：字节容量由二进制 1024 改为十进制 1000（kB/MB/GB…），对齐 DBI/SD 厂商；
   进度行文件序号优先 `currentFile`，indefinite 阶段显示 note/working，补 bulk 估算 ETA，
   汇总耗时用紧凑 h/m/s 格式。
+- **随包嵌入**：universal `switchmtp-cli` 编入 `Contents/Resources/bin/`，复用宿主
+  `Contents/Frameworks/` 的 nxmtp/libusb（不重复打包 dylib）；终端可直接调用，版本号读宿主
+  Info.plist；CLI 用独立非沙盒 entitlements 签名。
 - 离线健壮性回归 41 passed / 0 failed。
 
 ### GUI

@@ -661,6 +661,7 @@
 		94FF68D77522133A3CEE8920 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Resources/switchmtp-cli.entitlements";
 				CURRENT_PROJECT_VERSION = 45;
 				ENABLE_HARDENED_RUNTIME = YES;
 				EXECUTABLE_NAME = "switchmtp-cli";
@@ -673,6 +674,7 @@
 					"$(inherited)",
 					"@executable_path",
 					"@executable_path/../Frameworks",
+					"@executable_path/../../Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
@@ -695,6 +697,7 @@
 		DE112D63ECB5D2A337D3806B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = "Resources/switchmtp-cli.entitlements";
 				CURRENT_PROJECT_VERSION = 45;
 				ENABLE_HARDENED_RUNTIME = YES;
 				EXECUTABLE_NAME = "switchmtp-cli";
@@ -707,6 +710,7 @@
 					"$(inherited)",
 					"@executable_path",
 					"@executable_path/../Frameworks",
+					"@executable_path/../../Frameworks",
 				);
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",

@@ -43,7 +43,23 @@ private struct Config {
 /// app bundle the host Info.plist supplies the shipped version; a standalone
 /// debug build has no plist and reports `dev`.
 private var cliVersion: String {
-    Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+    if let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String,
+       !v.isEmpty {
+        return v
+    }
+    // Embedded as a nested executable: walk up from the binary to the host
+    // bundle's Contents/Info.plist (e.g. Contents/Resources/bin/ -> Contents/).
+    let exe = URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath()
+    var dir = exe.deletingLastPathComponent()
+    for _ in 0..<5 {
+        let plist = dir.appendingPathComponent("Contents/Info.plist")
+        if let dict = NSDictionary(contentsOf: plist),
+           let v = dict["CFBundleShortVersionString"] as? String, !v.isEmpty {
+            return v
+        }
+        dir = dir.deletingLastPathComponent()
+    }
+    return "dev"
 }
 
 /// Host CPU architecture, reported by `version` so machine-readable output can
