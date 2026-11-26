@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Runs the container-inspector tests against synthetic samples. No Xcode
-# needed; it reuses the same Command Line Tools workaround as
-# build-batch-app.sh and compiles only the files the inspector needs.
+# needed; it sets up the Command Line Tools module-map workaround itself and
+# compiles only the files the inspector needs.
 #
 #   ./scripts/test-inspector.sh
 #

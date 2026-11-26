@@ -76,21 +76,18 @@
 - **XCZ 仍是外层检查**：它是卡带镜像（HFS0 + sparse），和 NSZ 的 NCZ 不是一套格式，暂不支持解包。
 - **BKTR 补丁分区**：hactool 不支持遍历这类分区，对应 NCA 只会报“签名未判定”，不会被误判成损坏。
 - 没有在真实 Switch + DBI 上做端到端实测（手头无设备）。MTP 传输成功 ≠ 安装成功的语义已在界面和确认页写明。
-- Xcode 构建是 arm64 + x86_64 通用包；如果退回到 `build-batch-app.sh`，产物只有 arm64。
+- Xcode 构建是 arm64 + x86_64 通用包。
 - 构建出的 app 没有启用 App Sandbox：批量扫描任意游戏库目录需要读权限，调用 `hactool` 也需要能读到临时副本。分发时请自行签名。
 - 深度检查一次只处理一个包，串行执行；几百个包的大库会比较慢（每个包一次进程启动）。
 
 ## 构建与测试
 
 ```sh
-./scripts/build-xcode-app.sh     # 标准构建：XcodeGen + xcodebuild（推荐）
-./scripts/build-batch-app.sh     # 无 Xcode 时的 swiftc 回退
+./scripts/build-xcode-app.sh     # 标准构建：XcodeGen + xcodebuild
 ./scripts/test-inspector.sh      # 合成样本 + 容器解析/判级断言
 ```
 
 推荐用 Xcode 构建：`build-xcode-app.sh` 用 XcodeGen 生成工程，再用 `xcodebuild` 产出 arm64 + x86_64 通用包，图标目录、String Catalog、Info.plist 处理、Hardened Runtime 都由 Xcode 完成。
-
-`build-batch-app.sh` 是只有 Command Line Tools 时的回退方案，用 `swiftc` 手工组包。它能跑，但**不会编译 `Assets.car`**：设置页那个小图标（`favicon-32x32`）在回退包里是缺失的，而且只产出 arm64、没有 Hardened Runtime。有 Xcode 就不要用它。
 
 ## 许可
 

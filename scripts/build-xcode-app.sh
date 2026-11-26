@@ -3,10 +3,6 @@
 # Standard build: XcodeGen generates the project, xcodebuild produces a
 # universal Release bundle, and the result is copied into build/products.
 #
-# Prefer this over scripts/build-batch-app.sh when Xcode is installed. The
-# swiftc path stays as a fallback for Command Line Tools-only machines; it
-# cannot compile the asset catalogue, so the settings favicon is missing there.
-#
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

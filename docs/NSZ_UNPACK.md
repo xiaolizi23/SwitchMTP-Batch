@@ -85,7 +85,7 @@ tools/nszunpack/nszunpack unpack "/path/to/game.nsz" /tmp/game.nsp
 ```
 
 构建：`scripts/build-nszunpack.sh`（依赖 vendored mbedtls 与 Homebrew 的静态
-`libzstd`，产物为 arm64）。`scripts/build-batch-app.sh` 会把它拷进
+`libzstd`，产物为 arm64）。标准构建的 postBuild 脚本会把它拷进
 `Contents/Resources/bin/`。
 
 应用内：详情面板新增「解包为 NSP…」按钮，选好保存位置即可；深度检查会对

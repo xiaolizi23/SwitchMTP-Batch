@@ -25,7 +25,7 @@
 
 ## 谁在用这个二进制
 
-- `scripts/build-batch-app.sh` 把 `tools/hactool/hactool` 拷进 app 的 `Resources/bin/`。
+- 标准构建的 postBuild 脚本把 `tools/hactool/hactool` 拷进 app 的 `Resources/bin/`。
 - `scripts/test-inspector.sh` 用它跑回归。
 - app 的「深度检查」通过 `DeepVerifier` 调它（`--verify`）。
 
