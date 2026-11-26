@@ -43,6 +43,7 @@
 		AC59C128DB0E6AFD2B5F7C0B /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 207AAC06E7F18614FC9184A7 /* main.swift */; };
 		AE273D8E4B94D01F68554D43 /* BatchInstallModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06868268A205F324DBAB5AE5 /* BatchInstallModel.swift */; };
 		AF1379EE40ABBEDAEE4916F8 /* DebugLog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16EBD1F39D0EE1FAA274C6B0 /* DebugLog.swift */; };
+		AFA3AF6C3141D54E153C4565 /* DeviceLease.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075F473C2DBA16968E976491 /* DeviceLease.swift */; };
 		B17C3E868018BA465D4B3834 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4AAAA92E9D2CC13C491926D9 /* IOKit.framework */; };
 		B184973DD516B41A2EF592ED /* IssueReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 152C105F81B162BBB3758673 /* IssueReporter.swift */; };
 		B90C3B9D16182E39930A0B2E /* TitleIconStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45CE6F809C9DA8FFD6B49E45 /* TitleIconStore.swift */; };
@@ -84,6 +85,7 @@
 		04810E83BF0D7BADD50A5B37 /* KeySetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeySetStore.swift; sourceTree = "<group>"; };
 		059B3406C99AED5DA80EBB49 /* MTPDeviceInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTPDeviceInfo.swift; sourceTree = "<group>"; };
 		06868268A205F324DBAB5AE5 /* BatchInstallModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchInstallModel.swift; sourceTree = "<group>"; };
+		075F473C2DBA16968E976491 /* DeviceLease.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeviceLease.swift; sourceTree = "<group>"; };
 		085CF988518B175C145C1C56 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 		08F02A9129CC24C079B211C9 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		09A8108F23C54E2D53FBF0FC /* TransferStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferStatistics.swift; sourceTree = "<group>"; };
@@ -241,6 +243,7 @@
 				E920BE8CF5244F46DA7EB769 /* ChineseScriptSimplifier.swift */,
 				16EBD1F39D0EE1FAA274C6B0 /* DebugLog.swift */,
 				9690FA8EB5F69DE991C96004 /* DeepVerifier.swift */,
+				075F473C2DBA16968E976491 /* DeviceLease.swift */,
 				41974E808D0240260E545F8E /* ErrorStringLocalizer.swift */,
 				C24E675C9D057E04CA2098A8 /* FavoritesManager.swift */,
 				B957ED3552AEAB44C8B75796 /* InstallQueue.swift */,
@@ -473,6 +476,7 @@
 				49F50FF84D1DF49434F3B5EC /* ChineseScriptSimplifier.swift in Sources */,
 				AF1379EE40ABBEDAEE4916F8 /* DebugLog.swift in Sources */,
 				C2FAC92899C3F6840A93E77E /* DeepVerifier.swift in Sources */,
+				AFA3AF6C3141D54E153C4565 /* DeviceLease.swift in Sources */,
 				4FD796391BD648F35F4C90EC /* ErrorStringLocalizer.swift in Sources */,
 				07B24760CB7CB9F82DDF4830 /* FavoriteItem.swift in Sources */,
 				89FB407322DA694F9A62679A /* FavoritesManager.swift in Sources */,

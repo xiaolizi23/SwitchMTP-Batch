@@ -331,6 +331,10 @@ final class MTPManager: ObservableObject {
     /// the toolbar and menus can disable USB actions rather than silently ignore them.
     @Published private(set) var isStarted = false
 
+    /// Set when another running copy holds the console lease. The UI shows it
+    /// instead of a generic "not connected" so the user knows why.
+    @Published private(set) var deviceLeaseHolder: String?
+
     init() {
         CallbackRouter.manager = self
 
@@ -350,6 +354,12 @@ final class MTPManager: ObservableObject {
     func start() {
         guard !isStarted else { return }
         isStarted = true
+        // Only the lease holder may touch USB; the probe below retries the
+        // lease every few seconds so the app takes over when the holder quits.
+        guard ensureDeviceLease() else {
+            startLivenessProbe()
+            return
+        }
         fetchAvailableDevices()
         startLivenessProbe()
     }
@@ -388,6 +398,7 @@ final class MTPManager: ObservableObject {
         livenessTimer = nil
         usbMonitor?.stopMonitoring()
         usbMonitor = nil
+        DeviceLease.shared.release()
     }
     
     // MARK: – Diagnostics
@@ -1772,10 +1783,29 @@ final class MTPManager: ObservableObject {
         }
     }
     
+    /// Takes (or keeps) the process-wide console lease.
+    @discardableResult
+    private func ensureDeviceLease() -> Bool {
+        if DeviceLease.shared.isHeld {
+            if deviceLeaseHolder != nil { deviceLeaseHolder = nil }
+            return true
+        }
+        if DeviceLease.shared.acquire() {
+            print("DeviceLease: acquired by pid \(ProcessInfo.processInfo.processIdentifier)")
+            if deviceLeaseHolder != nil { deviceLeaseHolder = nil }
+            return true
+        }
+        let holder = DeviceLease.shared.ownerDescription ?? "另一个实例"
+        print("DeviceLease: busy, held by \(holder)")
+        deviceLeaseHolder = holder
+        return false
+    }
+
     func fetchAvailableDevices() {
         // Nothing may touch the USB bus before the user has acknowledged the
         // disclosure explaining what touching it does.
         guard isStarted else { return }
+        guard ensureDeviceLease() else { return }
         // NOTE: Does NOT set `operation` - device scanning is completely independent
         // of the MTP operation state machine. This prevents clobbering in-flight
         // operations (Walk, Upload, etc.) whose callbacks would be misrouted.
@@ -1786,6 +1816,7 @@ final class MTPManager: ObservableObject {
     
     func switchDevice(to newDeviceId: String) {
         guard !newDeviceId.isEmpty else { return }
+        guard ensureDeviceLease() else { return }
         
         // If already connected to this device, do nothing.
         if case .connected = connectionState, self.deviceId == newDeviceId {

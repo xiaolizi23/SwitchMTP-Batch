@@ -113,6 +113,11 @@ struct BatchInstallSheet: View {
                 .pickerStyle(.segmented)
                 .frame(width: 150)
                 .help("DBI 的安装目标存储")
+            } else if let holder = manager.deviceLeaseHolder {
+                Label("设备被另一个实例占用", systemImage: "person.crop.circle.badge.exclamationmark")
+                    .font(.system(size: 11))
+                    .foregroundStyle(.orange)
+                    .help("另一个 SwitchMTP Batch 实例（\(holder)）正在使用 Switch。关掉它之后这里会自动接管。")
             } else {
                 Label("未连接主机", systemImage: "cable.connector.slash")
                     .font(.system(size: 11))

@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 未发布
+
+- 多副本抢 Switch 导致 nxmtp panic：新增进程间设备租约（flock），只有持锁实例碰 USB，其余显示“设备被另一个实例占用”并在其退出后自动接管。
+
 ## [Unreleased]
 
 ## [1.7.11] - 2026-11-26
