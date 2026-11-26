@@ -21,9 +21,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ganeshrvel/go-mtpfs/mtp"
 	"github.com/xiaolizi23/SwitchMTP-Batch/backend/fake"
 	"github.com/xiaolizi23/SwitchMTP-Batch/backend/nxmtp"
-	"github.com/ganeshrvel/go-mtpfs/mtp"
 )
 
 // useFakeDevice points the CLI at an emulated DBI responder for the duration
