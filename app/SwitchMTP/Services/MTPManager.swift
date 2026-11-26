@@ -415,7 +415,13 @@ final class MTPManager: ObservableObject {
     }
 
     private func refreshConsolePresence() {
-        guard !Self.isUITestFixture, let state = usbMonitor?.probeConsolePresence() else {
+        // Passing over the fixture switch on purpose: the UI test only invents
+        // the install plan (see `BatchInstallView`), and presence is a passive
+        // IORegistry walk that is safe from any number of copies. Suppressing it
+        // here used to make a fixture-mode copy lose its sidebar device row, so
+        // a refused Connect left nothing but an orange icon -- indistinguishable
+        // from the pre-lease build.
+        guard let state = usbMonitor?.probeConsolePresence() else {
             if consolePresence != .absent { consolePresence = .absent }
             return
         }

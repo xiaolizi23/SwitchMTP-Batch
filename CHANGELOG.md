@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.14-ax — 2026-11-26
+
+测试分支，仍不替换正式包。
+
+- **夹具模式不再隐藏设备行。** 带 `SWITCHMTP_BATCH_TEST_FOLDER` 启动的实例过去会连
+  主机在场探测一起关掉（`refreshConsolePresence()` 里的 `guard !isUITestFixture`），
+  所以侧栏没有 `Nintendo Switch` 一行，一旦连接被租约拒绝就只剩一个黄图标，看着像
+  回到了旧版。现在只让夹具负责「用本地文件夹冒充安装清单」，presence 照常走只读
+  IORegistry 遍历（对任意数量副本都安全）；被拒时的画面与正式版手动点击完全一致。
+- 不删夹具本身：数十包固定清单是 24 个 AX 用例的可重复数据源，删了就只能依赖真机。
+- 版本 `1.7.14-ax` / build 33；`scripts/ax-scroll-list-test.swift` 24 用例在真机在场的
+  情况下重跑 PASS 24 / FAIL 0。
+- 证据：`docs/lease-refused-fixture-before-1.7.14.png`（修前）、
+  `docs/lease-refused-fixture-after-1.7.14.png`（修后）。
+
 ## 1.7.12 — 2026-11-26
 
 - 改为「只读发现 + 点击连接」：启动只通过 IORegistry 显示 Switch（不打开设备），点插头才取租约、扫描并连接；占用提示出现在点击时，避免多副本互相 reset。
