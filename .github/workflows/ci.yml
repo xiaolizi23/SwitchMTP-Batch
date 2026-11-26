@@ -171,4 +171,4 @@ jobs:
       - name: Build backend and app
         run: |
           export DEVELOPER_DIR="$(xcode-select -p)"
-          ./scripts/build-app.sh
+          ./scripts/build-xcode-app.sh

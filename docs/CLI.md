@@ -13,21 +13,21 @@ a Nintendo Switch running DBI's MTP responder.
 The CLI ships inside the app bundle:
 
 ```sh
-/Applications/SwitchMTP.app/Contents/MacOS/switchmtp-cli doctor
+"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" doctor
 ```
 
 For a source build, the same bundled path is under the build product (from the repository
 root):
 
 ```sh
-build/Release/SwitchMTP.app/Contents/MacOS/switchmtp-cli doctor
+build/products/SwitchMTP\ Batch.app/Contents/Resources/bin/switchmtp-cli doctor
 ```
 
 Optional convenience symlink:
 
 ```sh
 mkdir -p /usr/local/bin
-ln -sf /Applications/SwitchMTP.app/Contents/MacOS/switchmtp-cli /usr/local/bin/switchmtp-cli
+ln -sf "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" /usr/local/bin/switchmtp-cli
 ```
 
 If something is wrong, run this first:

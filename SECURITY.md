@@ -29,7 +29,7 @@ Anything in that path is in scope:
 - Path traversal when writing downloaded files — a device-supplied filename
   escaping the chosen destination directory.
 - Anything that lets a USB device read or write outside the App Sandbox, or that
-  escalates beyond the entitlements in `app/Resources/SwitchMTP.entitlements`.
+  escalates beyond the entitlements in `app/Resources/SwitchMTPBatch.entitlements`.
 - Leaking credentials or personal data through the diagnostics report or the
   debug log.
 

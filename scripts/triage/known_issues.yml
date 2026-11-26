@@ -119,7 +119,7 @@
        fact:
 
        ```shell
-       /Applications/SwitchMTP.app/Contents/MacOS/switchmtp-cli --json doctor
+       "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" --json doctor
        ```
 
     SwitchMTP never quits anything on your Mac by itself; see
@@ -261,7 +261,7 @@
     quarantines the download. The binary is not damaged.
 
     ```shell
-    xattr -dr com.apple.quarantine /Applications/SwitchMTP.app
+    xattr -dr com.apple.quarantine "/Applications/SwitchMTP Batch.app"
     ```
 
     Then open it normally. Every release is built in public by GitHub Actions,

@@ -18,7 +18,7 @@ DerivedData/
 .derivedData*/
 
 # The .xcodeproj IS tracked so the repo can be opened without XcodeGen;
-# scripts/build-app.sh regenerates it from app/project.yml when xcodegen
+# scripts/build-xcode-app.sh regenerates it from app/project.yml when xcodegen
 # is installed, so app/project.yml remains the source of truth.
 app/*.xcodeproj/project.xcworkspace/
 app/*.xcodeproj/xcuserdata/

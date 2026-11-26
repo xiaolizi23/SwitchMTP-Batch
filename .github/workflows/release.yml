@@ -96,10 +96,10 @@ jobs:
       - name: Check the tag matches the app version
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          # The Linux packages take their version from the tag, but the DMG takes
-          # its name from CFBundleShortVersionString, which comes from
+          # The Linux packages take their version from the tag, but the macOS zip
+          # takes its name from CFBundleShortVersionString, which comes from
           # project.yml. Nothing tied the two together, so forgetting the bump
-          # would publish SwitchMTP-1.0.0-universal.dmg beside
+          # would publish SwitchMTP-Batch-1.0.0-universal.zip beside
           # switchmtp_1.1.0_amd64.deb in a release called v1.1.0 -- wrong in a
           # way nobody notices until a user reports the version they installed.
           tag="${GITHUB_REF_NAME#v}"
@@ -125,12 +125,18 @@ jobs:
       - name: Install XcodeGen
         run: brew install xcodegen
 
-      - name: Build universal app and DMG
+      - name: Build universal app
         run: |
           export DEVELOPER_DIR="$(xcode-select -p)"
           ./scripts/bootstrap.sh
-          ./scripts/build-app.sh
-          ./scripts/package-dmg.sh
+          ./scripts/build-xcode-app.sh
+
+      - name: Package the app as a zip
+        run: |
+          app="$(grep -m1 'MARKETING_VERSION:' app/project.yml | sed 's/.*"\(.*\)".*/\1/')"
+          ditto --norsrc -c -k --keepParent "build/products/SwitchMTP Batch.app" \
+            "build/SwitchMTP-Batch-${app}-universal.zip"
+          shasum -a 256 "build/SwitchMTP-Batch-${app}-universal.zip" > "build/SwitchMTP-Batch-${app}-universal.zip.sha256"
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
@@ -144,15 +150,15 @@ jobs:
           cat > release-notes.md <<'NOTES'
           ## macOS
 
-          Download `SwitchMTP-*-universal.dmg`.
+          Download `SwitchMTP-Batch-*-universal.zip`. Unzip it and drag `SwitchMTP Batch.app` to `/Applications`.
 
-          SwitchMTP is ad-hoc signed and not notarized. After dragging `SwitchMTP.app` to `/Applications`, macOS may say the app is damaged or cannot be verified. Use either of these trust paths:
+          SwitchMTP Batch is ad-hoc signed and not notarized. After dragging `SwitchMTP Batch.app` to `/Applications`, macOS may say the app is damaged or cannot be verified. Use either of these trust paths:
 
           ```sh
-          xattr -dr com.apple.quarantine /Applications/SwitchMTP.app
+          xattr -dr com.apple.quarantine "/Applications/SwitchMTP Batch.app"
           ```
 
-          Or right-click `/Applications/SwitchMTP.app`, choose **Open**, then confirm **Open** when macOS asks.
+          Or right-click `/Applications/SwitchMTP Batch.app`, choose **Open**, then confirm **Open** when macOS asks.
 
           ## Linux
 
@@ -183,8 +189,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            build/SwitchMTP-*-universal.dmg \
-            build/SwitchMTP-*-universal.dmg.sha256 \
+            build/SwitchMTP-Batch-*-universal.zip \
+            build/SwitchMTP-Batch-*-universal.zip.sha256 \
             linux-artifacts/switchmtp_*.deb \
             linux-artifacts/switchmtp_*.tar.gz \
             linux-artifacts/SHA256SUMS-linux-*.txt \

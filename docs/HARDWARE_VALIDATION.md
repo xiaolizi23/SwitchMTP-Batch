@@ -5,7 +5,7 @@ Use this protocol only with your own Nintendo Switch and your own files. The def
 ## Preconditions
 
 - A USB-C **data** cable. Charge-only cables will not expose MTP.
-- A built app/CLI: `scripts/build-app.sh` must produce `build/Release/SwitchMTP.app/Contents/MacOS/switchmtp-cli`.
+- A built app/CLI: `scripts/build-xcode-app.sh` must produce `build/products/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli`.
 - A Switch running DBI with MTP support. In DBI, press **X → Run MTP responder**.
 - Record how DBI was launched:
   - **Title mode**: hold **R** while starting a game, then launch DBI. Required for large installs/transfers.
@@ -55,7 +55,7 @@ Attach:
 - A fresh JSON doctor capture if requested:
 
   ```sh
-  build/Release/SwitchMTP.app/Contents/MacOS/switchmtp-cli --json doctor > build/doctor.json
+  build/products/SwitchMTP\ Batch.app/Contents/Resources/bin/switchmtp-cli --json doctor > build/doctor.json
   ```
 
 Also state DBI version, applet vs title mode, Switch model/firmware if known, and whether the USB cable was known-good for data.

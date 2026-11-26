@@ -36,6 +36,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **抽取无 UI 批量核心层**：扫描、本体/更新/DLC 分组、深度检查移到 `Core/`，GUI 与 CLI
   共用同一套模型与校验逻辑。
 
+### 清理
+
+- 删除上游旧名时代、与现行工程脱节的构建残留：`scripts/build-app.sh`、
+  `scripts/package-dmg.sh`、旧工程 `app/SwitchMTP.xcodeproj/`、旧
+  `app/Resources/SwitchMTP.entitlements`、`app/project.yml.upstream-backup`。
+- 文档、CI 与 `scripts/hw-validate.sh` 的默认路径对齐现行 `build-xcode-app.sh`
+  产物 `SwitchMTP Batch.app`（CLI 在 `Contents/Resources/bin/switchmtp-cli`）；
+  GitHub Release 流水线由 DMG 改为 zip 打包。Go CLI 的 Linux deb/Arch 打包链路保留。
+
 ## 1.7.20 — 2026-11-26
 
 数十包全量深检 × DBI 实机对照后，收敛深度检查的判定口径：能说清的精确到层，

@@ -46,20 +46,20 @@ protocol; SwitchMTP talks MTP to DBI directly and has no Java dependency.
 
 ## Install
 
-1. Download the latest `SwitchMTP-x.y.z.dmg` from the
+1. Download the latest `SwitchMTP-Batch-x.y.z-universal.zip` from the
    [Releases](https://github.com/fratei/SwitchMTP/releases) page.
-2. Open the DMG and drag `SwitchMTP.app` to `/Applications`.
+2. Unzip it and drag `SwitchMTP Batch.app` to `/Applications`.
 3. **Remove the macOS quarantine attribute:**
 
    ```sh
-   xattr -dr com.apple.quarantine /Applications/SwitchMTP.app
+   xattr -dr com.apple.quarantine "/Applications/SwitchMTP Batch.app"
    ```
 
    **Why is this step needed?** SwitchMTP is signed with an ad-hoc certificate (not an
    Apple Developer Program certificate). macOS Gatekeeper quarantines apps downloaded from
    the internet that are not notarized by Apple. Running the command above tells macOS you
    have reviewed and trust this binary. You can also right-click
-   `/Applications/SwitchMTP.app`, choose **Open**, then confirm **Open** when macOS asks. If
+   `/Applications/SwitchMTP Batch.app`, choose **Open**, then confirm **Open** when macOS asks. If
    you prefer neither path, **build from source instead** (see below) — a locally built app
    is not quarantined.
 
@@ -114,18 +114,22 @@ scripts/build-libusb.sh
 # 3. Build nxmtp.dylib (the Go backend)
 scripts/build-backend.sh
 
-# 4. Build the macOS app (xcodebuild, ad-hoc sign)
-scripts/build-app.sh
+# 4. Build the universal app (xcodegen + xcodebuild, ad-hoc sign)
+scripts/build-xcode-app.sh
 ```
 
-A DMG suitable for distribution can be created with `scripts/package-dmg.sh`.
+The built bundle lands at `build/products/SwitchMTP Batch.app`. To ship it as a zip:
+
+```sh
+ditto --norsrc -c -k --keepParent "build/products/SwitchMTP Batch.app" SwitchMTP-Batch-<version>-universal.zip
+```
 
 ---
 
 ## Architecture
 
 ```
-SwitchMTP.app (SwiftUI, GPL-2.0)
+SwitchMTP Batch.app (SwiftUI, GPL-2.0)
   └── NxmtpShim.c / .h  (C bridging shim)
         └── nxmtp.dylib  (Go, -buildmode=c-shared)
               ├── backend/ffi/        JSON envelope + multi-device registry

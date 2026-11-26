@@ -4,7 +4,7 @@
 # c-shared library, together with the generated C header and a copy of libusb.
 #
 # The three files land in backend/build/ and are what the Xcode project embeds
-# into SwitchMTP.app/Contents/Frameworks.
+# into "SwitchMTP Batch.app"/Contents/Frameworks.
 #
 set -euo pipefail
 

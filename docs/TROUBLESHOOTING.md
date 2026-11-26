@@ -64,7 +64,7 @@ Connects to Your Switch**.
 
 ```sh
 # Inside the app bundle
-/Applications/SwitchMTP.app/Contents/MacOS/switchmtp-cli doctor
+"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" doctor
 ```
 
 `doctor` reports the current USB device list, any occupying PIDs, and actionable
@@ -265,10 +265,10 @@ report.
 **Fix:**
 
 ```sh
-xattr -dr com.apple.quarantine /Applications/SwitchMTP.app
+xattr -dr com.apple.quarantine "/Applications/SwitchMTP Batch.app"
 ```
 
-Or right-click `/Applications/SwitchMTP.app`, choose **Open**, then confirm **Open** when
+Or right-click `/Applications/SwitchMTP Batch.app`, choose **Open**, then confirm **Open** when
 macOS asks.
 
 See [README.md](../README.md) for why the app is not notarized and how to build from
@@ -283,7 +283,7 @@ source as an alternative.
 2. Or from the command line:
 
    ```sh
-   /Applications/SwitchMTP.app/Contents/MacOS/switchmtp-cli --json doctor > diagnostics.json
+   "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" --json doctor > diagnostics.json
    ```
 
 3. Attach `diagnostics.json`, or paste the clipboard report, to your GitHub issue at

@@ -7,7 +7,7 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BUILD_ROOT="${ROOT}/build"
-PRODUCTS="${BUILD_ROOT}/Release"
+PRODUCTS="${BUILD_ROOT}/products"
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 REPORT="${BUILD_ROOT}/hw-report-${TIMESTAMP}.md"
 WORK_DIR="${BUILD_ROOT}/hw-work-${TIMESTAMP}"
@@ -87,14 +87,14 @@ locate_cli() {
     return
   fi
 
-  local bundled="${PRODUCTS}/SwitchMTP.app/Contents/MacOS/switchmtp-cli"
+  local bundled="${PRODUCTS}/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli"
   local standalone="${PRODUCTS}/switchmtp-cli"
   if [[ -x "${bundled}" ]]; then
     printf '%s\n' "${bundled}"
   elif [[ -x "${standalone}" ]]; then
     printf '%s\n' "${standalone}"
   else
-    die "switchmtp-cli was not found. Run scripts/build-app.sh first, or set SWITCHMTP_CLI=/path/to/switchmtp-cli."
+    die "switchmtp-cli was not found. Run scripts/build-xcode-app.sh first, or set SWITCHMTP_CLI=/path/to/switchmtp-cli."
   fi
 }
 
@@ -244,7 +244,7 @@ cat >"${REPORT}" <<EOF_REPORT
 - CLI modified: $(stat -f '%Sm' "${CLI}" 2>/dev/null || printf 'unknown')
 EOF_REPORT
 
-APP_INFO="${PRODUCTS}/SwitchMTP.app/Contents/Info.plist"
+APP_INFO="${PRODUCTS}/SwitchMTP Batch.app/Contents/Info.plist"
 if [[ -f "${APP_INFO}" ]] && command -v /usr/libexec/PlistBuddy >/dev/null 2>&1; then
   append "- App version: $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "${APP_INFO}" 2>/dev/null || printf 'unknown') ($(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "${APP_INFO}" 2>/dev/null || printf 'unknown'))"
 else

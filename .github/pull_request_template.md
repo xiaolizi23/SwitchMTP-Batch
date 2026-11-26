@@ -22,7 +22,7 @@ useful than an optimistic tick.
 
 - [ ] `cd backend && go test ./...` passes
 - [ ] `python3 -m pytest scripts/triage/test_triage.py -q` passes (if triage changed)
-- [ ] `./scripts/build-app.sh` succeeds
+- [ ] `./scripts/build-xcode-app.sh` succeeds
 - [ ] Tested against a real console running DBI's MTP responder
 - [ ] Not tested against hardware — see below for why, and what should be checked
 

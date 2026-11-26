@@ -20,7 +20,7 @@ git clone https://github.com/fratei/SwitchMTP.git
 cd SwitchMTP
 ./scripts/bootstrap.sh      # checks Go, Xcode and XcodeGen, and says how to fix what is missing
 ./scripts/build-libusb.sh   # universal libusb, once
-./scripts/build-app.sh      # backend + app, roughly three minutes
+./scripts/build-xcode-app.sh # backend + universal app, roughly three minutes
 ```
 
 You need Go 1.21 or newer, **full Xcode** (not just the Command Line Tools) and
