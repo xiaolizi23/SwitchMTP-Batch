@@ -377,7 +377,9 @@ struct BatchInstallSheet: View {
     private var planList: some View {
         ScrollView(.vertical) {
             planRows
-                .padding(.vertical, 4)
+                .padding(.top, 10)
+                .padding(.bottom, 4)
+                .padding(.trailing, 16)
         }
         .background(Color(nsColor: .textBackgroundColor))
         .safeAreaInset(edge: .top, spacing: 0) {
@@ -419,19 +421,44 @@ struct BatchInstallSheet: View {
 
     @ViewBuilder
     private var planRowContent: some View {
-        ForEach(model.visibleGroups) { group in
+        ForEach(Array(model.visibleGroups.enumerated()), id: \.element.id) { index, group in
             groupRow(group)
-            if expandedGroups.contains(group.id) {
-                ForEach(group.packages) { package in
-                    packageRow(package)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 2)
-                    if package.id != group.packages.last?.id {
-                        Divider().padding(.leading, 44)
+                .overlay(alignment: .bottom) {
+                    if !(index == model.visibleGroups.count - 1 && !expandedGroups.contains(group.id)) {
+                        rowSeparator(leading: 92)
                     }
+                }
+            if expandedGroups.contains(group.id) {
+                ForEach(Array(group.packages.enumerated()), id: \.element.id) { packageIndex, package in
+                    // `List` nested disclosure content 17 pt deeper than the
+                    // group row (51.5 vs 34.5 pt); 46 pt lands the checkbox
+                    // on the same pixel.
+                    packageRow(package)
+                        .padding(.leading, 46)
+                        .padding(.trailing, 8)
+                        .padding(.vertical, 2)
+                        .overlay(alignment: .bottom) {
+                            if !(index == model.visibleGroups.count - 1 && packageIndex == group.packages.count - 1) {
+                                rowSeparator(leading: 79)
+                            }
+                        }
                 }
             }
         }
+    }
+
+    /// Hairline between plan rows, drawn as an overlay so it costs no height —
+    /// the same way `List` paints its separators. Numbers traced from the
+    /// 1.7.12 release build: group rows start the line at the text column
+    /// (92 pt), member rows at the type capsule (79 pt), both stop at 541 pt.
+    private func rowSeparator(leading: CGFloat) -> some View {
+        Rectangle()
+            .fill(Color(nsColor: .separatorColor))
+            .frame(height: 1)
+            .padding(.leading, leading)
+            .padding(.trailing, 0.5)
+            .allowsHitTesting(false)
+            .accessibilityHidden(true)
     }
 
     private var searchBar: some View {
@@ -453,9 +480,8 @@ struct BatchInstallSheet: View {
     /// That mirrors how a Finder outline row behaves, and fixes the dead click
     /// a collapsed group row used to produce.
     private func groupRow(_ group: InstallPackageGroup) -> some View {
-        let isSelected = selectedGroupID == group.id
         let expanded = expandedGroups.contains(group.id)
-        return HStack(spacing: 6) {
+        return HStack(spacing: 8.5) {
             Button {
                 if expanded {
                     expandedGroups.remove(group.id)
@@ -467,6 +493,9 @@ struct BatchInstallSheet: View {
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.secondary)
                     .frame(width: 12, height: 14)
+                    // 1.5 device px higher, which is where `List`'s own
+                    // disclosure triangle sits (measured on 1.7.12).
+                    .offset(y: -0.75)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -475,12 +504,11 @@ struct BatchInstallSheet: View {
 
             groupHeader(group)
         }
-        .padding(.horizontal, 8)
+        // 12.5 + 8.5 pt gap puts the chevron and checkbox on the 1.7.12
+        // coordinates (16.5 / 34.5 pt); `List`'s row inset did the same.
+        .padding(.leading, 12.5)
+        .padding(.trailing, 8)
         .padding(.vertical, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.clear)
-        )
         .contentShape(Rectangle())
         .onTapGesture {
             selectedGroupID = group.id
@@ -580,7 +608,6 @@ struct BatchInstallSheet: View {
     }
 
     private func packageRow(_ package: InstallPackage) -> some View {
-        let isSelectedRow = selectedPackageID == package.id
         return HStack(spacing: 8) {
             Button {
                 model.togglePackage(package.id)
@@ -657,10 +684,6 @@ struct BatchInstallSheet: View {
         }
         .padding(.vertical, 3)
         .padding(.horizontal, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(isSelectedRow ? Color.accentColor.opacity(0.10) : Color.clear)
-        )
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
         .onTapGesture {
