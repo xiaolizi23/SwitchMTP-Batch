@@ -24,8 +24,8 @@ struct SidebarView: View {
 
     @State private var showFolderNotFoundAlert = false
     @State private var draggingItem: FavoriteItem?
-    @State private var installAlertMessage = ""
-    @State private var showInstallAlert = false
+
+    var onInstallImport: ([URL], StorageKind) -> Void
 
     var body: some View {
         List {
@@ -63,11 +63,6 @@ struct SidebarView: View {
             Button(String(localized: "OK"), role: .cancel) {}
         } message: {
             Text("The folder does not exist on this device.")
-        }
-        .alert(String(localized: "Cannot Install"), isPresented: $showInstallAlert) {
-            Button(String(localized: "OK"), role: .cancel) {}
-        } message: {
-            Text(installAlertMessage)
         }
     }
 
@@ -216,11 +211,9 @@ struct SidebarView: View {
         if storage.kind.isInstallTarget {
             InstallStorageDropZone(
                 storage: storage,
-                manager: manager,
                 storageColor: storageColor(storage),
-                showInvalidInstallAlert: { message in
-                    installAlertMessage = message
-                    showInstallAlert = true
+                onImport: { urls in
+                    onInstallImport(urls, storage.kind)
                 }
             )
         } else if storage.capabilities.browse {
@@ -352,15 +345,14 @@ struct SidebarView: View {
 
 private struct InstallStorageDropZone: View {
     let storage: MTPStorage
-    @ObservedObject var manager: MTPManager
     let storageColor: Color
-    let showInvalidInstallAlert: (String) -> Void
+    /// Hands the picked files/folders to the batch workspace, pre-targeted to
+    /// this storage. The sidebar never installs directly anymore: the batch
+    /// list is the one place that scans, checks and lets the user tick before
+    /// anything is sent to DBI.
+    var onImport: ([URL]) -> Void
 
     @State private var isTargeted = false
-    @State private var noticeVisible = false
-    @State private var noticeMessage = ""
-
-    private let allowedExtensions = MTPManager.installableExtensions
 
     private var title: String {
         switch storage.kind {
@@ -376,7 +368,7 @@ private struct InstallStorageDropZone: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
             Button {
-                chooseInstallFiles()
+                chooseFiles()
             } label: {
                 HStack(spacing: 8) {
                     Image(systemName: storage.systemImage)
@@ -386,7 +378,7 @@ private struct InstallStorageDropZone: View {
                         Text(title)
                             .font(.system(size: 12, weight: .medium))
                             .lineLimit(1)
-                        Text(String(localized: "Drop NSP, NSZ, XCI or XCZ files here"))
+                        Text(String(localized: "Files or folders go to the batch list for review"))
                             .font(.system(size: 10))
                             .foregroundStyle(.secondary)
                     }
@@ -404,27 +396,19 @@ private struct InstallStorageDropZone: View {
                 )
             }
             .buttonStyle(.plain)
-            .help(String(localized: "Click to choose files, or drag them here. Titles are queued and sent one at a time; DBI installs them on the console.", comment: "Tooltip for an install drop target in the sidebar"))
+            .help(String(localized: "Opens the batch list with these items; review and tick before sending to DBI.", comment: "Tooltip for an install drop target in the sidebar"))
             .onDrop(of: [.fileURL], isTargeted: $isTargeted, perform: handleDrop(providers:))
-
-            if noticeVisible {
-                Text(noticeMessage)
-                    .font(.system(size: 10))
-                    .foregroundStyle(.secondary)
-                    .padding(.leading, 28)
-            }
         }
     }
 
-    private func chooseInstallFiles() {
+    private func chooseFiles() {
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
-        panel.canChooseDirectories = false
+        panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        panel.allowedContentTypes = allowedExtensions.compactMap { UTType(filenameExtension: $0) }
         panel.prompt = String(localized: "Install")
         if panel.runModal() == .OK {
-            acceptInstallFiles(panel.urls)
+            onImport(panel.urls)
         }
     }
 
@@ -455,26 +439,9 @@ private struct InstallStorageDropZone: View {
         }
 
         group.notify(queue: .main) {
-            acceptInstallFiles(urls)
+            onImport(urls)
         }
         return true
-    }
-
-    private func acceptInstallFiles(_ urls: [URL]) {
-        let outcome = manager.install(fileURLs: urls, to: storage)
-        if outcome.isError {
-            showInvalidInstallAlert(outcome.message)
-            return
-        }
-        showInstallNotice(outcome.message)
-    }
-
-    private func showInstallNotice(_ message: String) {
-        noticeMessage = message
-        noticeVisible = true
-        DispatchQueue.main.asyncAfter(deadline: .now() + 8) {
-            noticeVisible = false
-        }
     }
 }
 

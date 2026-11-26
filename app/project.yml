@@ -13,8 +13,8 @@ settings:
   base:
     MACOSX_DEPLOYMENT_TARGET: "12.0"
     SWIFT_VERSION: "5.10"
-    MARKETING_VERSION: "1.7.20"
-    CURRENT_PROJECT_VERSION: "44"
+    MARKETING_VERSION: "1.7.21"
+    CURRENT_PROJECT_VERSION: "45"
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
@@ -74,8 +74,8 @@ targets:
         GCC_PREPROCESSOR_DEFINITIONS:
           - $(inherited)
           - SWIFT_PACKAGE=0
-        MARKETING_VERSION: "1.7.20"
-        CURRENT_PROJECT_VERSION: "44"
+        MARKETING_VERSION: "1.7.21"
+        CURRENT_PROJECT_VERSION: "45"
     dependencies:
       - sdk: IOKit.framework
       - framework: ../backend/build/nxmtp.dylib
@@ -108,9 +108,25 @@ targets:
           - "**/.DS_Store"
       - path: Shim/NxmtpShim.c
         type: file
+      # Headless batch core shared with the GUI: models, structural/deep
+      # verification, scanner/grouper/runner. All Foundation-only; no AppKit,
+      # no views, no network catalogue.
+      - path: SwitchMTP/Models/BatchPackage.swift
+      - path: SwitchMTP/Models/USBProtocol.swift
+      - path: SwitchMTP/Models/MTPDevice.swift
+      - path: SwitchMTP/Services/PackageInspector.swift
+      - path: SwitchMTP/Services/DeepVerifier.swift
+      - path: SwitchMTP/Services/NSZUnpacker.swift
+      - path: SwitchMTP/Services/KeySetStore.swift
+      - path: SwitchMTP/Core
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: me.fratei.switchmtp.cli
+        # The target name carries a hyphen, which is not a valid Swift module
+        # identifier; keep a legal module name while the shipped binary stays
+        # `switchmtp-cli`.
+        PRODUCT_MODULE_NAME: SwitchMTPBatchCLI
+        EXECUTABLE_NAME: switchmtp-cli
         SWIFT_OBJC_BRIDGING_HEADER: switchmtp-cli/SwitchMTP-Bridging-Header.h
         HEADER_SEARCH_PATHS:
           - $(inherited)
@@ -129,8 +145,8 @@ targets:
           - "@executable_path"
           - "@executable_path/../Frameworks"
         ENABLE_HARDENED_RUNTIME: YES
-        MARKETING_VERSION: "1.7.20"
-        CURRENT_PROJECT_VERSION: "44"
+        MARKETING_VERSION: "1.7.21"
+        CURRENT_PROJECT_VERSION: "45"
     dependencies:
       - sdk: IOKit.framework
     postBuildScripts:

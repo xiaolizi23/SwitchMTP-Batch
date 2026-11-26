@@ -20,6 +20,9 @@ private enum ExitCode: Int32 {
     case failure = 1
     case usage = 2
     case deviceNotFound = 3
+    case cancelled = 4
+    case deviceBusy = 5
+    case unsupported = 6
 }
 
 private struct CLIError: Error {
@@ -30,12 +33,59 @@ private struct CLIError: Error {
 private struct Config {
     var verbose = false
     var json = false
+    var quiet = false
+    var assumeYes = false
     var deviceId: String?
+    var keysPath: String?
+}
+
+/// Version shown by the `version` command. When the CLI is embedded in the
+/// app bundle the host Info.plist supplies the shipped version; a standalone
+/// debug build has no plist and reports `dev`.
+private var cliVersion: String {
+    Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev"
+}
+
+/// Host CPU architecture, reported by `version` so machine-readable output can
+/// tell arm64 from x86_64.
+private var hostArch: String {
+    var uts = utsname()
+    uname(&uts)
+    return withUnsafePointer(to: &uts.machine) { ptr in
+        ptr.withMemoryRebound(to: CChar.self, capacity: 256) { String(cString: $0) }
+    }
 }
 
 private struct RemotePath {
-    let storageId: UInt32
+    /// Raw storage selector from the argument: a numeric sid, a kind alias
+    /// ("sdcard", "saves", …), a display name, or a unique display-name prefix.
+    let selector: String
     let path: String
+    /// Resolved only when the selector is a numeric sid. Named selectors are
+    /// resolved against the connected device's storage list inside the open
+    /// session.
+    var storageId: UInt32?
+}
+
+/// Maps CLI storage aliases onto backend storage kinds. Kept in step with the
+/// upstream Go selector table; the right-hand values match `nxmtp.StorageKind`.
+private let storageAliases: [String: String] = [
+    "sdcard": "sdCard", "sd": "sdCard", "microsd": "sdCard",
+    "nand": "nandUser", "nanduser": "nandUser", "user": "nandUser",
+    "nandsystem": "nandSystem", "system": "nandSystem",
+    "games": "installedGames", "installedgames": "installedGames",
+    "sdinstall": "sdInstall", "installsd": "sdInstall",
+    "nandinstall": "nandInstall", "installnand": "nandInstall",
+    "saves": "saves", "save": "saves",
+    "album": "album", "screenshots": "album",
+    "gamecard": "gamecard", "cartridge": "gamecard",
+]
+
+/// Copy direction. `nil` lets `cp` infer it from which side carries a device
+/// path; `get`/`put` pin it explicitly.
+private enum CopyDirection {
+    case download
+    case upload
 }
 
 private final class CallbackState {
@@ -81,7 +131,7 @@ private let cbDone: @convention(c) (UnsafeMutablePointer<CChar>?) -> Void = { pt
 }
 
 private let cbPreprocess: @convention(c) (UnsafeMutablePointer<CChar>?) -> Void = { ptr in
-    guard !Runtime.shared.config.json, let ptr else { return }
+    guard !Runtime.shared.config.json, !Runtime.shared.config.quiet, let ptr else { return }
     let env = Envelope(json: String(cString: ptr))
     guard env.isSuccess, let data = env.data as? [String: Any] else { return }
     let files = int64(data["totalFiles"]) ?? 0
@@ -93,29 +143,46 @@ private let cbPreprocess: @convention(c) (UnsafeMutablePointer<CChar>?) -> Void 
 }
 
 private let cbProgress: @convention(c) (UnsafeMutablePointer<CChar>?) -> Void = { ptr in
-    guard !Runtime.shared.config.json, let ptr else { return }
+    guard !Runtime.shared.config.json, !Runtime.shared.config.quiet, let ptr else { return }
     let env = Envelope(json: String(cString: ptr))
     guard env.isSuccess, let data = env.data as? [String: Any] else { return }
 
     let status = string(data["status"]) ?? "transferring"
     let name = string(data["name"]) ?? ""
+    let note = string(data["note"]) ?? ""
     let speed = double(data["speed"]) ?? 0
-    let speedText = "\(formatBytes(UInt64(max(speed, 0))))/s"
+    let speedText = speed > 0 ? "\(formatBytes(UInt64(max(speed, 0))))/s" : "—"
     let bulk = data["bulkFileSize"] as? [String: Any]
     let percent = double(bulk?["progress"] ?? 0) ?? 0
     let indefinite = bool(data["indefinite"]) ?? false
-    let filesSent = int64(data["filesSent"]) ?? 0
     let totalFiles = int64(data["totalFiles"]) ?? 0
-
-    let progressText: String
-    if indefinite {
-        let sent = int64(bulk?["sent"] ?? 0) ?? 0
-        progressText = formatBytes(UInt64(max(sent, 0)))
-    } else {
-        progressText = String(format: "%5.1f%%", percent)
+    var filesSent = int64(data["filesSent"]) ?? 0
+    let currentFile = int64(data["currentFile"]) ?? 0
+    if totalFiles > 1 {
+        if currentFile > 0 { filesSent = currentFile }
+        else if filesSent == 0 { filesSent += 1 }
+        if filesSent > totalFiles { filesSent = totalFiles }
     }
 
-    let line = "\r\(status) \(progressText) \(speedText) [\(filesSent)/\(totalFiles)] \(name)"
+    let progressText: String
+    var etaText = ""
+    if indefinite {
+        // While DBI commits an install the byte count is already at 100% but
+        // the console is still working; show the note instead of a full bar.
+        progressText = note.isEmpty ? "working…" : note
+    } else {
+        progressText = String(format: "%5.1f%%", percent)
+        if speed > 0, let bulkTotal = int64(bulk?["total"]),
+           let bulkSent = int64(bulk?["sent"]), bulkTotal > bulkSent {
+            let eta = Double(bulkTotal - bulkSent) / speed
+            if eta >= 1 { etaText = "  ETA \(humanDuration(eta))" }
+        }
+    }
+
+    var line = "\r\(status) \(progressText) \(speedText)"
+    if totalFiles > 1 { line += " [\(filesSent)/\(totalFiles)]" }
+    if !name.isEmpty { line += " \(name)" }
+    line += etaText
     print(line, terminator: "")
     fflush(stdout)
     CallbackState.shared.markProgressPrinted()
@@ -145,6 +212,59 @@ private struct Envelope {
 private final class Runtime {
     static let shared = Runtime()
     var config = Config()
+}
+
+/// Installs SIGINT/SIGTERM dispatch sources for the open session. The first
+/// signal cancels the in-flight transfer cleanly; a second forces an immediate
+/// exit (code 4). `CancelTransfer` is the one backend call designed to run from
+/// another thread mid-operation, so it is safe to invoke from the source queue.
+///
+/// Note: do NOT call `signal(sig, SIG_IGN)` before creating the source. A
+/// SIG_IGN disposition makes the kernel drop the signal before the dispatch
+/// source can observe it, so the handler never fires (verified on hardware,
+/// with and without the Go backend dylib loaded).
+private final class SignalGuard {
+    static let shared = SignalGuard()
+    private var sources: [DispatchSourceSignal] = []
+    private var deviceId: String?
+    private var signalCount = 0
+    private let lock = NSLock()
+
+    func arm(deviceId: String) {
+        lock.lock(); defer { lock.unlock() }
+        self.deviceId = deviceId
+        signalCount = 0
+        for sig in [SIGINT, SIGTERM] {
+            let src = DispatchSource.makeSignalSource(signal: sig, queue: .global())
+            src.setEventHandler { [weak self] in self?.handle() }
+            src.resume()
+            sources.append(src)
+        }
+    }
+
+    func disarm() {
+        lock.lock(); defer { lock.unlock() }
+        for src in sources { src.cancel() }
+        sources.removeAll()
+        deviceId = nil
+    }
+
+    private func handle() {
+        lock.lock()
+        signalCount += 1
+        let count = signalCount
+        let id = deviceId
+        lock.unlock()
+
+        if count >= 2 {
+            fputs("\nForced quit.\n", stderr)
+            exit(ExitCode.cancelled.rawValue)
+        }
+        if !Runtime.shared.config.json && !Runtime.shared.config.quiet {
+            fputs("\nCancelling… (press Ctrl-C again to force quit)\n", stderr)
+        }
+        if let id = id { NxmtpClient.cancel(deviceId: id) }
+    }
 }
 
 private enum NxmtpClient {
@@ -195,8 +315,8 @@ private enum NxmtpClient {
         call(NxmtpMakeDirectory, input: ["deviceId": deviceId, "storageId": storageId, "fullPath": normalizedRemotePath(path)])
     }
 
-    static func delete(deviceId: String, storageId: UInt32, path: String) -> Envelope {
-        call(NxmtpDeleteFile, input: ["deviceId": deviceId, "storageId": storageId, "files": [normalizedRemotePath(path)]])
+    static func delete(deviceId: String, storageId: UInt32, paths: [String]) -> Envelope {
+        call(NxmtpDeleteFile, input: ["deviceId": deviceId, "storageId": storageId, "files": paths.map(normalizedRemotePath)])
     }
 
     static func rename(deviceId: String, storageId: UInt32, path: String, newFileName: String) -> Envelope {
@@ -209,7 +329,7 @@ private enum NxmtpClient {
     }
 
     static func download(deviceId: String, storageId: UInt32, sources: [String], destination: String) -> Envelope {
-        transfer(deviceId: deviceId) {
+        transfer {
             let input: [String: Any] = [
                 "deviceId": deviceId,
                 "storageId": storageId,
@@ -222,7 +342,7 @@ private enum NxmtpClient {
     }
 
     static func upload(deviceId: String, storageId: UInt32, sources: [String], destination: String) -> Envelope {
-        transfer(deviceId: deviceId) {
+        transfer {
             let input: [String: Any] = [
                 "deviceId": deviceId,
                 "storageId": storageId,
@@ -260,29 +380,12 @@ private enum NxmtpClient {
         return result()
     }
 
-    private static func transfer(deviceId: String, _ body: @escaping () -> Envelope) -> Envelope {
-        signal(SIGINT, SIG_IGN)
-        let source = DispatchSource.makeSignalSource(signal: SIGINT, queue: .global())
-        source.setEventHandler {
-            if !Runtime.shared.config.json {
-                print("\nCancelling transfer…")
-            }
-            cancel(deviceId: deviceId)
-        }
-        source.resume()
-        defer {
-            source.cancel()
-            signal(SIGINT, SIG_DFL)
-        }
-
-        let sem = DispatchSemaphore(value: 0)
-        var env: Envelope?
-        DispatchQueue.global(qos: .userInitiated).async {
-            env = body()
-            sem.signal()
-        }
-        sem.wait()
-        return env ?? Envelope(json: #"{"errorType":"internal","error":"Transfer did not return a result","data":null}"#)
+    private static func transfer(_ body: () -> Envelope) -> Envelope {
+        // Cancellation is handled by SignalGuard's dispatch sources: the first
+        // signal cancels the in-flight transfer, the second forces exit. The FFI
+        // runs synchronously on the calling thread; the source dispatches its
+        // handler on its own global queue, so it is not blocked by this call.
+        body()
     }
 
     private static func result() -> Envelope {
@@ -298,23 +401,47 @@ private func printUsage() {
       switchmtp-cli [--verbose] [--json] [--device <id>] <command> [arguments]
 
     Commands:
+      version                         Show the CLI version and exit
       devices                         List connected MTP devices
       info                            Show selected device profile and capabilities
       storages                        List storages, kinds and capabilities
-      ls [-a] <storage>:<path>        List a directory
-      cp <src> <dst>                  Copy local<->device; device paths are <storage>:<path>
-      rm <storage>:<path>             Delete a device file or folder
-      mv <storage>:<path> <new-path>  Rename within the same device directory
+      ls [-a] [-R] <storage>:<path>   List a directory (-R recursive, -a hidden)
+      cp <src>... <dst>               Copy local<->device; device paths are <storage>:<path>
+      get/download <device>:<path>... <local-dir>
+                                      Download one or more files from the console
+      put/upload <local-file>... <device>:<path>
+                                      Upload one or more local files to the console
+      rm <storage>:<path>...          Delete one or more device files or folders
+      mv <storage>:<path> <new-name>  Rename within the same device directory
       mkdir <storage>:<path>          Create a device directory
-      install <file...> [--nand]      Upload NSP/NSZ/XCI/XCZ to DBI install storage
+      install <file...> [--sd|--nand] Upload NSP/NSZ/XCI/XCZ to DBI install storage
+                                      (single titles; use `batch install` for a folder/plan)
+      batch scan <path...> [--keys <prod.keys>]
+                                      Recursively scan files/folders, group base/update/DLC,
+                                      run structural check (and signature/hash deep check
+                                      with --keys). Local only; no console connection.
+      batch install <path...> [--sd|--nand] [--keys <prod.keys>]
+                                      Scan, review, then upload in plan order (base,
+                                      update, add-ons) to the DBI install storage.
       backup-saves <dir>              Download the Saves storage to a dated folder
+      restore-saves <folder>          Upload a backed-up saves folder to the Saves storage
+      export-album <dir>              Download the Album (screenshots/clips) to a dated folder
+      dump-gamecard <dir>             Dump the inserted gamecard to a dated folder
       doctor                          Diagnose USB/MTP connection problems
+
+    Device paths are <storage>:<path>. <storage> may be a numeric storage id, a
+    kind alias (sdcard, nand, saves, album, gamecard, …), a display name, or a
+    unique prefix of the display name.
 
     Global flags:
       --device <id>    Select a device when more than one is connected
-      --json           Print raw backend JSON envelopes for the main operation
+      --keys <path>    prod.keys for signature/hash verification (optional)
+      --json           Print machine-readable JSON for the main operation
+      --quiet, -q      Suppress progress and confirmation output
+      --yes, -y        Skip confirmation prompts (accepted for scripting parity)
       --verbose        Enable backend protocol logging on stderr
       -h, --help       Show this help
+      -V, --version    Show the CLI version
     """)
 }
 
@@ -324,15 +451,31 @@ private func parseArguments(_ arguments: [String]) throws -> (Config, String, [S
     var i = 1
     while i < arguments.count {
         let arg = arguments[i]
+        if arg == "--" {
+            // Everything after a literal "--" is positional, so files whose
+            // names begin with a dash stay reachable.
+            rest.append(contentsOf: arguments[(i + 1)...])
+            break
+        }
         switch arg {
         case "--verbose":
             config.verbose = true
         case "--json":
             config.json = true
+        case "--quiet", "-q":
+            config.quiet = true
+        case "--yes", "-y":
+            config.assumeYes = true
         case "--device":
             i += 1
             guard i < arguments.count else { throw CLIError(message: "--device requires an id", code: .usage) }
             config.deviceId = arguments[i]
+        case "--keys":
+            i += 1
+            guard i < arguments.count else { throw CLIError(message: "--keys requires a prod.keys path", code: .usage) }
+            config.keysPath = arguments[i]
+        case "--version", "-V":
+            rest.append("version")
         default:
             rest.append(arg)
         }
@@ -352,11 +495,24 @@ private func run() -> ExitCode {
         case "-h", "--help", "help":
             printUsage()
             return .success
+        case "version", "--version", "-V":
+            if config.json {
+                let info: [String: Any] = [
+                    "version": cliVersion,
+                    "os": ProcessInfo.processInfo.operatingSystemVersionString,
+                    "arch": hostArch
+                ]
+                print(jsonString(info) ?? "{\"version\":\"\(cliVersion)\"}")
+            } else {
+                print("switchmtp-cli \(cliVersion) (\(hostArch))")
+            }
+            return .success
         case "devices":
-            return handleDevices(config: config)
+            return handleDevices(args: args, config: config)
         case "doctor":
-            return handleDoctor(config: config)
+            return handleDoctor(args: args, config: config)
         case "info":
+            guard args.isEmpty else { throw CLIError(message: "info takes no arguments", code: .usage) }
             let deviceId = try selectedDevice(config: config)
             return withOpenDevice(deviceId: deviceId, config: config) { details in
                 if config.json { print(details.raw); return .success }
@@ -364,6 +520,7 @@ private func run() -> ExitCode {
                 return .success
             }
         case "storages":
+            guard args.isEmpty else { throw CLIError(message: "storages takes no arguments", code: .usage) }
             let deviceId = try selectedDevice(config: config)
             return withOpenDevice(deviceId: deviceId, config: config) { _ in
                 let env = NxmtpClient.fetchStorages(deviceId: deviceId)
@@ -375,7 +532,11 @@ private func run() -> ExitCode {
         case "ls":
             return try handleLs(args: args, config: config)
         case "cp":
-            return try handleCp(args: args, config: config)
+            return try handleCopy(args: args, config: config, direction: nil)
+        case "get", "download":
+            return try handleCopy(args: args, config: config, direction: .download)
+        case "put", "upload":
+            return try handleCopy(args: args, config: config, direction: .upload)
         case "rm":
             return try handleRm(args: args, config: config)
         case "mv":
@@ -384,8 +545,16 @@ private func run() -> ExitCode {
             return try handleMkdir(args: args, config: config)
         case "install":
             return try handleInstall(args: args, config: config)
+        case "batch":
+            return try handleBatch(args: args, config: config)
         case "backup-saves":
             return try handleBackupSaves(args: args, config: config)
+        case "restore-saves":
+            return try handleRestoreSaves(args: args, config: config)
+        case "export-album":
+            return try handleExportAlbum(args: args, config: config)
+        case "dump-gamecard":
+            return try handleDumpGamecard(args: args, config: config)
         default:
             throw CLIError(message: "Unknown command: \(command)", code: .usage)
         }
@@ -399,14 +568,18 @@ private func run() -> ExitCode {
     }
 }
 
-private func handleDevices(config: Config) -> ExitCode {
+private func handleDevices(args: [String], config: Config) -> ExitCode {
+    guard args.isEmpty else {
+        fputs("Error: devices takes no arguments\n", stderr)
+        return .usage
+    }
     let env = NxmtpClient.fetchDevices()
     if config.json { print(env.raw) }
     if !env.isSuccess { printError(env); return exitCode(for: env) }
     guard !config.json else { return .success }
     let devices = devices(from: env)
-    if devices.isEmpty {
-        print("[]")
+    guard !devices.isEmpty else {
+        if config.json { print("[]") } else { print("No Nintendo devices found. Run `doctor` to find out why.") }
         return .success
     }
     print("Device ID                         Profile     Usable  Name")
@@ -421,7 +594,11 @@ private func handleDevices(config: Config) -> ExitCode {
     return .success
 }
 
-private func handleDoctor(config: Config) -> ExitCode {
+private func handleDoctor(args: [String], config: Config) -> ExitCode {
+    guard args.isEmpty else {
+        fputs("Error: doctor takes no arguments\n", stderr)
+        return .usage
+    }
     let env = NxmtpClient.fetchDiagnostics()
     if config.json { print(env.raw) }
     if !env.isSuccess { printError(env); return exitCode(for: env) }
@@ -463,54 +640,138 @@ private func handleDoctor(config: Config) -> ExitCode {
 
 private func handleLs(args: [String], config: Config) throws -> ExitCode {
     var showAll = false
+    var recursive = false
     var rest = args
-    if rest.first == "-a" || rest.first == "--all" {
-        showAll = true
+    while let head = rest.first, head == "-a" || head == "--all" || head == "-R" || head == "--recursive" {
+        if head == "-a" || head == "--all" { showAll = true } else { recursive = true }
         rest.removeFirst()
     }
     guard rest.count == 1, let remote = parseRemote(rest[0]) else {
-        throw CLIError(message: "ls expects <storage>:<path>", code: .usage)
+        throw CLIError(message: "ls expects [-a] [-R] <storage>:<path>", code: .usage)
     }
     let deviceId = try selectedDevice(config: config)
     return withOpenDevice(deviceId: deviceId, config: config) { _ in
-        let env = NxmtpClient.walk(deviceId: deviceId, storageId: remote.storageId, path: remote.path, skipHidden: !showAll)
+        let lookup = resolveRemoteStorage(remote, deviceId: deviceId, config: config)
+        guard case .ready(let sid, _) = lookup else {
+            if case .failed(let code) = lookup { return code }
+            return .deviceNotFound
+        }
+        let env = NxmtpClient.walk(deviceId: deviceId, storageId: sid, path: remote.path, recursive: recursive, skipHidden: !showAll)
         if config.json { print(env.raw) }
         if !env.isSuccess { printError(env); return exitCode(for: env) }
-        if !config.json { printListing(env, showAll: showAll) }
+        if !config.json { printListing(env, showAll: showAll, recursive: recursive) }
         return .success
     }
 }
 
-private func handleCp(args: [String], config: Config) throws -> ExitCode {
-    guard args.count == 2 else { throw CLIError(message: "cp expects <src> <dst>", code: .usage) }
-    let srcRemote = parseRemote(args[0])
-    let dstRemote = parseRemote(args[1])
-    guard (srcRemote == nil) != (dstRemote == nil) else {
-        throw CLIError(message: "cp requires exactly one device path of the form <storage>:<path>", code: .usage)
+private func handleCopy(args: [String], config: Config, direction: CopyDirection?) throws -> ExitCode {
+    guard args.count >= 2 else {
+        throw CLIError(message: "copy expects one or more sources and a destination", code: .usage)
     }
+    let destArg = args.last!
+    let srcArgs = Array(args.dropLast())
+    let destRemote = parseRemote(destArg)
+    let parsedSources = srcArgs.map { ($0, parseRemote($0)) }
+    let srcRemotes = parsedSources.compactMap { $0.1 }
+    let srcLocals = parsedSources.filter { $0.1 == nil }.map { $0.0 }
+
+    // Resolve the direction: explicit for get/put, inferred for `cp`.
+    let dir: CopyDirection
+    switch direction {
+    case .download: dir = .download
+    case .upload: dir = .upload
+    case nil:
+        if destRemote != nil && srcRemotes.count == srcArgs.count {
+            dir = .upload
+        } else if destRemote == nil && srcRemotes.count == srcArgs.count {
+            dir = .download
+        } else {
+            throw CLIError(message: "cp requires one device path side: sources and destination must split into local vs <storage>:<path>", code: .usage)
+        }
+    }
+
+    switch dir {
+    case .download:
+        guard destRemote == nil else {
+            throw CLIError(message: "get: the last argument must be a local destination folder", code: .usage)
+        }
+        guard !srcRemotes.isEmpty else {
+            throw CLIError(message: "get: sources must be device paths of the form <storage>:<path>", code: .usage)
+        }
+        let selector = srcRemotes[0].selector
+        guard srcRemotes.allSatisfy({ $0.selector == selector }) else {
+            throw CLIError(message: "get: all sources must be on the same storage", code: .usage)
+        }
+    case .upload:
+        guard let destRemote else {
+            throw CLIError(message: "put: the last argument must be a device path of the form <storage>:<path>", code: .usage)
+        }
+        guard srcLocals.count == srcArgs.count else {
+            throw CLIError(message: "put: sources must be local files", code: .usage)
+        }
+        for local in srcLocals {
+            guard FileManager.default.fileExists(atPath: local) else {
+                throw CLIError(message: "put: local file not found: \(local)", code: .failure)
+            }
+        }
+    }
+
     let deviceId = try selectedDevice(config: config)
     return withOpenDevice(deviceId: deviceId, config: config) { _ in
         let env: Envelope
         var pendingRename: (from: String, to: String)? = nil
         var pendingUploadRename: (path: String, newName: String)? = nil
-        if let remote = srcRemote {
-            // The backend takes a destination *directory*. Honour the usual
-            // cp convention on top of it: when the destination is not an
-            // existing directory and does not end in "/", its last component
-            // names the copied file rather than a folder to copy into.
-            let target = downloadTarget(for: args[1], sourcePath: remote.path)
-            pendingRename = target.rename
-            env = NxmtpClient.download(deviceId: deviceId, storageId: remote.storageId, sources: [remote.path], destination: target.directory)
-        } else if let remote = dstRemote {
-            // Mirror of the download case: the backend takes a destination
-            // *directory*, so honour the cp convention that a destination
-            // which is not an existing directory names the copied file.
-            let target = uploadTarget(for: remote.path, storageId: remote.storageId, deviceId: deviceId, sourcePath: args[0])
-            pendingUploadRename = target.rename
-            env = NxmtpClient.upload(deviceId: deviceId, storageId: remote.storageId, sources: [args[0]], destination: target.directory)
-        } else {
-            return .usage
+        var uploadSid: UInt32?
+
+        switch dir {
+        case .download:
+            let lookup = resolveRemoteStorage(srcRemotes[0], deviceId: deviceId, config: config)
+            guard case .ready(let sid, let storage) = lookup else {
+                if case .failed(let code) = lookup { return code }
+                return .deviceNotFound
+            }
+            let readCaps = storage["capabilities"] as? [String: Any] ?? [:]
+            if bool(readCaps["read"]) != true {
+                fputs("Error: storage \"\(string(storage["displayName"]) ?? "?")\" cannot be read. DBI install storages accept files but cannot be listed or read back.\n", stderr)
+                return .unsupported
+            }
+            let sources = srcRemotes.map(\.path)
+            let fm = FileManager.default
+            if sources.count == 1 {
+                // Single source keeps the cp convention: a destination that
+                // names a (non-existing) file renames after download.
+                let target = downloadTarget(for: destArg, sourcePath: sources[0])
+                pendingRename = target.rename
+                let dir = (target.directory as NSString).expandingTildeInPath
+                try? fm.createDirectory(at: URL(fileURLWithPath: dir), withIntermediateDirectories: true)
+                env = NxmtpClient.download(deviceId: deviceId, storageId: sid,
+                                           sources: [sources[0]], destination: target.directory)
+            } else {
+                let dir = (destArg as NSString).expandingTildeInPath
+                try? fm.createDirectory(at: URL(fileURLWithPath: dir), withIntermediateDirectories: true)
+                env = NxmtpClient.download(deviceId: deviceId, storageId: sid,
+                                           sources: sources, destination: destArg)
+            }
+        case .upload:
+            let remote = destRemote!
+            let lookup = resolveRemoteStorage(remote, deviceId: deviceId, config: config)
+            guard case .ready(let sid, _) = lookup else {
+                if case .failed(let code) = lookup { return code }
+                return .deviceNotFound
+            }
+            uploadSid = sid
+            if srcLocals.count == 1 {
+                let target = uploadTarget(for: remote.path, storageId: sid,
+                                           deviceId: deviceId, sourcePath: srcLocals[0])
+                pendingUploadRename = target.rename
+                env = NxmtpClient.upload(deviceId: deviceId, storageId: sid,
+                                         sources: [srcLocals[0]], destination: target.directory)
+            } else {
+                env = NxmtpClient.upload(deviceId: deviceId, storageId: sid,
+                                         sources: srcLocals, destination: remote.path)
+            }
         }
+
         if config.json { print(env.raw) }
         if !env.isSuccess { printError(env); return exitCode(for: env) }
         if let rename = pendingRename {
@@ -521,11 +782,11 @@ private func handleCp(args: [String], config: Config) throws -> ExitCode {
                 return .failure
             }
         }
-        if let rename = pendingUploadRename, let remote = dstRemote {
-            let renameEnv = NxmtpClient.rename(deviceId: deviceId, storageId: remote.storageId, path: rename.path, newFileName: rename.newName)
+        if let rename = pendingUploadRename, let sid = uploadSid {
+            let renameEnv = NxmtpClient.rename(deviceId: deviceId, storageId: sid, path: rename.path, newFileName: rename.newName)
             if !renameEnv.isSuccess { printError(renameEnv); return exitCode(for: renameEnv) }
         }
-        if !config.json { printTransferSummary(env, verb: "Copy") }
+        if !config.json && !config.quiet { printTransferSummary(env, verb: dir == .download ? "Get" : "Put") }
         return .success
     }
 }
@@ -620,47 +881,107 @@ private func remoteIsDirectory(path: String, storageId: UInt32, deviceId: String
 }
 
 private func handleRm(args: [String], config: Config) throws -> ExitCode {
-    guard args.count == 1, let remote = parseRemote(args[0]) else { throw CLIError(message: "rm expects <storage>:<path>", code: .usage) }
-    guard normalizedRemotePath(remote.path) != "/" else { throw CLIError(message: "refusing to delete a storage root", code: .usage) }
+    guard !args.isEmpty else { throw CLIError(message: "rm expects one or more device paths", code: .usage) }
+    var remotes: [RemotePath] = []
+    var selector = ""
+    for arg in args {
+        guard let rp = parseRemote(arg) else {
+            throw CLIError(message: "rm expects <storage>:<path>", code: .usage)
+        }
+        guard normalizedRemotePath(rp.path) != "/" else {
+            throw CLIError(message: "refusing to delete a storage root", code: .usage)
+        }
+        if selector.isEmpty {
+            selector = rp.selector
+        } else if selector.lowercased() != rp.selector.lowercased() {
+            throw CLIError(message: "rm: all paths must be on the same storage", code: .usage)
+        }
+        remotes.append(rp)
+    }
     let deviceId = try selectedDevice(config: config)
     return withOpenDevice(deviceId: deviceId, config: config) { _ in
-        let env = NxmtpClient.delete(deviceId: deviceId, storageId: remote.storageId, path: remote.path)
+        let lookup = resolveRemoteStorage(remotes[0], deviceId: deviceId, config: config)
+        guard case .ready(let sid, let storage) = lookup else {
+            if case .failed(let code) = lookup { return code }
+            return .deviceNotFound
+        }
+        let caps = storage["capabilities"] as? [String: Any] ?? [:]
+        if bool(caps["delete"]) != true {
+            fputs("Error: storage \"\(string(storage["displayName"]) ?? "?")\" does not allow deleting.\n", stderr)
+            return .unsupported
+        }
+        let paths = remotes.map(\.path)
+        let env = NxmtpClient.delete(deviceId: deviceId, storageId: sid, paths: paths)
         if config.json { print(env.raw) }
         if !env.isSuccess { printError(env); return exitCode(for: env) }
-        if !config.json { print("Deleted \(remote.storageId):\(normalizedRemotePath(remote.path))") }
+        if !config.json && !config.quiet { print("Deleted \(paths.count) item(s) from \(string(storage["displayName"]) ?? selector)") }
         return .success
     }
 }
 
 private func handleMv(args: [String], config: Config) throws -> ExitCode {
-    guard args.count == 2, let source = parseRemote(args[0]) else { throw CLIError(message: "mv expects <storage>:<path> <new-path>", code: .usage) }
-    let newPath = parseRemote(args[1])?.path ?? args[1]
-    if let dest = parseRemote(args[1]), dest.storageId != source.storageId {
-        throw CLIError(message: "mv cannot move between storages", code: .usage)
+    guard args.count == 2, let source = parseRemote(args[0]) else {
+        throw CLIError(message: "mv expects <storage>:<path> <new-name>", code: .usage)
     }
-    let srcParent = parentPath(source.path)
-    let dstParent = parentPath(newPath)
-    guard srcParent == dstParent else { throw CLIError(message: "mv currently supports rename within the same directory only", code: .usage) }
-    let newName = URL(fileURLWithPath: newPath).lastPathComponent
-    guard !newName.isEmpty else { throw CLIError(message: "new name cannot be empty", code: .usage) }
+    let rawSecond = args[1].trimmingCharacters(in: .whitespaces)
+    let second = parseRemote(rawSecond)
+
+    if let dest = second {
+        guard dest.selector.lowercased() == source.selector.lowercased() else {
+            throw CLIError(message: "mv cannot move between storages", code: .usage)
+        }
+        guard parentPath(dest.path) == parentPath(source.path) else {
+            throw CLIError(message: "mv can rename within a directory but cannot move between directories; use get and put instead", code: .usage)
+        }
+    }
+
+    // A full device path as the second argument is accepted as long as it names
+    // the same directory; only its basename is used. A bare local-style name
+    // must not contain a path separator.
+    let candidate = second?.path ?? rawSecond
+    let base = (candidate as NSString).lastPathComponent
+    guard !base.isEmpty, base != ".", base != ".." else {
+        throw CLIError(message: "\"\(args[1])\" is not a valid new name", code: .usage)
+    }
+    if second == nil {
+        guard !rawSecond.contains("/"), !rawSecond.contains("\\") else {
+            throw CLIError(message: "\"\(args[1])\" is not a valid new name", code: .usage)
+        }
+    }
+
     let deviceId = try selectedDevice(config: config)
     return withOpenDevice(deviceId: deviceId, config: config) { _ in
-        let env = NxmtpClient.rename(deviceId: deviceId, storageId: source.storageId, path: source.path, newFileName: newName)
+        let lookup = resolveRemoteStorage(source, deviceId: deviceId, config: config)
+        guard case .ready(let sid, _) = lookup else {
+            if case .failed(let code) = lookup { return code }
+            return .deviceNotFound
+        }
+        let env = NxmtpClient.rename(deviceId: deviceId, storageId: sid, path: source.path, newFileName: base)
         if config.json { print(env.raw) }
         if !env.isSuccess { printError(env); return exitCode(for: env) }
-        if !config.json { print("Renamed to \(newName)") }
+        if !config.json && !config.quiet { print("Renamed \(URL(fileURLWithPath: source.path).lastPathComponent) to \(base)") }
         return .success
     }
 }
 
 private func handleMkdir(args: [String], config: Config) throws -> ExitCode {
-    guard args.count == 1, let remote = parseRemote(args[0]) else { throw CLIError(message: "mkdir expects <storage>:<path>", code: .usage) }
+    guard args.count == 1, let remote = parseRemote(args[0]) else {
+        throw CLIError(message: "mkdir expects <storage>:<path>", code: .usage)
+    }
+    guard normalizedRemotePath(remote.path) != "/" else {
+        throw CLIError(message: "mkdir needs a path inside the storage, not the storage root", code: .usage)
+    }
     let deviceId = try selectedDevice(config: config)
     return withOpenDevice(deviceId: deviceId, config: config) { _ in
-        let env = NxmtpClient.makeDirectory(deviceId: deviceId, storageId: remote.storageId, path: remote.path)
+        let lookup = resolveRemoteStorage(remote, deviceId: deviceId, config: config)
+        guard case .ready(let sid, _) = lookup else {
+            if case .failed(let code) = lookup { return code }
+            return .deviceNotFound
+        }
+        let env = NxmtpClient.makeDirectory(deviceId: deviceId, storageId: sid, path: remote.path)
         if config.json { print(env.raw) }
         if !env.isSuccess { printError(env); return exitCode(for: env) }
-        if !config.json { print("Created \(remote.storageId):\(normalizedRemotePath(remote.path))") }
+        if !config.json && !config.quiet { print("Created \(remote.selector):\(normalizedRemotePath(remote.path))") }
         return .success
     }
 }
@@ -669,30 +990,36 @@ private func handleInstall(args: [String], config: Config) throws -> ExitCode {
     var toNand = false
     var files: [String] = []
     for arg in args {
-        if arg == "--nand" { toNand = true } else { files.append(arg) }
+        if arg == "--nand" || arg == "-nand" { toNand = true }
+        else if arg == "--sd" || arg == "-sd" { /* explicit SD; the default target */ }
+        else { files.append(arg) }
     }
-    guard !files.isEmpty else { throw CLIError(message: "install expects at least one file", code: .usage) }
+    guard !files.isEmpty else { throw CLIError(message: "install expects at least one NSP, NSZ, XCI or XCZ file", code: .usage) }
     let allowed = ["nsp", "nsz", "xci", "xcz"]
     for file in files {
-        let ext = URL(fileURLWithPath: file).pathExtension.lowercased()
+        let expanded = NSString(string: file).expandingTildeInPath
+        guard FileManager.default.fileExists(atPath: expanded) else {
+            throw CLIError(message: "cannot read \(file): no such file or directory", code: .failure)
+        }
+        let ext = URL(fileURLWithPath: expanded).pathExtension.lowercased()
         guard allowed.contains(ext) else { throw CLIError(message: "install only accepts .nsp, .nsz, .xci and .xcz files", code: .usage) }
     }
     let deviceId = try selectedDevice(config: config)
+    let kind = toNand ? "nandInstall" : "sdInstall"
     return withOpenDevice(deviceId: deviceId, config: config) { _ in
-        let storageEnv = NxmtpClient.fetchStorages(deviceId: deviceId)
-        if !storageEnv.isSuccess { if config.json { print(storageEnv.raw) } else { printError(storageEnv) }; return exitCode(for: storageEnv) }
-        guard let storage = storages(from: storageEnv).first(where: { (string($0["kind"]) ?? "") == (toNand ? "nandInstall" : "sdInstall") }),
-              let sid = uint32(storage["Sid"]) else {
-            fputs("Error: DBI \(toNand ? "NAND" : "SD") install storage was not found. Start DBI's MTP responder on the Switch.\n", stderr)
+        let lookup = resolveStorage(kind: kind, deviceId: deviceId, config: config,
+                                    missingMessage: "DBI \(toNand ? "NAND" : "SD") install storage was not found. Start DBI's MTP responder on the Switch.")
+        guard case .ready(let sid, _) = lookup else {
+            if case .failed(let code) = lookup { return code }
             return .deviceNotFound
         }
-        if !config.json {
+        if !config.json && !config.quiet {
             print("Uploading to \(toNand ? "NAND" : "SD") install target. Watch the Switch screen after transfer completes.")
         }
         let env = NxmtpClient.upload(deviceId: deviceId, storageId: sid, sources: files, destination: "/")
         if config.json { print(env.raw) }
         if !env.isSuccess { printError(env); return exitCode(for: env) }
-        if !config.json {
+        if !config.json && !config.quiet {
             printTransferSummary(env, verb: "Install upload")
             print("Installation continues on the Switch. MTP does not report final installation completion.")
         }
@@ -709,18 +1036,371 @@ private func handleBackupSaves(args: [String], config: Config) throws -> ExitCod
 
     let deviceId = try selectedDevice(config: config)
     return withOpenDevice(deviceId: deviceId, config: config) { _ in
-        let storageEnv = NxmtpClient.fetchStorages(deviceId: deviceId)
-        if !storageEnv.isSuccess { if config.json { print(storageEnv.raw) } else { printError(storageEnv) }; return exitCode(for: storageEnv) }
-        guard let storage = storages(from: storageEnv).first(where: { (string($0["kind"]) ?? "") == "saves" }),
-              let sid = uint32(storage["Sid"]) else {
-            fputs("Error: Saves storage was not found. Start DBI's MTP responder on the Switch.\n", stderr)
+        let lookup = resolveStorage(kind: "saves", deviceId: deviceId, config: config,
+                                    missingMessage: "Saves storage was not found. Start DBI's MTP responder on the Switch.")
+        guard case .ready(let sid, _) = lookup else {
+            if case .failed(let code) = lookup { return code }
             return .deviceNotFound
         }
-        if !config.json { print("Backing up saves to \(destination)") }
+        if !config.json && !config.quiet { print("Backing up saves to \(destination)") }
         let env = NxmtpClient.download(deviceId: deviceId, storageId: sid, sources: ["/"], destination: destination)
         if config.json { print(env.raw) }
         if !env.isSuccess { printError(env); return exitCode(for: env) }
-        if !config.json { printTransferSummary(env, verb: "Backup"); print("Saved to \(destination)") }
+        if !config.json && !config.quiet { printTransferSummary(env, verb: "Backup"); print("Saved to \(destination)") }
+        return .success
+    }
+}
+
+// MARK: - Batch scan / install
+
+private func handleBatch(args: [String], config: Config) throws -> ExitCode {
+    guard let sub = args.first else {
+        throw CLIError(message: "batch requires 'scan' or 'install'", code: .usage)
+    }
+    let rest = Array(args.dropFirst())
+    switch sub {
+    case "scan": return try handleBatchScan(args: rest, config: config)
+    case "install": return try handleBatchInstall(args: rest, config: config)
+    default:
+        throw CLIError(message: "Unknown batch subcommand: \(sub). Use 'scan' or 'install'.", code: .usage)
+    }
+}
+
+/// Splits batch-install flags from root paths. `--sd` is the default and only
+/// accepted for explicitness; `--nand` targets the internal install storage.
+private func parseBatchOptions(_ args: [String]) throws -> (roots: [String], nand: Bool, assumeYes: Bool) {
+    var roots: [String] = []
+    var nand = false
+    var sd = false
+    var assumeYes = false
+    for arg in args {
+        switch arg {
+        case "--nand", "-nand": nand = true
+        case "--sd", "-sd": sd = true
+        case "--yes", "-y": assumeYes = true
+        default: roots.append(arg)
+        }
+    }
+    guard !(nand && sd) else {
+        throw CLIError(message: "batch install accepts either --sd or --nand, not both", code: .usage)
+    }
+    return (roots, nand, assumeYes)
+}
+
+/// Recursively scans the given roots, runs the structural inspector and, when
+/// `--keys` was supplied, the deep signature/hash pass. Local only: no console
+/// connection is required.
+private func scanPackages(roots: [String], config: Config) throws -> [InstallPackage] {
+    let urls = roots.map { URL(fileURLWithPath: NSString(string: $0).expandingTildeInPath) }
+    for url in urls {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw CLIError(message: "Path not found: \(url.path)", code: .failure)
+        }
+    }
+
+    let packages = BatchScanner.scan(urls: urls)
+    guard !packages.isEmpty else { return [] }
+
+    guard let keysPath = config.keysPath else { return packages }
+
+    let keysetURL = URL(fileURLWithPath: NSString(string: keysPath).expandingTildeInPath)
+    guard FileManager.default.isReadableFile(atPath: keysetURL.path) else {
+        throw CLIError(message: "Keyset not readable: \(keysetURL.path)", code: .failure)
+    }
+    let attributes = try? KeySetStore.attributes(of: keysetURL.path)
+    guard (attributes?.keyCount ?? 0) > 0 else {
+        throw CLIError(message: "No 128-bit keys recognized in \(keysetURL.path).", code: .failure)
+    }
+    guard let hactool = DeepVerifier.hactoolURL else {
+        throw CLIError(message: "Bundled hactool not found. Use a complete build or set SWITCHMTP_HACTOOL.", code: .failure)
+    }
+
+    let ephemeral: URL
+    do {
+        ephemeral = try KeySetStore.makeEphemeralCopy(of: keysetURL.path)
+    } catch {
+        throw CLIError(message: "Could not stage a temporary copy of the keyset: \(error.localizedDescription)", code: .failure)
+    }
+    defer { KeySetStore.discard(ephemeral) }
+    let titleKeys = DeepCheckRunner.titleKeysURL(for: keysetURL.path)
+    let jobs = DeepCheckRunner.jobs(for: packages)
+
+    var byID = Dictionary(uniqueKeysWithValues: packages.map { ($0.id, $0) })
+    DeepCheckRunner.run(
+        jobs: jobs,
+        keysetURL: ephemeral,
+        titleKeysURL: titleKeys,
+        hactoolURL: hactool,
+        onProgress: { job, fraction, phase in
+            guard !config.json else { return }
+            fputs("\r  \(phase) \(Int((fraction * 100).rounded()))%  \(job.url.lastPathComponent)", stderr)
+        },
+        onResult: { job, result in
+            if !config.json { fputs("\n", stderr) }
+            guard var package = byID[job.id] else { return }
+            package.deepState = result.state
+            package.deepNCAs = result.ncas
+            package.notes.append(contentsOf: result.notes)
+            if result.state == .failed { package.isSelected = false }
+            byID[job.id] = package
+        })
+
+    return packages.map { byID[$0.id] ?? $0 }
+}
+
+private func handleBatchScan(args: [String], config: Config) throws -> ExitCode {
+    let (roots, _, _) = try parseBatchOptions(args)
+    guard !roots.isEmpty else {
+        throw CLIError(message: "batch scan expects one or more files/folders", code: .usage)
+    }
+
+    let packages = try scanPackages(roots: roots, config: config)
+    let groups = BatchGrouper.group(packages)
+
+    if config.json {
+        printBatchJSON(packages: packages, groups: groups)
+    } else {
+        printBatchTable(packages: packages, groups: groups)
+    }
+    return .success
+}
+
+private func handleBatchInstall(args: [String], config: Config) throws -> ExitCode {
+    let (roots, toNand, assumeYes) = try parseBatchOptions(args)
+    guard !roots.isEmpty else {
+        throw CLIError(message: "batch install expects one or more files/folders", code: .usage)
+    }
+
+    let packages = try scanPackages(roots: roots, config: config)
+    let blocked = packages.filter { $0.resolvedVerdict == .blocked }
+    let eligible = packages.filter(\.isSelectable)
+    guard !eligible.isEmpty else {
+        throw CLIError(message: "No installable package remains after structural/deep checks.", code: .failure)
+    }
+
+    let plan = InstallPlanOrder.ordered(eligible)
+    let caution = plan.filter { $0.resolvedVerdict == .caution }.count
+    let unverified = plan.filter { $0.resolvedVerdict == .unverified }.count
+
+    if !config.json {
+        let planBytes = UInt64(max(0, plan.reduce(0) { $0 + $1.fileSize }))
+        print("Plan: \(plan.count) package(s), \(formatBytes(planBytes))"
+            + (toNand ? " → NAND" : " → SD"))
+        if !blocked.isEmpty {
+            fputs("Skipping \(blocked.count) blocked package(s): \(blocked.map(\.url.lastPathComponent).joined(separator: ", "))\n", stderr)
+        }
+        if caution > 0 {
+            fputs("Warning: \(caution) package(s) are not retail-signed (yellow on the console).\n", stderr)
+        }
+        if unverified > 0 {
+            fputs("Note: \(unverified) package(s) were never signature-verified (no keyset or compressed content); they may show up unverified on the console.\n", stderr)
+        }
+        if !assumeYes {
+            fputs("Proceeding with the batch install. Press Ctrl-C to stop.\n", stderr)
+        }
+    }
+
+    let deviceId = try selectedDevice(config: config)
+    return withOpenDevice(deviceId: deviceId, config: config) { _ in
+        let kind = toNand ? "nandInstall" : "sdInstall"
+        let lookup = resolveStorage(kind: kind, deviceId: deviceId, config: config,
+                                    missingMessage: "DBI \(toNand ? "NAND" : "SD") install storage was not found. Start DBI's MTP responder on the Switch.")
+        guard case .ready(let sid, _) = lookup else {
+            if case .failed(let code) = lookup { return code }
+            return .deviceNotFound
+        }
+
+        var sent: [String] = []
+        var failed: [(String, String)] = []
+        let maxAttempts = 3
+        var aborted = false
+
+        for package in plan {
+            if aborted {
+                failed.append((package.url.path, "aborted: previous transfer disconnected"))
+                continue
+            }
+            var lastError = "unknown error"
+            var succeeded = false
+            for attempt in 1...maxAttempts {
+                let env = NxmtpClient.upload(
+                    deviceId: deviceId, storageId: sid,
+                    sources: [package.url.path], destination: "/")
+                if env.isSuccess { succeeded = true; break }
+                lastError = env.error.isEmpty ? "transfer failed" : env.error
+                if isFatalTransferError(lastError) { aborted = true; break }
+                if !config.json {
+                    fputs("Retry \(attempt)/\(maxAttempts) for \(package.url.lastPathComponent): \(lastError)\n", stderr)
+                }
+            }
+            if succeeded {
+                sent.append(package.url.path)
+                if !config.json && !config.quiet { print("Sent \(package.url.lastPathComponent)") }
+            } else {
+                failed.append((package.url.path, lastError))
+                fputs("Failed \(package.url.lastPathComponent): \(lastError)\n", stderr)
+            }
+        }
+
+        if config.json {
+            let result: [String: Any] = [
+                "sent": sent,
+                "failed": failed.map { ["file": $0.0, "error": $0.1] },
+                "note": "MTP does not report final installation completion; verify installed titles on the console."
+            ]
+            if let data = try? JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]),
+               let text = String(data: data, encoding: .utf8) {
+                print(text)
+            } else {
+                fputs("Error: failed to serialize batch result to JSON.\n", stderr)
+            }
+        } else if !config.quiet {
+            print("\nBatch upload finished: \(sent.count) sent, \(failed.count) failed.")
+            print("Installation continues on the Switch. MTP does not report final installation completion; verify titles on the console.")
+        }
+        return failed.isEmpty ? .success : .failure
+    }
+}
+
+private func verdictLabel(_ verdict: PackageVerdict) -> String {
+    switch verdict {
+    case .passed: return "PASS"
+    case .unverified: return "UNVERIFIED"
+    case .caution: return "CAUTION"
+    case .blocked: return "BLOCKED"
+    case .pending: return "PENDING"
+    }
+}
+
+private func printBatchTable(packages: [InstallPackage], groups: [InstallPackageGroup]) {
+    let bytes = UInt64(max(0, packages.reduce(0) { $0 + $1.fileSize }))
+    print("Found \(packages.count) package(s), \(formatBytes(bytes)) in \(groups.count) group(s).")
+    for group in groups.sorted(by: { $0.name.localizedStandardCompare($1.name) == .orderedAscending }) {
+        print("[\(verdictLabel(group.verdict))] \(group.name)  (\(group.packages.count) item(s), \(group.sizeText))")
+        for package in group.packages {
+            let type = package.contentType.englishName
+            let verdict = verdictLabel(package.resolvedVerdict)
+            print("    \(type.padding(toLength: 12, withPad: " ", startingAt: 0)) \(verdict.padding(toLength: 11, withPad: " ", startingAt: 0)) \(package.sizeText.padding(toLength: 12, withPad: " ", startingAt: 0)) \(package.displayName)")
+        }
+    }
+}
+
+private func printBatchJSON(packages: [InstallPackage], groups: [InstallPackageGroup]) {
+    func packageEntry(_ package: InstallPackage) -> [String: Any] {
+        [
+            "file": package.url.path,
+            "titleId": package.titleID ?? NSNull(),
+            "baseTitleId": package.baseTitleID ?? NSNull(),
+            "contentType": package.contentType.rawValue,
+            "format": package.format.rawValue,
+            "size": package.fileSize,
+            "quickVerdict": package.quickVerdict.rawValue,
+            "deepState": package.deepState.rawValue,
+            "verdict": package.resolvedVerdict.rawValue,
+            "selectable": package.isSelectable,
+            "notes": package.notes.map { [
+                "severity": $0.severity.rawValue, "title": $0.title, "detail": $0.detail
+            ] }
+        ]
+    }
+    var counts: [String: Int] = [:]
+    for package in packages { counts[package.resolvedVerdict.rawValue, default: 0] += 1 }
+    let payload: [String: Any] = [
+        "summary": [
+            "count": packages.count,
+            "bytes": packages.reduce(0) { $0 + $1.fileSize },
+            "verdicts": counts
+        ],
+        "groups": groups.map { [
+            "id": $0.id,
+            "name": $0.name,
+            "packages": $0.packages.map(packageEntry)
+        ] },
+        "packages": packages.map(packageEntry)
+    ]
+    if let data = try? JSONSerialization.data(withJSONObject: payload, options: [.prettyPrinted, .sortedKeys]),
+       let text = String(data: data, encoding: .utf8) {
+        print(text)
+    } else {
+        fputs("Error: failed to serialize batch result to JSON.\n", stderr)
+    }
+}
+
+// MARK: - Console bulk workflows
+
+private func datedFolder(parent: String, prefix: String) -> String {
+    let formatter = DateFormatter()
+    formatter.dateFormat = "yyyy-MM-dd_HHmmss"
+    return (parent as NSString).appendingPathComponent("\(prefix)-\(formatter.string(from: Date()))")
+}
+
+private func handleRestoreSaves(args: [String], config: Config) throws -> ExitCode {
+    guard args.count == 1 else {
+        throw CLIError(message: "restore-saves expects a folder previously created by backup-saves", code: .usage)
+    }
+    let folder = NSString(string: args[0]).expandingTildeInPath
+    var isDirectory: ObjCBool = false
+    guard FileManager.default.fileExists(atPath: folder, isDirectory: &isDirectory), isDirectory.boolValue else {
+        throw CLIError(message: "Not a directory: \(folder)", code: .failure)
+    }
+    let contents = (try? FileManager.default.contentsOfDirectory(
+        at: URL(fileURLWithPath: folder), includingPropertiesForKeys: nil,
+        options: [.skipsHiddenFiles])) ?? []
+    guard !contents.isEmpty else {
+        throw CLIError(message: "That folder is empty — pick a folder created by backup-saves.", code: .failure)
+    }
+
+    let deviceId = try selectedDevice(config: config)
+    return withOpenDevice(deviceId: deviceId, config: config) { _ in
+        let lookup = resolveStorage(kind: "saves", deviceId: deviceId, config: config,
+                                    missingMessage: "Saves storage was not found. Enable save access in DBI, then reconnect.")
+        guard case .ready(let sid, let storage) = lookup else {
+            if case .failed(let code) = lookup { return code }
+            return .deviceNotFound
+        }
+        let capabilities = storage["capabilities"] as? [String: Any]
+        if !(bool(capabilities?["write"] as Any?) ?? false) {
+            fputs("Error: the Saves storage is read-only. Enable save write access in DBI, then reconnect.\n", stderr)
+            return .deviceNotFound
+        }
+        if !config.json && !config.quiet { print("Restoring \(contents.count) item(s) to the console's save storage.") }
+        let env = NxmtpClient.upload(deviceId: deviceId, storageId: sid,
+                                     sources: contents.map(\.path), destination: "/")
+        if config.json { print(env.raw) }
+        if !env.isSuccess { printError(env); return exitCode(for: env) }
+        if !config.json && !config.quiet { printTransferSummary(env, verb: "Restore") }
+        return .success
+    }
+}
+
+private func handleExportAlbum(args: [String], config: Config) throws -> ExitCode {
+    try handleWholeStorageDownload(kind: "album", prefix: "switch-album", label: "Album", args: args, config: config)
+}
+
+private func handleDumpGamecard(args: [String], config: Config) throws -> ExitCode {
+    try handleWholeStorageDownload(kind: "gamecard", prefix: "switch-gamecard", label: "Gamecard", args: args, config: config)
+}
+
+private func handleWholeStorageDownload(kind: String, prefix: String, label: String,
+                                         args: [String], config: Config) throws -> ExitCode {
+    guard args.count == 1 else {
+        throw CLIError(message: "\(label.lowercased()) expects a destination directory", code: .usage)
+    }
+    let destination = datedFolder(parent: NSString(string: args[0]).expandingTildeInPath, prefix: prefix)
+
+    let deviceId = try selectedDevice(config: config)
+    return withOpenDevice(deviceId: deviceId, config: config) { _ in
+        let lookup = resolveStorage(kind: kind, deviceId: deviceId, config: config,
+                                    missingMessage: "\(label) storage was not found. Check the Switch and DBI responder.")
+        guard case .ready(let sid, _) = lookup else {
+            if case .failed(let code) = lookup { return code }
+            return .deviceNotFound
+        }
+        if !config.json && !config.quiet { print("Exporting \(label) to \(destination)") }
+        let env = NxmtpClient.download(deviceId: deviceId, storageId: sid, sources: ["/"], destination: destination)
+        if config.json { print(env.raw) }
+        if !env.isSuccess { printError(env); return exitCode(for: env) }
+        if !config.json && !config.quiet { printTransferSummary(env, verb: label); print("Saved to \(destination)") }
         return .success
     }
 }
@@ -731,8 +1411,120 @@ private func withOpenDevice(deviceId: String, config: Config, body: (Envelope) -
         if config.json { print(details.raw) } else { printError(details) }
         return exitCode(for: details)
     }
-    defer { _ = NxmtpClient.dispose(deviceId: deviceId) }
+    SignalGuard.shared.arm(deviceId: deviceId)
+    defer {
+        SignalGuard.shared.disarm()
+        _ = NxmtpClient.dispose(deviceId: deviceId)
+    }
     return body(details)
+}
+
+/// Errors that will not recover on a quick retry: the device is gone or the
+/// transfer was cancelled. Mirrors `ErrorStringLocalizer`'s cancel/disconnect
+/// patterns so the CLI does not burn retries against a dead session.
+private func isFatalTransferError(_ error: String) -> Bool {
+    let lower = error.lowercased()
+    return lower.contains("context canceled") ||
+           lower.contains("transfer cancelled by user") ||
+           lower.contains("cancelled") ||
+           error.contains("ErrorDeviceChanged") ||
+           error.contains("LIBUSB_ERROR_NO_DEVICE") ||
+           error.contains("Device disconnected")
+}
+
+private enum StorageLookup {
+    case ready(sid: UInt32, storage: [String: Any])
+    case failed(ExitCode)
+}
+
+private enum SelectorResolution {
+    case ready(sid: UInt32, storage: [String: Any])
+    case ambiguous([String])
+    case unknown
+}
+
+/// Resolves a CLI selector against the device's reported storage list.
+/// Order mirrors the upstream Go implementation: numeric sid → kind alias →
+/// exact display name (case-insensitive) → unique display-name prefix.
+/// Ambiguity is reported instead of guessing.
+private func resolveSelector(_ selector: String, in storages: [[String: Any]]) -> SelectorResolution {
+    let norm = selector.lowercased().trimmingCharacters(in: .whitespaces)
+    let names = { (s: [String: Any]) -> String in string(s["displayName"]) ?? "?" }
+
+    // Numeric id is tried first; if it parses as a number but no storage has
+    // that sid, stop here instead of falling through to a fuzzy name match —
+    // guessing a different storage could write to the wrong place.
+    if let id = UInt32(norm) {
+        if let match = storages.first(where: { uint32($0["Sid"]) == id }) {
+            return .ready(sid: id, storage: match)
+        }
+        return .unknown
+    }
+
+    let aliasKey = norm.replacingOccurrences(of: " ", with: "")
+    if let kind = storageAliases[aliasKey] {
+        let matches = storages.filter { string($0["kind"]) == kind }
+        if matches.count == 1, let sid = uint32(matches[0]["Sid"]) {
+            return .ready(sid: sid, storage: matches[0])
+        }
+        if matches.count > 1 { return .ambiguous(matches.map(names)) }
+        return .unknown
+    }
+
+    let exact = storages.filter { names($0).lowercased() == norm }
+    if exact.count == 1, let sid = uint32(exact[0]["Sid"]) {
+        return .ready(sid: sid, storage: exact[0])
+    }
+    if exact.count > 1 { return .ambiguous(exact.map(names)) }
+
+    let prefix = storages.filter { names($0).lowercased().hasPrefix(norm) }
+    if prefix.count == 1, let sid = uint32(prefix[0]["Sid"]) {
+        return .ready(sid: sid, storage: prefix[0])
+    }
+    if prefix.count > 1 { return .ambiguous(prefix.map(names)) }
+
+    return .unknown
+}
+
+/// Fetches the storage list inside the open device session and resolves a
+/// remote path's selector to a concrete sid. On failure it reports to
+/// stderr/JSON and returns `.failed` with the matching exit code.
+private func resolveRemoteStorage(_ remote: RemotePath, deviceId: String, config: Config) -> StorageLookup {
+    let env = NxmtpClient.fetchStorages(deviceId: deviceId)
+    guard env.isSuccess else {
+        if config.json { print(env.raw) } else { printError(env) }
+        return .failed(exitCode(for: env))
+    }
+    let storages = storages(from: env)
+    switch resolveSelector(remote.selector, in: storages) {
+    case .ready(let sid, let storage):
+        return .ready(sid: sid, storage: storage)
+    case .ambiguous(let names):
+        fputs("Error: storage selector \"\(remote.selector)\" matches multiple: \(names.joined(separator: ", ")). Use the numeric id or a more specific name.\n", stderr)
+        return .failed(.usage)
+    case .unknown:
+        let available = storages.map { "\(uint32($0["Sid"]) ?? 0)=\(string($0["displayName"]) ?? "?")" }
+        fputs("Error: no storage matches \"\(remote.selector)\". Available: \(available.isEmpty ? "none" : available.joined(separator: ", "))\n", stderr)
+        return .failed(.usage)
+    }
+}
+
+/// Fetch storages and locate the one matching `kind`. Reports the failure
+/// envelope or a device-missing diagnostic through stderr/JSON and returns
+/// `.failed` with the matching exit code.
+private func resolveStorage(kind: String, deviceId: String, config: Config,
+                            missingMessage: String) -> StorageLookup {
+    let env = NxmtpClient.fetchStorages(deviceId: deviceId)
+    guard env.isSuccess else {
+        if config.json { print(env.raw) } else { printError(env) }
+        return .failed(exitCode(for: env))
+    }
+    guard let storage = storages(from: env).first(where: { string($0["kind"]) == kind }),
+          let sid = uint32(storage["Sid"]) else {
+        fputs("Error: \(missingMessage)\n", stderr)
+        return .failed(.deviceNotFound)
+    }
+    return .ready(sid: sid, storage: storage)
 }
 
 private func selectedDevice(config: Config) throws -> String {
@@ -773,13 +1565,25 @@ private func printDeviceInfo(_ env: Envelope) {
 private func printStorages(_ env: Envelope) {
     let list = storages(from: env)
     if list.isEmpty { print("No storages reported."); return }
-    print("ID          Kind             Capabilities                 Name")
+    print("ID          Kind             Capabilities                 FREE        TOTAL       Name")
     for storage in list {
         let sid = String(uint32(storage["Sid"]) ?? 0)
         let kind = string(storage["kind"]) ?? "unknown"
         let caps = capabilityText(storage["capabilities"] as? [String: Any] ?? [:])
+        let info = storage["Info"] as? [String: Any] ?? [:]
+        let reliable = bool(storage["sizeReliable"]) ?? true
+        let total = int64(info["MaxCapability"]) ?? 0
+        let freeText: String
+        let totalText: String
+        if reliable, total > 0 {
+            freeText = formatBytes(UInt64(max(int64(info["FreeSpaceInBytes"]) ?? 0, 0)))
+            totalText = formatBytes(UInt64(total))
+        } else {
+            freeText = "—"
+            totalText = "—"
+        }
         let name = string(storage["displayName"]) ?? storageDescription(storage)
-        print("\(sid.padding(toLength: 11, withPad: " ", startingAt: 0)) \(kind.padding(toLength: 16, withPad: " ", startingAt: 0)) \(caps.padding(toLength: 28, withPad: " ", startingAt: 0)) \(name)")
+        print("\(sid.padding(toLength: 11, withPad: " ", startingAt: 0)) \(kind.padding(toLength: 16, withPad: " ", startingAt: 0)) \(caps.padding(toLength: 28, withPad: " ", startingAt: 0)) \(freeText.padding(toLength: 11, withPad: " ", startingAt: 0)) \(totalText.padding(toLength: 11, withPad: " ", startingAt: 0)) \(name)")
         var notes: [String] = []
         if bool(storage["virtual"]) == true { notes.append("virtual/generated") }
         if bool((storage["capabilities"] as? [String: Any])?["installTarget"]) == true { notes.append("write-only install trigger") }
@@ -789,23 +1593,41 @@ private func printStorages(_ env: Envelope) {
     }
 }
 
-private func printListing(_ env: Envelope, showAll: Bool) {
+private func printListing(_ env: Envelope, showAll: Bool, recursive: Bool) {
     let entries = (env.data as? [[String: Any]] ?? []).filter { showAll || !(string($0["name"]) ?? "").hasPrefix(".") }
-    if entries.isEmpty { return }
-    for entry in entries.sorted(by: { (string($0["name"]) ?? "") < (string($1["name"]) ?? "") }) {
-        let type = (bool(entry["isFolder"]) ?? false) ? "<DIR>" : "     "
-        let sizeText: String
-        if bool(entry["isFolder"]) == true {
-            sizeText = "-"
-        } else if bool(entry["sizeUnknown"]) == true {
-            sizeText = "—"
-        } else {
-            sizeText = formatBytes(UInt64(max(int64(entry["size"]) ?? 0, 0)))
-        }
-        let date = string(entry["dateAdded"]) ?? ""
-        let name = string(entry["name"]) ?? ""
-        print("\(type) \(sizeText.padding(toLength: 12, withPad: " ", startingAt: 0)) \(date.padding(toLength: 24, withPad: " ", startingAt: 0)) \(name)")
+    if entries.isEmpty {
+        print("(empty)")
+        return
     }
+    // Directories first, then case-insensitive name order — matches the app list.
+    let sorted = entries.sorted { a, b in
+        let aDir = bool(a["isFolder"]) ?? false
+        let bDir = bool(b["isFolder"]) ?? false
+        if aDir != bDir { return aDir }
+        return (string(a["name"]) ?? "").lowercased() < (string(b["name"]) ?? "").lowercased()
+    }
+    var fileCount = 0, dirCount = 0
+    var totalBytes: Int64 = 0
+    for entry in sorted {
+        let isDir = bool(entry["isFolder"]) ?? false
+        let sizeText: String
+        if isDir {
+            dirCount += 1
+            sizeText = "<dir>"
+        } else if bool(entry["sizeUnknown"]) == true {
+            fileCount += 1
+            sizeText = "?"
+        } else {
+            let size = int64(entry["size"]) ?? 0
+            totalBytes += size
+            fileCount += 1
+            sizeText = formatBytes(UInt64(max(size, 0)))
+        }
+        let date = (string(entry["dateAdded"]) ?? "").isEmpty ? "—" : (string(entry["dateAdded"]) ?? "")
+        let name = recursive ? (string(entry["path"]) ?? string(entry["name"]) ?? "") : (string(entry["name"]) ?? "")
+        print("\(isDir ? "<DIR>" : "     ") \(sizeText.padding(toLength: 12, withPad: " ", startingAt: 0)) \(date.padding(toLength: 16, withPad: " ", startingAt: 0)) \(name)")
+    }
+    print("\(fileCount) file(s), \(dirCount) director(y/ies), \(formatBytes(UInt64(max(totalBytes, 0))))")
 }
 
 private func printTransferSummary(_ env: Envelope, verb: String) {
@@ -814,7 +1636,7 @@ private func printTransferSummary(_ env: Envelope, verb: String) {
     let dirs = int64(data["totalDirectories"]) ?? 0
     let bytes = int64(data["totalBytes"]) ?? 0
     let elapsed = double(data["elapsed"]) ?? 0
-    print("\(verb) complete: \(files) file(s), \(dirs) director(y/ies), \(formatBytes(UInt64(max(bytes, 0)))) in \(String(format: "%.1f", elapsed))s")
+    print("\(verb) complete: \(files) file(s), \(dirs) director(y/ies), \(formatBytes(UInt64(max(bytes, 0)))) in \(humanDuration(elapsed))")
     if let note = string(data["note"]), !note.isEmpty { print(note) }
     if let skipped = data["skipped"] as? [String], !skipped.isEmpty { print("Skipped: \(skipped.joined(separator: ", "))") }
 }
@@ -827,25 +1649,49 @@ private func printError(_ env: Envelope) {
 
 private func exitCode(for env: Envelope) -> ExitCode {
     switch env.errorType {
-    case "deviceNotFound", "deviceDisconnected": return .deviceNotFound
-    case "invalidInput": return .usage
-    default: return .failure
+    // Backend error kinds (backend/nxmtp/errors.go); legacy aliases kept so an
+    // older backend still maps sensibly.
+    case "noDevice", "disconnected", "deviceNotFound", "deviceDisconnected":
+        return .deviceNotFound
+    case "invalidInput":
+        return .usage
+    case "cancelled":
+        return .cancelled
+    case "deviceBusy":
+        return .deviceBusy
+    case "operationUnsupported", "unsupported":
+        return .unsupported
+    default:
+        return .failure
     }
 }
 
 private func parseRemote(_ value: String) -> RemotePath? {
     guard let colon = value.firstIndex(of: ":") else { return nil }
-    let sidText = String(value[..<colon])
-    guard let sid = UInt32(sidText) else { return nil }
+    let selector = String(value[..<colon]).trimmingCharacters(in: .whitespaces)
+    guard !selector.isEmpty else { return nil }
     let pathStart = value.index(after: colon)
     let rawPath = String(value[pathStart...])
-    return RemotePath(storageId: sid, path: rawPath.isEmpty ? "/" : rawPath)
+    let path = normalizedRemotePath(rawPath)
+    return RemotePath(selector: selector, path: path, storageId: UInt32(selector))
 }
 
 private func normalizedRemotePath(_ path: String) -> String {
-    let trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
+    var trimmed = path.trimmingCharacters(in: .whitespacesAndNewlines)
     if trimmed.isEmpty { return "/" }
-    return trimmed.hasPrefix("/") ? trimmed : "/\(trimmed)"
+    trimmed = trimmed.replacingOccurrences(of: "\\", with: "/")
+    if !trimmed.hasPrefix("/") { trimmed = "/\(trimmed)" }
+    // Collapse repeated slashes and resolve . / .. segments, mirroring path.Clean.
+    var stack: [String] = []
+    for segment in trimmed.components(separatedBy: "/") {
+        switch segment {
+        case "", ".": continue
+        case "..": if !stack.isEmpty { stack.removeLast() }
+        default: stack.append(segment)
+        }
+    }
+    let cleaned = stack.joined(separator: "/")
+    return cleaned.isEmpty ? "/" : "/\(cleaned)"
 }
 
 private func parentPath(_ path: String) -> String {
@@ -892,15 +1738,32 @@ private func jsonString(_ value: [String: Any]) -> String? {
     return String(data: data, encoding: .utf8)
 }
 
+private func humanDuration(_ seconds: Double) -> String {
+    if seconds < 0 { return "—" }
+    let total = Int(seconds.rounded())
+    let h = total / 3600, m = (total % 3600) / 60, s = total % 60
+    if h > 0 { return String(format: "%dh%02dm%02ds", h, m, s) }
+    if m > 0 { return String(format: "%dm%02ds", m, s) }
+    return "\(s)s"
+}
+
 private func formatBytes(_ bytes: UInt64) -> String {
-    let units = ["B", "KB", "MB", "GB", "TB"]
-    var size = Double(bytes)
+    // Decimal units (1000), matching DBI and SD-card vendors, which quote GB
+    // as 10^9; binary 1024 would disagree with the number shown on the console.
+    if bytes < 1000 { return "\(bytes) B" }
+    let units = ["kB", "MB", "GB", "TB", "PB"]
+    var div: Double = 1000
     var unit = 0
-    while size >= 1024, unit < units.count - 1 {
-        size /= 1024
+    var rest = Double(bytes) / 1000
+    while rest >= 1000, unit < units.count - 1 {
+        div *= 1000
         unit += 1
+        rest /= 1000
     }
-    return unit == 0 ? String(format: "%.0f %@", size, units[unit]) : String(format: "%.2f %@", size, units[unit])
+    let size = Double(bytes) / div
+    if size < 10 { return String(format: "%.2f %@", size, units[unit]) }
+    if size < 100 { return String(format: "%.1f %@", size, units[unit]) }
+    return String(format: "%.0f %@", size, units[unit])
 }
 
 private func string(_ value: Any?) -> String? {

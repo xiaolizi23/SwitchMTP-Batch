@@ -4,6 +4,35 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.21 — 2026-11-27
+
+### CLI
+
+逐项复核上游 Go CLI（`backend/cmd/switchmtp/`）后补齐并修正 Swift CLI，详见
+`docs/CLI_UPSTREAM_DIFF_2026-11-27.md`。
+
+- **对齐上游**：存储选择器按 数字 id → kind 别名 → 显示名精确匹配 → 唯一前缀 解析，
+  歧义报错不猜测；`ls -R` 递归、目录优先排序与底部统计；`rm` 多路径/同存储/只读/根保护；
+  `mv` 跨目录跨存储拒绝与新名校验；`install --sd/--nand`（长短横线）与本地文件/扩展名
+  预校验；全局 `--quiet/-q`、`--yes/-y`；`version --json` 带 os/arch；`storages`
+  FREE/TOTAL 容量列；`get` 下载前读能力校验；路径规范化对齐 `path.Clean`。
+- **修正偏差**：`mv` 接受完整设备路径作第二个参数（原先被斜杠校验误拦）；`rm` 同存储
+  比较大小写不敏感；单源下载前创建本地父目录并展开 `~`；`install` 本地缺失退出码由
+  usage(2) 改为 error(1)；`ls` 无时间戳条目显示 `—`。
+- **信号处理**：新增会话级 `SignalGuard`，监听 SIGINT/SIGTERM，首次信号取消在途传输，
+  二次信号以退出码 4 强制退出；原先仅传输路径监听 SIGINT。
+- **格式口径**：字节容量由二进制 1024 改为十进制 1000（kB/MB/GB…），对齐 DBI/SD 厂商；
+  进度行文件序号优先 `currentFile`，indefinite 阶段显示 note/working，补 bulk 估算 ETA，
+  汇总耗时用紧凑 h/m/s 格式。
+- 离线健壮性回归 41 passed / 0 failed。
+
+### GUI
+
+- **侧边栏安装区改为跳转批量清单**：侧边栏不再直接发起安装；点选或拖入的文件/文件夹
+  连同目标存储一起交给批量工作区，预选目标后在清单里复核、勾选再发送 DBI。
+- **抽取无 UI 批量核心层**：扫描、本体/更新/DLC 分组、深度检查移到 `Core/`，GUI 与 CLI
+  共用同一套模型与校验逻辑。
+
 ## 1.7.20 — 2026-11-26
 
 数十包全量深检 × DBI 实机对照后，收敛深度检查的判定口径：能说清的精确到层，

@@ -2753,6 +2753,28 @@
         }
       }
     },
+    "Choose .nsp, .nsz, .xci or .xcz files, or a folder containing them.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose .nsp, .nsz, .xci or .xcz files, or a folder containing them."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "选择 .nsp、.nsz、.xci 或 .xcz 文件，或包含它们的文件夹。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選擇 .nsp、.nsz、.xci 或 .xcz 檔案，或包含它們的資料夾。"
+          }
+        }
+      }
+    },
     "Choose a folder created by Back Up Saves.": {
       "localizations": {
         "en": {
@@ -5123,6 +5145,51 @@
           "stringUnit": {
             "state": "translated",
             "value": "將 NSP、NSZ、XCI 或 XCZ 檔案拖到此處"
+          }
+        }
+      }
+    },
+    "Files or folders go to the batch list for review": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Files or folders go to the batch list for review"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "文件或文件夹先加入批量清单检查"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "檔案或資料夾先加入批量清單檢查"
+          }
+        }
+      }
+    },
+    "Opens the batch list with these items; review and tick before sending to DBI.": {
+      "comment": "Tooltip for an install drop target in the sidebar",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the batch list with these items; review and tick before sending to DBI."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在批量清单中打开这些项目，检查勾选后再发送给 DBI。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在批量清單中打開這些項目，檢查勾選後再傳送給 DBI。"
           }
         }
       }

@@ -50,7 +50,7 @@ struct MainView: View {
     /// The batch workspace is its own window rather than a sidebar destination:
     /// it is a separate job ("prepare a whole library"), not a place inside the
     /// device's file browser, and it must keep its own scan state.
-    @State private var batchWorkspace = BatchWorkspaceController()
+    @State private var batchWorkspace = BatchWorkspaceController.shared
     /// Set when the notice is re-opened from the Help menu after first run.
     @State private var isShowingUSBDisclosure = false
 
@@ -309,6 +309,9 @@ struct MainView: View {
                         favoritesManager: favoritesManager,
                         onFavoriteSelected: { item in
                             handleFavoriteTap(item)
+                        },
+                        onInstallImport: { urls, kind in
+                            batchWorkspace.enqueue(manager: manager, urls: urls, target: kind)
                         }
                     )
                     .navigationSplitViewColumnWidth(min: 200, ideal: 230, max: 280)
@@ -338,6 +341,9 @@ struct MainView: View {
                         favoritesManager: favoritesManager,
                         onFavoriteSelected: { item in
                             handleFavoriteTap(item)
+                        },
+                        onInstallImport: { urls, kind in
+                            batchWorkspace.enqueue(manager: manager, urls: urls, target: kind)
                         }
                     )
                     .frame(minWidth: 200, idealWidth: 230, maxWidth: 280)

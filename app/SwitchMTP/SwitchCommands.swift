@@ -13,7 +13,6 @@
 
 import AppKit
 import SwiftUI
-import UniformTypeIdentifiers
 
 /// The **Switch** menu: bulk workflows that are specific to a console.
 ///
@@ -125,18 +124,12 @@ struct SwitchCommands: Commands {
         guard let manager else { return }
         let panel = NSOpenPanel()
         panel.canChooseFiles = true
-        panel.canChooseDirectories = false
+        panel.canChooseDirectories = true
         panel.allowsMultipleSelection = true
-        // Map our extension allow-list to UTTypes. Installable Switch formats
-        // have no registered system type, so filenameExtension: is the only
-        // way to build them; anything unmappable is simply skipped.
-        panel.allowedContentTypes = MTPManager.installableExtensions.compactMap {
-            UTType(filenameExtension: $0)
-        }
         panel.prompt = String(localized: "Install")
-        panel.message = String(localized: "Choose .nsp, .nsz, .xci or .xcz files to install.")
+        panel.message = String(localized: "Choose .nsp, .nsz, .xci or .xcz files, or a folder containing them.")
         guard panel.runModal() == .OK, !panel.urls.isEmpty else { return }
-        present(manager.install(fileURLs: panel.urls, to: storage))
+        BatchWorkspaceController.shared.enqueue(manager: manager, urls: panel.urls, target: storage.kind)
     }
 
     /// Restoring overwrites save data in place and cannot be undone, so it is

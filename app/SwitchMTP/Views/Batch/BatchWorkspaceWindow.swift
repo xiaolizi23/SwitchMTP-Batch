@@ -25,7 +25,15 @@ import SwiftUI
 import AppKit
 
 final class BatchWorkspaceController: NSObject, NSWindowDelegate {
+    /// Shared so the Switch menu and the sidebar drop zones can hand files to
+    /// the same workspace the toolbar button opens.
+    static let shared = BatchWorkspaceController()
+
     private var windowController: NSWindowController?
+    /// Rebuilt every time the workspace opens: closing the window drops the
+    /// prepared list, so a later drop starts a fresh batch instead of resuming
+    /// an old one. While the window stays open, further drops append to it.
+    private var model: BatchInstallModel?
 
     /// Bring an already-open workspace forward instead of opening a second one.
     func show(manager: MTPManager) {
@@ -34,6 +42,7 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
             return
         }
 
+        let model = ensureModel(manager: manager)
         let host = hostWindow()
         // The parent frame only matters for the first open: it decides the
         // starting size and position so the window visibly belongs to the
@@ -47,7 +56,7 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
         let hostContent = host?.frame.size ?? WindowMetrics.mainMinFrame
         let size = WindowMetrics.workspaceFrameSize(forParentFrame: hostContent)
 
-        let root = BatchInstallSheet(manager: manager) { [weak self] in
+        let root = BatchInstallSheet(manager: manager, model: model) { [weak self] in
             self?.close()
         }
         let hosting = NSHostingController(rootView: root)
@@ -86,13 +95,35 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
         window.makeKeyAndOrderFront(nil)
     }
 
+    /// Import files or folders into the batch list, opening the workspace
+    /// first if it is not on screen. `target` pre-selects the install storage;
+    /// it is ignored when that target is not present on the connected console.
+    func enqueue(manager: MTPManager, urls: [URL], target: StorageKind?) {
+        guard !urls.isEmpty else { return }
+        show(manager: manager)
+        guard let model else { return }
+        if let target, manager.installTargets.contains(where: { $0.kind == target }) {
+            model.targetKind = target
+        }
+        model.importURLs(urls)
+    }
+
+    private func ensureModel(manager: MTPManager) -> BatchInstallModel {
+        if let model { return model }
+        let model = BatchInstallModel(manager: manager)
+        self.model = model
+        return model
+    }
+
     func close() {
         windowController?.window?.close()
         windowController = nil
+        model = nil
     }
 
     func windowWillClose(_ notification: Notification) {
         windowController = nil
+        model = nil
     }
 
     /// The app's main window, never the workspace itself.

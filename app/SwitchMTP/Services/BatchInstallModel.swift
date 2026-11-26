@@ -61,18 +61,6 @@ final class BatchInstallModel: ObservableObject {
     @Published private(set) var keySetLoaded = false
     @Published private(set) var keySetError: String? = nil
 
-    /// A `title.keys` sitting next to the chosen `prod.keys` is used when
-    /// present. It is optional: the engine now recovers title keys from the
-    /// package's own tickets, which is what DBI does, so this only helps for
-    /// personalized tickets or older repacks.
-    var titleKeysURL: URL? {
-        guard let keySetPath else { return nil }
-        let sibling = URL(fileURLWithPath: keySetPath)
-            .deletingLastPathComponent()
-            .appendingPathComponent("title.keys")
-        return FileManager.default.isReadableFile(atPath: sibling.path) ? sibling : nil
-    }
-
     /// A one-line result of the last action, shown as a banner in the sheet.
     @Published var banner: String? = nil
     @Published var bannerIsError = false
@@ -316,105 +304,27 @@ final class BatchInstallModel: ObservableObject {
 
         let existing = packages
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            var found: [(URL, PackageFormat, Int64)] = []
-            var seen = Set<String>(existing.map { $0.url.standardizedFileURL.path })
-            var scannedDirs = 0
-
-            func walk(_ url: URL) {
-                guard !token.isCancelled else { return }
-                let values = try? url.resourceValues(forKeys: [.isDirectoryKey, .isRegularFileKey, .isSymbolicLinkKey, .fileSizeKey])
-                if values?.isSymbolicLink == true { return }
-                if values?.isDirectory == true {
-                    scannedDirs += 1
-                    if scannedDirs % 40 == 0 {
-                        let folder = url.lastPathComponent
-                        DispatchQueue.main.async { [weak self] in
-                            guard let self, generation == self.scanGeneration else { return }
-                            self.currentScanFolder = folder
-                            self.scanHeadline = "正在扫描 \(scannedDirs) 个文件夹…已找到 \(found.count) 个安装包"
-                        }
-                    }
-                    // Skip directories that can never contain installable
-                    // packages but can hold tens of thousands of files.
-                    let name = url.lastPathComponent.lowercased()
-                    if name == ".git" || name == "node_modules" || name == "$recycle.bin"
-                        || name == "system volume information" || name.hasSuffix(".app") {
-                        return
-                    }
-                    if let contents = try? FileManager.default.contentsOfDirectory(
-                        at: url, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]) {
-                        for child in contents {
-                            if token.isCancelled { return }
-                            walk(child)
-                        }
-                    }
-                    return
-                }
-                guard values?.isRegularFile == true else { return }
-                let name = url.lastPathComponent
-                if name.hasPrefix(".") { return }
-                guard let format = PackageFormat.from(url: url),
-                      let size = values?.fileSize, size > 64 else { return }
-                let key = url.standardizedFileURL.path
-                guard !seen.contains(key) else { return }
-                seen.insert(key)
-                found.append((url, format, Int64(size)))
-            }
-
-            for root in urls {
-                guard !token.isCancelled else { break }
+            let existingPaths = Set(existing.map { $0.url.standardizedFileURL.path })
+            let found = BatchScanner.scan(
+                urls: urls,
+                existingPaths: existingPaths,
+                shouldCancel: { token.isCancelled }) { count, folder in
                 DispatchQueue.main.async { [weak self] in
                     guard let self, generation == self.scanGeneration else { return }
-                    self.currentScanFolder = root.lastPathComponent
-                }
-                walk(root)
-            }
-
-            if token.isCancelled {
-                DispatchQueue.main.async { [weak self] in
-                    guard let self, generation == self.scanGeneration else { return }
-                    self.isScanning = false
-                    self.scanHeadline = "已取消扫描"
-                }
-                return
-            }
-
-            // Inspect and publish in batches so a 300-title library fills in
-            // progressively instead of freezing the sheet until the end.
-            var batch: [InstallPackage] = []
-            for (index, item) in found.enumerated() {
-                if token.isCancelled { break }
-                var package = InstallPackage(url: item.0, format: item.1, fileSize: item.2,
-                                             displayName: PackageInspector.displayName(for: item.0))
-                let report = PackageInspector.inspect(url: item.0, format: item.1)
-                package.report = report
-                package.notes = report.issues
-                package.quickVerdict = report.verdict
-                package.titleID = report.titleID
-                package.contentType = report.contentType
-                package.version = report.version
-                if let id = report.titleID, let value = UInt64(id, radix: 16) {
-                    // Normalise to the application title ID: clear the patch
-                    // bit and the add-on bit (bits 0-12). Clearing 16 bits
-                    // would also erase part of the game identifier, e.g.
-                    // 01000000000AA000 would turn into 0100152000020000.
-                    package.baseTitleID = String(format: "%016llX", value & ~0x1FFF)
-                }
-                package.isSelected = report.verdict != .blocked
-                batch.append(package)
-
-                if batch.count >= 12 || index == found.count - 1 {
-                    let toPublish = batch
-                    batch.removeAll(keepingCapacity: true)
-                    DispatchQueue.main.async { [weak self] in
-                        guard let self, generation == self.scanGeneration else { return }
-                        self.merge(toPublish)
-                    }
+                    self.currentScanFolder = folder
+                    self.scanHeadline = "正在扫描…已找到 \(count) 个安装包"
                 }
             }
 
             DispatchQueue.main.async { [weak self] in
                 guard let self, generation == self.scanGeneration else { return }
+                if token.isCancelled {
+                    self.isScanning = false
+                    self.scanHeadline = "已取消扫描"
+                    self.scanToken = nil
+                    return
+                }
+                self.merge(found)
                 self.isScanning = false
                 self.scanHeadline = self.packages.isEmpty
                     ? "没有找到可安装的 NSP / NSZ / XCI / XCZ 文件"
@@ -443,32 +353,18 @@ final class BatchInstallModel: ObservableObject {
     /// Rebuilds the tree immediately; cheap for the sizes this workspace sees
     /// (tens to a few hundred files).
     private func rebuildGroups() {
-        var byKey: [String: [InstallPackage]] = [:]
-        for package in packages { byKey[package.groupKey, default: []].append(package) }
-
-        groups = byKey.map { key, members in
-            let sorted = members.sorted { lhs, rhs in
-                if lhs.contentType.sortRank != rhs.contentType.sortRank {
-                    return lhs.contentType.sortRank < rhs.contentType.sortRank
-                }
-                return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+        // Group titles keep the Chinese-first order: Simplified, then the
+        // Traditional name converted to Simplified, then English. The local
+        // file name is the last resort. Package rows stay English so a row
+        // never mixes scripts.
+        var officialNames: [String: String] = [:]
+        for package in packages {
+            guard let id = package.baseTitleID else { continue }
+            if let name = LocalizedTitleCatalog.shared.preferredDisplayName(for: id) ?? titleNames[id] {
+                officialNames[id] = name
             }
-            let base = sorted.first { $0.contentType == .base } ?? sorted.first!
-            // Group titles keep the Chinese-first order: Simplified, then the
-            // Traditional name converted to Simplified, then English. The local
-            // file name is the last resort. Package rows stay English so a row
-            // never mixes scripts.
-            let titleID = base.baseTitleID
-            let official = titleID.flatMap { id in
-                LocalizedTitleCatalog.shared.preferredDisplayName(for: id) ?? titleNames[id]
-            }
-            let name = official ?? base.displayName
-            return InstallPackageGroup(
-                id: key,
-                name: name,
-                baseTitleID: base.baseTitleID,
-                packages: sorted)
         }
+        groups = BatchGrouper.group(packages, officialNames: officialNames)
         requestMissingIcons()
         requestMissingNames()
         if !catalogReady {
@@ -751,7 +647,7 @@ final class BatchInstallModel: ObservableObject {
             return
         }
 
-        performDeepChecks(on: targets.map { Self.deepJob($0, keyPath: keyPath) }) { [weak self] in
+        performDeepChecks(keysetPath: keyPath, jobs: DeepCheckRunner.jobs(for: targets)) { [weak self] in
             guard let self else { return }
             self.setBanner(self.deepSummary(), isError: false)
         }
@@ -774,90 +670,64 @@ final class BatchInstallModel: ObservableObject {
             return
         }
 
-        performDeepChecks(on: pending.map { Self.deepJob($0, keyPath: keyPath) }) { [weak self] in
+        performDeepChecks(keysetPath: keyPath, jobs: DeepCheckRunner.jobs(for: pending)) { [weak self] in
             guard let self else { return }
             self.setBanner(self.deepSummary(), isError: false)
             completion(self.makePlan())
         }
     }
 
-    private typealias DeepJob = (id: InstallPackage.ID, url: URL, format: PackageFormat,
-                                 keyPath: String, expectedNCAs: Int?,
-                                 entrySizes: [String: Int64])
-
-    private static func deepJob(_ package: InstallPackage, keyPath: String) -> DeepJob {
-        let sizes = package.report?.entries.reduce(into: [String: Int64]()) { $0[$1.name] = $1.size } ?? [:]
-        return (id: package.id, url: package.url, format: package.format, keyPath: keyPath,
-                expectedNCAs: package.report?.ncaCount, entrySizes: sizes)
-    }
-
-    private func performDeepChecks(on jobs: [DeepJob], completion: @escaping () -> Void) {
+    private func performDeepChecks(keysetPath: String,
+                                   jobs: [DeepCheckRunner.Job],
+                                   completion: @escaping () -> Void) {
         guard !jobs.isEmpty, !isDeepChecking else { completion(); return }
         guard let hactool = DeepVerifier.hactoolURL else { completion(); return }
 
         isDeepChecking = true
         deepCheckDone = 0
         deepCheckTotal = jobs.count
-        let titleKeys = titleKeysURL
+        let titleKeys = DeepCheckRunner.titleKeysURL(for: keysetPath)
         // Freeze the work list: the scan may still publish new packages while
         // this runs, and those are simply not part of this pass.
         let frozen = jobs
 
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             guard let self else { return }
-            let keyset = try? KeySetStore.makeEphemeralCopy(of: frozen[0].keyPath)
+            let keyset = try? KeySetStore.makeEphemeralCopy(of: keysetPath)
             defer { if let keyset { KeySetStore.discard(keyset) } }
 
-            for (offset, job) in frozen.enumerated() {
-                DispatchQueue.main.async {
-                    self.updatePackage(id: job.id) { package in
-                        package.deepState = .running
-                        package.deepProgress = 0
-                        package.deepPhase = "准备中"
-                    }
-                }
-
-                let result: DeepResult
-                if let keyset {
-                    result = DeepVerifier.verify(
-                        url: job.url, format: job.format,
-                        keysetURL: keyset,
-                        titleKeysURL: titleKeys,
-                        hactoolURL: hactool,
-                        expectedNCAs: job.expectedNCAs,
-                        entrySizes: job.entrySizes,
-                        progress: { fraction, phase in
-                            DispatchQueue.main.async { [weak self] in
-                                guard let self else { return }
-                                self.updatePackage(id: job.id) { package in
-                                    package.deepProgress = min(max(fraction, 0), 1)
-                                    package.deepPhase = phase
-                                }
-                            }
-                        })
-                } else {
-                    result = DeepResult(state: .unavailable, notes: [
-                        .init(severity: .warning, title: "密钥文件不可读", detail: "本次只完成结构检查。")
-                    ], detail: "无法读取 prod.keys")
-                }
-
-                DispatchQueue.main.async {
-                    self.updatePackage(id: job.id) { package in
-                        package.deepState = result.state
-                        package.deepNCAs = result.ncas
-                        package.notes.append(contentsOf: result.notes)
-                        // The colour is now derived from (quick, deep) together;
-                        // mutating quickVerdict here used to hide a failed deep
-                        // pass behind a stale "通过" label.
-                        if result.state == .failed {
-                            package.isSelected = false
+            DeepCheckRunner.run(
+                jobs: frozen,
+                keysetURL: keyset,
+                titleKeysURL: titleKeys,
+                hactoolURL: hactool,
+                onProgress: { job, fraction, phase in
+                    DispatchQueue.main.async { [weak self] in
+                        guard let self else { return }
+                        self.updatePackage(id: job.id) { package in
+                            package.deepProgress = min(max(fraction, 0), 1)
+                            package.deepPhase = phase
                         }
-                        package.deepProgress = 1
-                        package.deepPhase = nil
                     }
-                    self.deepCheckDone = offset + 1
-                }
-            }
+                },
+                onResult: { job, result in
+                    DispatchQueue.main.async {
+                        self.updatePackage(id: job.id) { package in
+                            package.deepState = result.state
+                            package.deepNCAs = result.ncas
+                            package.notes.append(contentsOf: result.notes)
+                            // The colour is now derived from (quick, deep) together;
+                            // mutating quickVerdict here used to hide a failed deep
+                            // pass behind a stale "通过" label.
+                            if result.state == .failed {
+                                package.isSelected = false
+                            }
+                            package.deepProgress = 1
+                            package.deepPhase = nil
+                        }
+                        self.deepCheckDone += 1
+                    }
+                })
 
             DispatchQueue.main.async {
                 self.isDeepChecking = false

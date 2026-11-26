@@ -39,15 +39,28 @@ switchmtp-cli doctor
 ## Global flags
 
 ```sh
-switchmtp-cli [--verbose] [--json] [--device <id>] <command> [arguments]
+switchmtp-cli [--verbose] [--json] [--quiet] [--yes] [--device <id>] <command> [arguments]
 ```
 
 - `--device <id>` selects a device when more than one usable MTP device is connected.
   Device IDs look like `1406|8221|SERIAL` and use decimal vendor/product IDs.
 - `--json` prints the raw backend JSON envelope for the main operation.
+- `--quiet` (`-q`) suppresses progress bars and confirmation messages; list output is
+  still printed.
+- `--yes` (`-y`) skips confirmation prompts (accepted for scripting parity; this CLI
+  runs headless and does not prompt otherwise).
 - `--verbose` enables backend protocol logging on stderr.
 
-Device paths use `<storageId>:<path>`, for example `65537:/switch/`.
+Device paths use `<storage>:<path>`. The `<storage>` part accepts, in order: a numeric
+storage id (`65537`), a kind alias (`sdcard`, `nand`, `saves`, `album`, `gamecard`, …),
+an exact display name, or a unique prefix of the display name. An ambiguous or unknown
+selector is an error — the CLI never guesses a storage.
+
+```sh
+switchmtp-cli ls 65537:/switch/
+switchmtp-cli ls sdcard:/switch/
+switchmtp-cli ls saves:/
+```
 
 ## Commands
 
@@ -59,11 +72,8 @@ Lists connected MTP devices.
 switchmtp-cli devices
 ```
 
-With no devices attached, output is:
-
-```text
-[]
-```
+With no devices attached, plain text prints a hint to run `doctor`; `--json` emits an
+empty array `[]`.
 
 ### `info`
 
@@ -75,62 +85,86 @@ switchmtp-cli --device "1406|8221|XAW10000000000" info
 
 ### `storages`
 
-Lists storage IDs, Switch/DBI storage kind, capability flags, and notes. DBI install
-storages are shown as write-only install triggers and not browsable; virtual storages
-such as Installed Games/Game Card are marked as virtual/generated.
+Lists storage IDs, Switch/DBI storage kind, capability flags, free/total space, and
+notes. DBI install storages are shown as write-only install triggers and not browsable;
+virtual storages such as Installed Games/Game Card are marked as virtual/generated. Space
+is shown as `—` when the storage does not report reliable capacity.
 
 ```sh
 switchmtp-cli storages
 ```
 
-### `ls [-a] <storage>:<path>`
+### `ls [-a] [-R] <storage>:<path>`
 
-Lists a directory. Unknown virtual file sizes are shown as `—`, never as a fake 4 GiB value.
+Lists a directory. Folders come first, then case-insensitive name order; a footer line
+summarises file/directory counts and total size. Unknown virtual file sizes are shown as
+`?`, never as a fake 4 GiB value.
+
+- `-a`, `--all` includes hidden files and filesystem artefacts.
+- `-R`, `--recursive` walks subdirectories and prints full paths.
 
 ```sh
 switchmtp-cli ls 65537:/
-switchmtp-cli ls -a 65537:/switch/
+switchmtp-cli ls -a sdcard:/switch/
+switchmtp-cli ls -R saves:/
 ```
 
-### `cp <src> <dst>`
+### `cp <src>... <dst>` / `get` / `put`
 
-Copies in either direction. Exactly one side must be a device path.
+Copies in either direction. Exactly one side must be device paths; one or more sources
+are accepted, and every source must be on the same storage.
+
+- `get` / `download` pins the direction device → Mac; the last argument is a local folder.
+- `put` / `upload` pins the direction Mac → device; the last argument is a device path.
 
 ```sh
 # Device to Mac
 switchmtp-cli cp 65537:/switch/app.nro ~/Downloads/
+switchmtp-cli get sdcard:/switch/a.nro sdcard:/switch/b.nro ~/Downloads/
 
 # Mac to device directory
 switchmtp-cli cp ~/Downloads/app.nro 65537:/switch/
+switchmtp-cli put ~/Downloads/a.nsp ~/Downloads/b.nsp sdcard:/games/
 ```
 
-### `rm <storage>:<path>`
+Read-only install storages cannot be downloaded from; the CLI rejects the operation
+instead of issuing a failing transfer.
 
-Deletes a file or folder from the device.
+### `rm <storage>:<path>...`
+
+Deletes one or more files or folders from the device. All paths must be on the same
+storage; the storage root cannot be deleted, and storages without a delete capability are
+rejected.
 
 ```sh
 switchmtp-cli rm 65537:/switch/old-app.nro
+switchmtp-cli rm sdcard:/switch/a.nro sdcard:/switch/b.nro
 ```
 
-### `mv <storage>:<path> <new-path>`
+### `mv <storage>:<path> <new-name>`
 
-Renames an item within the same device directory.
+Renames an item within the same device directory. Moving between directories or storages
+is refused; use `get` then `put` for that. The new name must be a bare file/folder name
+(it cannot contain `/` or `\`).
 
 ```sh
-switchmtp-cli mv 65537:/switch/old.nro /switch/new.nro
+switchmtp-cli mv 65537:/switch/old.nro new.nro
 ```
 
 ### `mkdir <storage>:<path>`
 
-Creates a device directory.
+Creates a device directory. The storage root cannot be created as a target.
 
 ```sh
 switchmtp-cli mkdir 65537:/switch/new-folder
 ```
 
-### `install <file...> [--nand]`
+### `install <file...> [--sd|--nand]`
 
-Uploads `.nsp`, `.nsz`, `.xci`, or `.xcz` files to DBI's install storage. SD install is the default; pass `--nand` for internal storage.
+Uploads one or more `.nsp`, `.nsz`, `.xci`, or `.xcz` files to DBI's install storage. SD
+install is the default; pass `--nand` (or `-nand`) for internal storage. `--sd`/`-sd` is
+accepted for explicitness. Files are checked locally — existence and extension — before
+the device is opened.
 
 ```sh
 switchmtp-cli install ~/Downloads/game.nsp

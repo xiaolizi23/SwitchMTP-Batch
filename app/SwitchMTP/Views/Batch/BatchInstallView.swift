@@ -36,10 +36,10 @@ struct BatchInstallSheet: View {
     @State private var showKeyPanel = false
     @State private var isDropTargeted = false
 
-    init(manager: MTPManager, onClose: (() -> Void)? = nil) {
+    init(manager: MTPManager, model: BatchInstallModel, onClose: (() -> Void)? = nil) {
         self.manager = manager
         self.onClose = onClose
-        _model = StateObject(wrappedValue: BatchInstallModel(manager: manager))
+        _model = StateObject(wrappedValue: model)
     }
 
     private func closeWorkspace() {

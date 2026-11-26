@@ -17,7 +17,12 @@
 		200CC758A9A12C43C79BF4EE /* FileListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B646FCEA9E49EE0AE031E71C /* FileListView.swift */; };
 		24868F893C8A3EB1B3461EA2 /* THIRD_PARTY.md in Resources */ = {isa = PBXBuildFile; fileRef = 27F3376BE787331D591994A8 /* THIRD_PARTY.md */; };
 		259B68E6A0080F8333891A4A /* InitialWindowSize.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2FC33B1BA2B7DF29A75FCB6 /* InitialWindowSize.swift */; };
+		2B462E4B0AE9ED69A674EC38 /* BatchGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A35705E7C89FA86B79AD82 /* BatchGrouper.swift */; };
+		3232C230A20562A35F06F46A /* BatchScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 118F96B11DA513FDAC864E2D /* BatchScanner.swift */; };
 		3262F17C56504F29B3CBC0B9 /* CLIUSBMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 764F9AB8F26B17D6696FA94C /* CLIUSBMonitor.swift */; };
+		3AB869051D34C1838F6956E4 /* BatchGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A35705E7C89FA86B79AD82 /* BatchGrouper.swift */; };
+		407BD0581A24EB8426C68267 /* PackageInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B17A61DD50CE75EC03BE039 /* PackageInspector.swift */; };
+		408381398BF79F52007237F1 /* BatchScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 118F96B11DA513FDAC864E2D /* BatchScanner.swift */; };
 		4514EB79ED4A557CE3C9AA7B /* BatchConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = D799ADB64DCA1A02E7CE5937 /* BatchConfirmSheet.swift */; };
 		45EDD753ADBAEF845ECFD215 /* PackageInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B17A61DD50CE75EC03BE039 /* PackageInspector.swift */; };
 		49F50FF84D1DF49434F3B5EC /* ChineseScriptSimplifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = E920BE8CF5244F46DA7EB769 /* ChineseScriptSimplifier.swift */; };
@@ -32,8 +37,10 @@
 		75269B2EE53F8B8EFA52DD60 /* NxmtpShim.c in Sources */ = {isa = PBXBuildFile; fileRef = 7944629433CD9EEB72BB7C86 /* NxmtpShim.c */; };
 		77BAF222C68D431A18760C1B /* USBAccessDisclosureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D3D1F786DA262D22CA713C4 /* USBAccessDisclosureView.swift */; };
 		7B91C4F851DCD77E7361FB60 /* libusb-1.0.0.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 213E3D5109EC59B11FC783CB /* libusb-1.0.0.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		7FA17A35728490E5BB0EE53A /* DeepVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9690FA8EB5F69DE991C96004 /* DeepVerifier.swift */; };
 		8362B7A20D48D3F5A6B61233 /* NSZUnpacker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104165856777133274B78161 /* NSZUnpacker.swift */; };
 		89FB407322DA694F9A62679A /* FavoritesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C24E675C9D057E04CA2098A8 /* FavoritesManager.swift */; };
+		97ECEC6D7755F434282700BF /* NSZUnpacker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104165856777133274B78161 /* NSZUnpacker.swift */; };
 		9E0034BF01D531D1884A0052 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 915C6296D6E867D7F4711C8F /* UpdateChecker.swift */; };
 		A1F80EAA7A62CDC9FF1AC364 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE472E8AB3747B888C2EB36 /* MainView.swift */; };
 		A2F594E989A4C151C30E1A63 /* BatchPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695B9B29F1B66271E678CA71 /* BatchPackage.swift */; };
@@ -46,12 +53,16 @@
 		AFA3AF6C3141D54E153C4565 /* DeviceLease.swift in Sources */ = {isa = PBXBuildFile; fileRef = 075F473C2DBA16968E976491 /* DeviceLease.swift */; };
 		B17C3E868018BA465D4B3834 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4AAAA92E9D2CC13C491926D9 /* IOKit.framework */; };
 		B184973DD516B41A2EF592ED /* IssueReporter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 152C105F81B162BBB3758673 /* IssueReporter.swift */; };
+		B49B37C6C0ADA638E5A5CC79 /* USBProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64150E67E5E9A82D0D348E33 /* USBProtocol.swift */; };
 		B90C3B9D16182E39930A0B2E /* TitleIconStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45CE6F809C9DA8FFD6B49E45 /* TitleIconStore.swift */; };
+		BEEECD0A0C1101C0EAF62947 /* BatchPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695B9B29F1B66271E678CA71 /* BatchPackage.swift */; };
 		C296974AB24A1BE4213729A5 /* KeySetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04810E83BF0D7BADD50A5B37 /* KeySetStore.swift */; };
 		C2FAC92899C3F6840A93E77E /* DeepVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9690FA8EB5F69DE991C96004 /* DeepVerifier.swift */; };
 		C3356FA2E2B97CAEEE5B0D0B /* MTPDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = C842720BDDF3DDA4F1F1EB76 /* MTPDevice.swift */; };
 		C554C6C1863529F129449164 /* nxmtp.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 4F052DDCBADD544C5EB773D3 /* nxmtp.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		C76047EA4555DC7CFA9A806F /* DeepCheckRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 578E67E944809E412769F6E4 /* DeepCheckRunner.swift */; };
 		D4BEB57A3129989924EBB9EA /* TransferStatistics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09A8108F23C54E2D53FBF0FC /* TransferStatistics.swift */; };
+		D962BE29599FCC953E8D0E61 /* KeySetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04810E83BF0D7BADD50A5B37 /* KeySetStore.swift */; };
 		DCC7A86FE21FCC3275A4F76D /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 4AAAA92E9D2CC13C491926D9 /* IOKit.framework */; };
 		DCCA212E0FD9A5161E9965EF /* TransferBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F0CFA2E520E359F76C0B137 /* TransferBar.swift */; };
 		DE5980C3F20F98DFD14D6B02 /* BatchWorkspaceWindow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5AC421BCE882B811AC34E242 /* BatchWorkspaceWindow.swift */; };
@@ -62,7 +73,9 @@
 		ED82D44D4B6687F41007468C /* SidebarView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08F02A9129CC24C079B211C9 /* SidebarView.swift */; };
 		EF58B53F7CA46DF42D7AD511 /* ToolbarViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 669E1D9CB0C6AF6540F9CC81 /* ToolbarViews.swift */; };
 		F124F2D881D4A4949481EFB0 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 5A4DDD334534E38895C0B02A /* LICENSE */; };
+		F6B9FCA8999014E4E6C7B2C8 /* DeepCheckRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 578E67E944809E412769F6E4 /* DeepCheckRunner.swift */; };
 		F6BF351F8B1C033877C35651 /* LocalizedTitleCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D38AA857AA3A718D97E14F /* LocalizedTitleCatalog.swift */; };
+		F7321E51DDA164C44E3DB611 /* MTPDevice.swift in Sources */ = {isa = PBXBuildFile; fileRef = C842720BDDF3DDA4F1F1EB76 /* MTPDevice.swift */; };
 		FA45E0F6F7587217CB8F697C /* SwitchCommands.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90BB1349920A3C3346001BEA /* SwitchCommands.swift */; };
 /* End PBXBuildFile section */
 
@@ -90,6 +103,7 @@
 		08F02A9129CC24C079B211C9 /* SidebarView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidebarView.swift; sourceTree = "<group>"; };
 		09A8108F23C54E2D53FBF0FC /* TransferStatistics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferStatistics.swift; sourceTree = "<group>"; };
 		104165856777133274B78161 /* NSZUnpacker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NSZUnpacker.swift; sourceTree = "<group>"; };
+		118F96B11DA513FDAC864E2D /* BatchScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchScanner.swift; sourceTree = "<group>"; };
 		152C105F81B162BBB3758673 /* IssueReporter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IssueReporter.swift; sourceTree = "<group>"; };
 		16EBD1F39D0EE1FAA274C6B0 /* DebugLog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLog.swift; sourceTree = "<group>"; };
 		1B826BE298246A24D63B81E1 /* SwitchMTP-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "SwitchMTP-Bridging-Header.h"; sourceTree = "<group>"; };
@@ -110,6 +124,7 @@
 		4D3D1F786DA262D22CA713C4 /* USBAccessDisclosureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USBAccessDisclosureView.swift; sourceTree = "<group>"; };
 		4F052DDCBADD544C5EB773D3 /* nxmtp.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = nxmtp.dylib; path = ../backend/build/nxmtp.dylib; sourceTree = "<group>"; };
 		5336089C369BB493DA127ACB /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		578E67E944809E412769F6E4 /* DeepCheckRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeepCheckRunner.swift; sourceTree = "<group>"; };
 		5A4DDD334534E38895C0B02A /* LICENSE */ = {isa = PBXFileReference; path = LICENSE; sourceTree = "<group>"; };
 		5AC421BCE882B811AC34E242 /* BatchWorkspaceWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchWorkspaceWindow.swift; sourceTree = "<group>"; };
 		64150E67E5E9A82D0D348E33 /* USBProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USBProtocol.swift; sourceTree = "<group>"; };
@@ -127,6 +142,7 @@
 		B58E8DCE1A7DC2CC71D78281 /* QuickLookOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickLookOverlayView.swift; sourceTree = "<group>"; };
 		B646FCEA9E49EE0AE031E71C /* FileListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileListView.swift; sourceTree = "<group>"; };
 		B957ED3552AEAB44C8B75796 /* InstallQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallQueue.swift; sourceTree = "<group>"; };
+		B9A35705E7C89FA86B79AD82 /* BatchGrouper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchGrouper.swift; sourceTree = "<group>"; };
 		C24E675C9D057E04CA2098A8 /* FavoritesManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoritesManager.swift; sourceTree = "<group>"; };
 		C687EDBFC9116246EB7FF14B /* MTPFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTPFile.swift; sourceTree = "<group>"; };
 		C842720BDDF3DDA4F1F1EB76 /* MTPDevice.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MTPDevice.swift; sourceTree = "<group>"; };
@@ -215,12 +231,23 @@
 			path = "switchmtp-cli";
 			sourceTree = "<group>";
 		};
+		A673895185581E1A6B7EB656 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				B9A35705E7C89FA86B79AD82 /* BatchGrouper.swift */,
+				118F96B11DA513FDAC864E2D /* BatchScanner.swift */,
+				578E67E944809E412769F6E4 /* DeepCheckRunner.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
 		ADBE1EC4CADA68284B6FB427 /* SwitchMTP */ = {
 			isa = PBXGroup;
 			children = (
 				90BB1349920A3C3346001BEA /* SwitchCommands.swift */,
 				408C7D40549A77975DD2EF02 /* SwitchMTP-Bridging-Header.h */,
 				E6B4B8496333F77F85090735 /* SwitchMTPApp.swift */,
+				A673895185581E1A6B7EB656 /* Core */,
 				F8E117222FAD0D1A2A0A00C7 /* Models */,
 				D0885A6DD0B9A0CF55DA19A9 /* Services */,
 				696202BB83FCE60D623C711B /* Views */,
@@ -458,8 +485,18 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2B462E4B0AE9ED69A674EC38 /* BatchGrouper.swift in Sources */,
+				BEEECD0A0C1101C0EAF62947 /* BatchPackage.swift in Sources */,
+				408381398BF79F52007237F1 /* BatchScanner.swift in Sources */,
 				3262F17C56504F29B3CBC0B9 /* CLIUSBMonitor.swift in Sources */,
+				F6B9FCA8999014E4E6C7B2C8 /* DeepCheckRunner.swift in Sources */,
+				7FA17A35728490E5BB0EE53A /* DeepVerifier.swift in Sources */,
+				D962BE29599FCC953E8D0E61 /* KeySetStore.swift in Sources */,
+				F7321E51DDA164C44E3DB611 /* MTPDevice.swift in Sources */,
+				97ECEC6D7755F434282700BF /* NSZUnpacker.swift in Sources */,
 				4FEE71954FACFC5B042640EC /* NxmtpShim.c in Sources */,
+				407BD0581A24EB8426C68267 /* PackageInspector.swift in Sources */,
+				B49B37C6C0ADA638E5A5CC79 /* USBProtocol.swift in Sources */,
 				AC59C128DB0E6AFD2B5F7C0B /* main.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -469,12 +506,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				4514EB79ED4A557CE3C9AA7B /* BatchConfirmSheet.swift in Sources */,
+				3AB869051D34C1838F6956E4 /* BatchGrouper.swift in Sources */,
 				AE273D8E4B94D01F68554D43 /* BatchInstallModel.swift in Sources */,
 				AA13C6FD563AB6C2220EEBC6 /* BatchInstallView.swift in Sources */,
 				A2F594E989A4C151C30E1A63 /* BatchPackage.swift in Sources */,
+				3232C230A20562A35F06F46A /* BatchScanner.swift in Sources */,
 				DE5980C3F20F98DFD14D6B02 /* BatchWorkspaceWindow.swift in Sources */,
 				49F50FF84D1DF49434F3B5EC /* ChineseScriptSimplifier.swift in Sources */,
 				AF1379EE40ABBEDAEE4916F8 /* DebugLog.swift in Sources */,
+				C76047EA4555DC7CFA9A806F /* DeepCheckRunner.swift in Sources */,
 				C2FAC92899C3F6840A93E77E /* DeepVerifier.swift in Sources */,
 				AFA3AF6C3141D54E153C4565 /* DeviceLease.swift in Sources */,
 				4FD796391BD648F35F4C90EC /* ErrorStringLocalizer.swift in Sources */,
@@ -521,7 +561,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/SwitchMTPBatch.entitlements;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				ENABLE_APP_SANDBOX = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -548,7 +588,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.20;
+				MARKETING_VERSION = 1.7.21;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -565,10 +605,10 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.20;
+				MARKETING_VERSION = 1.7.21;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
 			};
@@ -579,7 +619,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/SwitchMTPBatch.entitlements;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				ENABLE_APP_SANDBOX = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -606,7 +646,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.20;
+				MARKETING_VERSION = 1.7.21;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -621,8 +661,9 @@
 		94FF68D77522133A3CEE8920 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = "switchmtp-cli";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/Shim",
@@ -639,13 +680,14 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.20;
+				MARKETING_VERSION = 1.7.21;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
 					"$(SRCROOT)/../backend/build/libusb-1.0.0.dylib",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = me.fratei.switchmtp.cli;
+				PRODUCT_MODULE_NAME = SwitchMTPBatchCLI;
 				SWIFT_OBJC_BRIDGING_HEADER = "switchmtp-cli/SwitchMTP-Bridging-Header.h";
 			};
 			name = Release;
@@ -653,8 +695,9 @@
 		DE112D63ECB5D2A337D3806B /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				ENABLE_HARDENED_RUNTIME = YES;
+				EXECUTABLE_NAME = "switchmtp-cli";
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"$(SRCROOT)/Shim",
@@ -671,13 +714,14 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.20;
+				MARKETING_VERSION = 1.7.21;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
 					"$(SRCROOT)/../backend/build/libusb-1.0.0.dylib",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = me.fratei.switchmtp.cli;
+				PRODUCT_MODULE_NAME = SwitchMTPBatchCLI;
 				SWIFT_OBJC_BRIDGING_HEADER = "switchmtp-cli/SwitchMTP-Bridging-Header.h";
 			};
 			name = Debug;
@@ -687,10 +731,10 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 44;
+				CURRENT_PROJECT_VERSION = 45;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.20;
+				MARKETING_VERSION = 1.7.21;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
 			};
