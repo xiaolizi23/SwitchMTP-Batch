@@ -9,6 +9,26 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - 改为「只读发现 + 点击连接」：启动只通过 IORegistry 显示 Switch（不打开设备），点插头才取租约、扫描并连接；占用提示出现在点击时，避免多副本互相 reset。
 - 多副本抢 Switch 导致 nxmtp panic：新增进程间设备租约（flock），只有持锁实例碰 USB，其余显示“设备被另一个实例占用”并在其退出后自动接管。
 
+## 1.7.13-ax — 2026-11-26
+
+测试分支 `feature/swiftui-scroll-plan-list` 的第二版，仍不替换正式包。
+
+- **折叠状态点游戏整行就能看到详情。** 新增 `selectedGroupID`：点组行（名称 /
+  缩略图 / Title ID / 容量任一位置）右栏立刻显示封面、名称、项数、勾选进度、
+  合计容量、Base Title ID 和成员清单；展开箭头独立成 `group-expand-<id>` 按钮，
+  点箭头只展开、点行只选，不再「点了没反应」。
+- **清单容器可命名。** `ScrollView` 加 `.accessibilityElement(children: .contain)`
+  + 「批量安装清单」标签 + 「N 个游戏，共 M 个安装包」摘要 + `plan-list` 标识，
+  VoiceOver 不再把它当哑滚动区。`AXList` 角色拿不到（SwiftUI 无 role 修饰符、
+  其 ScrollView 非 NSScrollView，桥接实测无效已删），如实记为局限。
+- **懒加载按行数分流。** `nonLazyRowLimit = 200`：≤200 行用 `VStack` 保证每行都进
+  AX 树，>200 行才切 `LazyVStack`。
+- 自动化：`scripts/ax-scroll-list-test.swift` 新增 TC2b.1/2b.2、TC8.1–8.4，
+  共 24 用例，`PASS 24 / FAIL 0`。记录见 `docs/AX_SCROLL_LIST_TEST_2026-11-26.md`，
+  截图 `docs/ax-group-detail-2026-11-26.png`。
+- 真机：连接 DBI 时被正式版实例（pid 25523）占用设备租约，测试版正确提示
+  「设备被另一个实例占用」，未做写入操作；安装回归待正式版退出后补跑。
+
 ## 1.7.12-ax — 2026-11-26
 
 测试分支 `feature/swiftui-scroll-plan-list`，仅供 AI 自动化验证，不替换正式包。

@@ -122,6 +122,18 @@ func typeText(_ text: String) {
     }
 }
 
+/// One real click at a global screen point. Required for row bodies: they carry
+/// a tap gesture but no AX element of their own to press.
+func clickPoint(_ point: CGPoint) {
+    let source = CGEventSource(stateID: .hidSystemState)
+    CGEvent(mouseEventSource: source, mouseType: .mouseMoved,
+            mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+    CGEvent(mouseEventSource: source, mouseType: .leftMouseDown,
+            mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+    CGEvent(mouseEventSource: source, mouseType: .leftMouseUp,
+            mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
+}
+
 // MARK: - Harness
 
 var passes: [String] = []
@@ -243,6 +255,15 @@ check("TC2.1 清单里没有 AXRow / AXCell / AXOutline / AXTable",
 
 // MARK: - TC3: every package checkbox is an addressable button
 
+let listRegion = findAll(workspace) { el in
+    identifier(el) == "plan-list" || description(el) == "批量安装清单"
+}
+let regionRole = listRegion.first.map(role) ?? ""
+check("TC2b.1 清单容器带名称与说明", !listRegion.isEmpty,
+      "count=\(listRegion.count) role=\(regionRole)")
+check("TC2b.2 清单容器是可命名的容器", ["AXGroup", "AXList"].contains(regionRole),
+      "role=\(regionRole)")
+
 let boxes = packageBoxes(in: workspace)
 let badBoxes = boxes.filter { el in
     role(el) != kAXButtonRole as String
@@ -355,6 +376,37 @@ if let searchField {
     }
 } else {
     check("TC7.1 搜索后只剩匹配组", false, "找不到搜索框")
+}
+
+// MARK: - TC8: a collapsed group row opens the game overview, and does not expand
+
+if let collapseAll = find(workspace, where: { help($0).contains("展开/收起全部") }) {
+    _ = press(collapseAll)
+}
+check("TC8.1 收起全部后包复选框已离场",
+      waitUntil(3) { packageBoxes(in: workspace).isEmpty },
+      "count=\(packageBoxes(in: workspace).count)")
+
+AXUIElementPerformAction(workspace, kAXRaiseAction as CFString)
+Thread.sleep(forTimeInterval: 0.3)
+
+if let group = groupBoxes(in: workspace).first, let groupFrame = frame(group) {
+    clickPoint(CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY))
+    let overviewShown = waitUntil(3) {
+        find(workspace) { el in
+            role(el) == kAXStaticTextRole as String && stringValue(el).contains("包含的安装包")
+        } != nil
+    }
+    check("TC8.2 点组行在详情区显示游戏概览", overviewShown)
+    check("TC8.3 点组行不会顺手展开它", packageBoxes(in: workspace).isEmpty,
+          "count=\(packageBoxes(in: workspace).count)")
+    if let expandAll = find(workspace, where: { help($0).contains("展开/收起全部") }) {
+        _ = press(expandAll)
+    }
+    check("TC8.4 再展开恢复 44 行", waitUntil(3) { packageBoxes(in: workspace).count >= 44 },
+          "count=\(packageBoxes(in: workspace).count)")
+} else {
+    check("TC8.2 点组行在详情区显示游戏概览", false, "没有组复选框可比对")
 }
 
 print("PASS \(passes.count)  FAIL \(failures.count)")

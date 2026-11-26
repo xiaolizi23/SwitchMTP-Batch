@@ -29,6 +29,9 @@ struct BatchInstallSheet: View {
 
     @State private var pendingPlan: InstallPlan?
     @State private var selectedPackageID: UUID?
+    /// A whole game can be selected without expanding it: the detail pane then
+    /// shows its cover, counts and members instead of an empty placeholder.
+    @State private var selectedGroupID: String?
     @State private var expandedGroups: Set<String> = []
     @State private var showKeyPanel = false
     @State private var isDropTargeted = false
@@ -373,26 +376,61 @@ struct BatchInstallSheet: View {
     /// real buttons, so each checkbox stays individually addressable.
     private var planList: some View {
         ScrollView(.vertical) {
-            VStack(alignment: .leading, spacing: 0) {
-                ForEach(model.visibleGroups) { group in
-                    groupRow(group)
-                    if expandedGroups.contains(group.id) {
-                        ForEach(group.packages) { package in
-                            packageRow(package)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 2)
-                            if package.id != group.packages.last?.id {
-                                Divider().padding(.leading, 44)
-                            }
-                        }
-                    }
-                }
-            }
-            .padding(.vertical, 4)
+            planRows
+                .padding(.vertical, 4)
         }
         .background(Color(nsColor: .textBackgroundColor))
         .safeAreaInset(edge: .top, spacing: 0) {
             searchBar
+        }
+        // SwiftUI exposes no accessibility-role modifier (checked against the
+        // SDK: no AccessibilityRole symbol), and its ScrollView is not an
+        // NSScrollView, so an AXList role cannot be attached from inside
+        // without an AppKit host — which would risk the enumeration this
+        // layout exists for. What is possible is done here: a named container
+        // plus a summary, so VoiceOver announces the region and its size.
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("批量安装清单")
+        .accessibilityHint("\(model.visibleGroups.count) 个游戏，共 \(model.packages.count) 个安装包")
+        .accessibilityIdentifier("plan-list")
+    }
+
+    /// Non-lazy up to this many rows. Below it every row stays in the view (and
+    /// accessibility) tree, so an automation client can address a package
+    /// without scrolling to it first. Past it that is no longer affordable and
+    /// the stack goes lazy: offscreen rows then only exist once they are
+    /// scrolled into view.
+    private static let nonLazyRowLimit = 200
+
+    private var planRowCount: Int {
+        model.visibleGroups.reduce(0) { count, group in
+            count + 1 + (expandedGroups.contains(group.id) ? group.packages.count : 0)
+        }
+    }
+
+    @ViewBuilder
+    private var planRows: some View {
+        if planRowCount <= Self.nonLazyRowLimit {
+            VStack(alignment: .leading, spacing: 0) { planRowContent }
+        } else {
+            LazyVStack(alignment: .leading, spacing: 0) { planRowContent }
+        }
+    }
+
+    @ViewBuilder
+    private var planRowContent: some View {
+        ForEach(model.visibleGroups) { group in
+            groupRow(group)
+            if expandedGroups.contains(group.id) {
+                ForEach(group.packages) { package in
+                    packageRow(package)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 2)
+                    if package.id != group.packages.last?.id {
+                        Divider().padding(.leading, 44)
+                    }
+                }
+            }
         }
     }
 
@@ -410,28 +448,43 @@ struct BatchInstallSheet: View {
         .background(.bar)
     }
 
-    /// Group row = a disclosure triangle plus the existing header, so a click
-    /// anywhere on the row still expands/collapses it the way `DisclosureGroup`
-    /// did. The chevron is decorative: VoiceOver should read the group, not an
-    /// unlabelled image.
+    /// Clicking a group row selects the whole game for the detail pane (cover,
+    /// name, counts, member list); only the chevron expands or collapses it.
+    /// That mirrors how a Finder outline row behaves, and fixes the dead click
+    /// a collapsed group row used to produce.
     private func groupRow(_ group: InstallPackageGroup) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: expandedGroups.contains(group.id) ? "chevron.down" : "chevron.right")
-                .font(.system(size: 9, weight: .bold))
-                .foregroundStyle(.secondary)
-                .frame(width: 12)
-                .accessibilityHidden(true)
+        let isSelected = selectedGroupID == group.id
+        let expanded = expandedGroups.contains(group.id)
+        return HStack(spacing: 6) {
+            Button {
+                if expanded {
+                    expandedGroups.remove(group.id)
+                } else {
+                    expandedGroups.insert(group.id)
+                }
+            } label: {
+                Image(systemName: expanded ? "chevron.down" : "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 12, height: 14)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(expanded ? "收起 \(group.name)" : "展开 \(group.name)")
+            .accessibilityIdentifier("group-expand-\(group.id)")
+
             groupHeader(group)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isSelected ? Color.accentColor.opacity(0.10) : Color.clear)
+        )
         .contentShape(Rectangle())
         .onTapGesture {
-            if expandedGroups.contains(group.id) {
-                expandedGroups.remove(group.id)
-            } else {
-                expandedGroups.insert(group.id)
-            }
+            selectedGroupID = group.id
+            selectedPackageID = nil
         }
     }
 
@@ -610,7 +663,10 @@ struct BatchInstallSheet: View {
         )
         .contentShape(Rectangle())
         .accessibilityElement(children: .contain)
-        .onTapGesture { selectedPackageID = package.id }
+        .onTapGesture {
+            selectedPackageID = package.id
+            selectedGroupID = nil
+        }
     }
 
     private func packageHelp(_ package: InstallPackage) -> String {        if package.isSubmitted { return "已交给 DBI，本次不再重复发送" }
@@ -653,13 +709,15 @@ struct BatchInstallSheet: View {
         VStack(alignment: .leading, spacing: 0) {
             if let package = model.packages.first(where: { $0.id == selectedPackageID }) {
                 detail(for: package)
+            } else if let group = model.groups.first(where: { $0.id == selectedGroupID }) {
+                groupDetail(for: group)
             } else {
                 VStack(spacing: 8) {
                     Spacer()
                     Image(systemName: "sidebar.right")
                         .font(.system(size: 24, weight: .thin))
                         .foregroundStyle(.quaternary)
-                    Text("点选任一项目查看详情")
+                    Text("点选任一游戏或安装包查看详情")
                         .font(.system(size: 11))
                         .foregroundStyle(.secondary)
                     Spacer()
@@ -668,6 +726,132 @@ struct BatchInstallSheet: View {
             }
         }
         .background(Color(nsColor: .underPageBackgroundColor).opacity(0.35))
+    }
+
+    /// Collapsed-game overview: cover, name, counts and what is inside, so a
+    /// click on a group row answers "what is this, and what would I install"
+    /// without expanding it first.
+    private func groupDetail(for group: InstallPackageGroup) -> some View {
+        let expanded = expandedGroups.contains(group.id)
+        return ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                HStack(alignment: .top, spacing: 12) {
+                    groupCover(group, side: 88)
+                    VStack(alignment: .leading, spacing: 6) {
+                        HStack(spacing: 6) {
+                            badge("\(group.packages.count) 项", color: .accentColor)
+                            Text(group.verdict.displayName)
+                                .font(.system(size: 10, weight: .semibold))
+                                .foregroundStyle(verdictColor(group.verdict))
+                            if group.hasBlocked { badge("含阻止项", color: .red) }
+                            if group.hasCaution { badge("需注意", color: .orange) }
+                        }
+                        Text(group.name)
+                            .font(.system(size: 15, weight: .semibold))
+                            .fixedSize(horizontal: false, vertical: true)
+                        if let base = group.baseTitleID {
+                            Text("Base Title ID \(base)")
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(.secondary)
+                                .textSelection(.enabled)
+                        }
+                        Text("已勾选 \(group.selectedCount)/\(group.packages.count) · 合计 \(group.sizeText)")
+                            .font(.system(size: 11))
+                            .foregroundStyle(.secondary)
+                        if group.submittedCount > 0 {
+                            Text("其中 \(group.submittedCount) 项已交给 DBI")
+                                .font(.system(size: 11))
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("包含的安装包")
+                        .font(.system(size: 11, weight: .semibold))
+                    ForEach(group.packages) { package in
+                        HStack(spacing: 6) {
+                            Text(package.contentType.displayName)
+                                .font(.system(size: 9, weight: .bold))
+                                .padding(.horizontal, 5).padding(.vertical, 1)
+                                .background(Capsule().fill(typeColor(package.contentType).opacity(0.16)))
+                                .foregroundStyle(typeColor(package.contentType))
+                            Text(package.displayName)
+                                .font(.system(size: 10))
+                                .lineLimit(1)
+                            if let version = package.version {
+                                Text("v\(version)")
+                                    .font(.system(size: 9))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Spacer(minLength: 4)
+                            Circle()
+                                .fill(verdictColor(package.resolvedVerdict))
+                                .frame(width: 6, height: 6)
+                            Text(package.sizeText)
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 62, alignment: .trailing)
+                        }
+                    }
+                }
+
+                Divider()
+
+                HStack(spacing: 10) {
+                    Button("勾选整组") {
+                        model.setGroupSelection(group, selected: true)
+                    }
+                    .controlSize(.small)
+                    .disabled(group.eligibleCount == 0)
+
+                    Button("取消勾选整组") {
+                        model.setGroupSelection(group, selected: false)
+                    }
+                    .controlSize(.small)
+                    .disabled(group.eligibleSelectedCount == 0)
+
+                    Button(expanded ? "收起" : "展开") {
+                        if expanded {
+                            expandedGroups.remove(group.id)
+                        } else {
+                            expandedGroups.insert(group.id)
+                        }
+                    }
+                    .controlSize(.small)
+                }
+
+                Text("展开后可以逐项勾选本体 / 更新 / DLC。")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+            }
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    /// Detail-pane cover, same artwork source as the row thumbnail.
+    private func groupCover(_ group: InstallPackageGroup, side: CGFloat) -> some View {
+        ZStack {
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(.quaternary)
+            if let titleID = group.baseTitleID, let icon = model.titleIcons[titleID] {
+                Image(nsImage: icon)
+                    .resizable()
+                    .interpolation(.high)
+                    .scaledToFit()
+            } else {
+                Image(systemName: "gamecontroller.fill")
+                    .font(.system(size: side * 0.32))
+                    .foregroundStyle(.tertiary)
+            }
+        }
+        .frame(width: side, height: side)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .accessibilityHidden(true)
     }
 
     private func detail(for package: InstallPackage) -> some View {
