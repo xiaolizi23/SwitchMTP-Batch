@@ -27,10 +27,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   不符 + 无 CNMT 清单可对照」，继续按证据不足处理，不冒充绿。
 - 报告与数据：`docs/REAL_SAMPLE_CROSSCHECK_2026-11-26.md`、
   `docs/扫描结果_1.7.20_2026-11-26.xlsx`、`docs/实机证据_2026-11-26/`。
-- 补完的真机结论：**某本体本体 DBI 报「安装完成」但内容没落地，两次复装都是同样结果**
-  ——主机应用清单、虚拟目录、SD（16 个）与内置（236 个）`Contents/registered` 目录
-  三处都查不到它的 NCA；第二次复装时 DBI 还先删掉了第一次写进去的 4 个文件，说明
-  「写进去→注册→收尾回滚」是循环。传输完成 + 逐 NCA 验签 OK ≠ 装上，以后按「三处交叉」验。
+- 补完的真机结论（**已更正**）：**某本体本体 NSZ 装得上、能启动**。上一版这里写的是
+  「DBI 报完成但没落地」，那是取证错误：DBI 的 MTP responder 启动时建目录树、装完不
+  刷新，装完立刻 ls 读到的是旧表；内置 `Contents/registered` 的目录名是序号
+  （`00000000`…）且内容经 MTP 读为空，拿它 grep NCA id 等于空扫。重启 responder 后，
+  `65540` 与 `InstalledApplications.csv` 里都有 `01000000000AF000`。
+  **口径：落地核查只认重启 responder 后的 65540 + 新生成 CSV，或主机 UI 截图。**
 - BKTR 全量遍历试到根因后放弃：hactool 的 `Invalid BKTR layout` 是尾部 0x4200
   字节导致的误报，但放宽后仍因缺 titlekey 整个分区读不出来（`Titlekey: Unknown`）。
   13 个更新包继续标「补丁分区未遍历」，源码改动已回滚。
