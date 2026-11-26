@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## 未发布
+## 1.7.12 — 2026-11-26
 
 - 改为「只读发现 + 点击连接」：启动只通过 IORegistry 显示 Switch（不打开设备），点插头才取租约、扫描并连接；占用提示出现在点击时，避免多副本互相 reset。
 - 多副本抢 Switch 导致 nxmtp panic：新增进程间设备租约（flock），只有持锁实例碰 USB，其余显示“设备被另一个实例占用”并在其退出后自动接管。
