@@ -9,6 +9,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - 改为「只读发现 + 点击连接」：启动只通过 IORegistry 显示 Switch（不打开设备），点插头才取租约、扫描并连接；占用提示出现在点击时，避免多副本互相 reset。
 - 多副本抢 Switch 导致 nxmtp panic：新增进程间设备租约（flock），只有持锁实例碰 USB，其余显示“设备被另一个实例占用”并在其退出后自动接管。
 
+## 1.7.12-ax — 2026-11-26
+
+测试分支 `feature/swiftui-scroll-plan-list`，仅供 AI 自动化验证，不替换正式包。
+
+- **批量清单回到 SwiftUI 自动布局，同时保留逐项可点。** `planList` 由
+  `List + DisclosureGroup` 改为 `ScrollView + VStack`：行高、分隔线、深浅色、搜索栏
+  全部交回系统，不再写死 44pt 行高与 hairline 颜色；因为不再产生 `AXRow`/`AXCell`，
+  电脑操作后端（gcu）能把每个复选框枚举成独立 `AXButton` 并按索引点击
+  （44/44 → 43/44，组框 2/2 → 1/2）。行视图、模型、窗口尺寸、判定口径未动。
+- **新增 AX 回归测试**：`scripts/ax-scroll-list-test.swift` +
+  `scripts/run-ax-scroll-list-test.sh`，自带夹具拉起 app，18 个用例覆盖
+  「无表格语义 / 复选框可寻址 / 单包·整组勾选 / 全选全不选 / 搜索过滤」，
+  当前 PASS 18 / FAIL 0。
+
 ## 1.7.12-test — 2026-11-26
 
 - 多副本抢 Switch 导致 nxmtp panic：新增进程间设备租约（flock），只有持锁实例碰 USB，其余显示“设备被另一个实例占用”并在其退出后自动接管。

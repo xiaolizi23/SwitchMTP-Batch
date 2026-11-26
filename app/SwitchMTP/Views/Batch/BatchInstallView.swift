@@ -83,6 +83,20 @@ struct BatchInstallSheet: View {
             // A cancelled confirm leaves the plan untouched by design.
         }
         .onChange(of: model.banner) { _ in }
+        .onAppear(perform: loadAutomationFixture)
+    }
+
+    /// Automation hook: `SWITCHMTP_BATCH_TEST_FOLDER` pre-loads a folder so an
+    /// AX / computer-use test can start from a known fixture without driving an
+    /// open panel. Same pattern as SWITCHMTP_DEBUG_LOG / SWITCHMTP_HACTOOL,
+    /// and it never touches USB on its own.
+    private func loadAutomationFixture() {
+        guard model.packages.isEmpty,
+              let path = ProcessInfo.processInfo.environment["SWITCHMTP_BATCH_TEST_FOLDER"],
+              !path.isEmpty else { return }
+        let url = URL(fileURLWithPath: path)
+        guard FileManager.default.fileExists(atPath: url.path) else { return }
+        model.importURLs([url])
     }
 
     // MARK: - Header
@@ -348,43 +362,77 @@ struct BatchInstallSheet: View {
         .padding(.vertical, 8)
     }
 
+    /// The plan list is a plain scrolling stack, not a `List`.
+    ///
+    /// `List` / `DisclosureGroup` are table controls: their rows surface as
+    /// `AXRow` / `AXCell` in the accessibility tree, and the computer-use
+    /// enumerator merges such a row into one selectable element, dropping the
+    /// checkbox nested in it. `ScrollView + VStack` keeps everything SwiftUI
+    /// does for layout (intrinsic row heights, dividers, dynamic type, dark
+    /// mode) while the accessibility tree only holds ordinary containers and
+    /// real buttons, so each checkbox stays individually addressable.
     private var planList: some View {
-        List {
-            ForEach(model.visibleGroups) { group in
-                DisclosureGroup(isExpanded: expansionBinding(group.id)) {
-                    ForEach(group.packages) { package in
-                        packageRow(package)
-                            .listRowInsets(EdgeInsets(top: 2, leading: 8, bottom: 2, trailing: 8))
+        ScrollView(.vertical) {
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(model.visibleGroups) { group in
+                    groupRow(group)
+                    if expandedGroups.contains(group.id) {
+                        ForEach(group.packages) { package in
+                            packageRow(package)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 2)
+                            if package.id != group.packages.last?.id {
+                                Divider().padding(.leading, 44)
+                            }
+                        }
                     }
-                } label: {
-                    groupHeader(group)
                 }
-                .listRowInsets(EdgeInsets(top: 4, leading: 8, bottom: 4, trailing: 8))
             }
+            .padding(.vertical, 4)
         }
-        .listStyle(.inset)
+        .background(Color(nsColor: .textBackgroundColor))
         .safeAreaInset(edge: .top, spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
-                TextField("搜索名称、Title ID 或路径", text: $model.searchText)
-                    .textFieldStyle(.plain)
-                if !model.searchText.isEmpty {
-                    Button { model.searchText = "" } label: { Image(systemName: "xmark.circle.fill") }
-                        .buttonStyle(.plain).foregroundStyle(.tertiary)
-                }
-            }
-            .padding(.horizontal, 14).padding(.vertical, 7)
-            .background(.bar)
+            searchBar
         }
     }
 
-    private func expansionBinding(_ id: String) -> Binding<Bool> {
-        Binding(
-            get: { expandedGroups.contains(id) },
-            set: { isOpen in
-                if isOpen { expandedGroups.insert(id) } else { expandedGroups.remove(id) }
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+            TextField("搜索名称、Title ID 或路径", text: $model.searchText)
+                .textFieldStyle(.plain)
+            if !model.searchText.isEmpty {
+                Button { model.searchText = "" } label: { Image(systemName: "xmark.circle.fill") }
+                    .buttonStyle(.plain).foregroundStyle(.tertiary)
             }
-        )
+        }
+        .padding(.horizontal, 14).padding(.vertical, 7)
+        .background(.bar)
+    }
+
+    /// Group row = a disclosure triangle plus the existing header, so a click
+    /// anywhere on the row still expands/collapses it the way `DisclosureGroup`
+    /// did. The chevron is decorative: VoiceOver should read the group, not an
+    /// unlabelled image.
+    private func groupRow(_ group: InstallPackageGroup) -> some View {
+        HStack(spacing: 6) {
+            Image(systemName: expandedGroups.contains(group.id) ? "chevron.down" : "chevron.right")
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.secondary)
+                .frame(width: 12)
+                .accessibilityHidden(true)
+            groupHeader(group)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if expandedGroups.contains(group.id) {
+                expandedGroups.remove(group.id)
+            } else {
+                expandedGroups.insert(group.id)
+            }
+        }
     }
 
     private func groupHeader(_ group: InstallPackageGroup) -> some View {
