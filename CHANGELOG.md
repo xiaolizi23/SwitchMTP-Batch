@@ -45,6 +45,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+
+- **AX 回归默认零侵入。** 合成键盘 / 鼠标从 `.hidSystemState` + `.cghidEventTap`
+  改为 `.privateState` + `postToPid`，事件只投给被测进程；删除 `activate()` 与
+  `kAXRaiseAction`。默认跑 24 PASS / 2 SKIP / 0 FAIL，整轮光标零位移。
+- 搜索框清空改用逐字符 delete：⌘A 是需要 key window 的菜单快捷键，后台投递无效。
+- TC8 行点选（8.2/8.3）默认 SKIP：AppKit 不把投递的鼠标事件路由进窗口内容；
+  需要时用 `AX_TEST_HID_CLICKS=1` 恢复原 HID 路径（会移动真实光标，25 PASS）。
+  记录见 `docs/AX_INPUT_ISOLATION_2026-11-26.md`。
+
 ## [1.7.11] - 2026-11-26
 
 ### Changed

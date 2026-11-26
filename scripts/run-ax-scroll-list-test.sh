@@ -9,6 +9,7 @@
 #
 #   ./scripts/run-ax-scroll-list-test.sh            # 44-package fixture
 #   FIXTURE=~/some/folder ./scripts/run-ax-scroll-list-test.sh
+#   AX_TEST_HID_CLICKS=1 ./scripts/run-ax-scroll-list-test.sh   # row-body clicks (moves the cursor)
 #
 # Exit status 0 = every case passed.
 

@@ -14,9 +14,70 @@
 //
 // Usage: ax-scroll-list-test <pid>       (see run-ax-scroll-list-test.sh)
 // Exit status 0 = all cases passed.
+//
+// Synthetic input policy: every event this probe fabricates is addressed to the
+// app under test alone — a `.privateState` source plus `postToPid`. Nothing is
+// posted to `.cghidEventTap`, so the hardware cursor never moves and the probe
+// never merges into the real HID state while a run is in progress.
+//
+// `AX_TEST_HID_CLICKS=1` restores the old HID-level click for the row-body
+// cases (TC8.2/8.3). That path does move the physical cursor, so it stays
+// opt-in and is never used by a default run.
 
 import AppKit
 import ApplicationServices
+
+/// The process under test. Synthetic input is addressed to it alone.
+let targetPID: pid_t = {
+    guard CommandLine.arguments.count > 1, let pid = pid_t(CommandLine.arguments[1]) else {
+        print("usage: ax-scroll-list-test <pid>")
+        exit(2)
+    }
+    return pid
+}()
+
+/// Private source: `kCGEventSourceStatePrivate` keeps fabricated events out of
+/// the hardware state that the real mouse and keyboard share.
+let syntheticSource: CGEventSource? = {
+    let source = CGEventSource(stateID: .privateState)
+    if source == nil {
+        print("FAIL  cannot create a private event source (grant Accessibility to this process)")
+    }
+    return source
+}()
+
+/// `AX_TEST_HID_CLICKS=1` is the only way this probe may touch the hardware
+/// cursor. It exists for the row-body cases, where AppKit will not route a
+/// delivered mouse event into the window's content.
+let allowHIDClicks = ProcessInfo.processInfo.environment["AX_TEST_HID_CLICKS"] == "1"
+
+/// CGWindowID of the window a synthetic click is aimed at. AppKit routes a
+/// delivered mouse event through `windowNumber`, and events that never touched
+/// the window server carry 0 unless this is filled in.
+var syntheticClickWindow: Int?
+
+/// Finds the CGWindowID whose bounds match an AX frame. Matching by geometry
+/// avoids needing the window name, which requires screen-recording access.
+func windowNumber(matching frame: CGRect) -> Int? {
+    guard let list = CGWindowListCopyWindowInfo([.optionAll], kCGNullWindowID) as? [[String: Any]] else { return nil }
+    for info in list {
+        guard let owner = info[kCGWindowOwnerPID as String] as? NSNumber,
+              owner.int32Value == targetPID else { continue }
+        guard let bounds = info[kCGWindowBounds as String] as? [String: Any],
+              let x = (bounds["X"] as? NSNumber)?.doubleValue,
+              let y = (bounds["Y"] as? NSNumber)?.doubleValue,
+              let w = (bounds["Width"] as? NSNumber)?.doubleValue,
+              let h = (bounds["Height"] as? NSNumber)?.doubleValue,
+              let number = (info[kCGWindowNumber as String] as? NSNumber)?.intValue
+        else { continue }
+        let rect = CGRect(x: x, y: y, width: w, height: h)
+        if abs(rect.minX - frame.minX) <= 2, abs(rect.minY - frame.minY) <= 2,
+           abs(rect.width - frame.width) <= 2, abs(rect.height - frame.height) <= 2 {
+            return number
+        }
+    }
+    return nil
+}
 
 // MARK: - AX helpers
 
@@ -99,32 +160,55 @@ func findAll(_ root: AXUIElement, where predicate: (AXUIElement) -> Bool) -> [AX
 
 // MARK: - Synthetic typing (the search field only updates on real key events)
 
+/// Sends key events to the app under test only. The window server never sees
+/// them, so the hardware cursor and the real keyboard keep working throughout.
 func keyStroke(_ code: CGKeyCode, flags: CGEventFlags = []) {
-    let source = CGEventSource(stateID: .hidSystemState)
-    let down = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: true)
-    let up = CGEvent(keyboardEventSource: source, virtualKey: code, keyDown: false)
+    let down = CGEvent(keyboardEventSource: syntheticSource, virtualKey: code, keyDown: true)
+    let up = CGEvent(keyboardEventSource: syntheticSource, virtualKey: code, keyDown: false)
     down?.flags = flags
     up?.flags = flags
-    down?.post(tap: .cghidEventTap)
-    up?.post(tap: .cghidEventTap)
+    down?.postToPid(targetPID)
+    up?.postToPid(targetPID)
 }
 
 func typeText(_ text: String) {
-    let source = CGEventSource(stateID: .hidSystemState)
     for scalar in text.unicodeScalars {
         var unit = UInt16(scalar.value)
-        let down = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true)
-        let up = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false)
+        let down = CGEvent(keyboardEventSource: syntheticSource, virtualKey: 0, keyDown: true)
+        let up = CGEvent(keyboardEventSource: syntheticSource, virtualKey: 0, keyDown: false)
         down?.keyboardSetUnicodeString(stringLength: 1, unicodeString: &unit)
         up?.keyboardSetUnicodeString(stringLength: 1, unicodeString: &unit)
-        down?.post(tap: .cghidEventTap)
-        up?.post(tap: .cghidEventTap)
+        down?.postToPid(targetPID)
+        up?.postToPid(targetPID)
     }
 }
 
-/// One real click at a global screen point. Required for row bodies: they carry
-/// a tap gesture but no AX element of their own to press.
+/// A click at a global screen point, delivered to the app under test only.
+/// Required for row bodies: they carry a tap gesture but no AX element of their
+/// own to press. The event never enters the HID stream, so the physical cursor
+/// stays where the user left it.
 func clickPoint(_ point: CGPoint) {
+    let move = CGEvent(mouseEventSource: syntheticSource, mouseType: .mouseMoved,
+                       mouseCursorPosition: point, mouseButton: .left)
+    let down = CGEvent(mouseEventSource: syntheticSource, mouseType: .leftMouseDown,
+                       mouseCursorPosition: point, mouseButton: .left)
+    let up = CGEvent(mouseEventSource: syntheticSource, mouseType: .leftMouseUp,
+                     mouseCursorPosition: point, mouseButton: .left)
+    if let window = syntheticClickWindow {
+        for event in [move, down, up] {
+            event?.setIntegerValueField(.mouseEventWindowUnderMousePointer, value: Int64(window))
+            event?.setIntegerValueField(.mouseEventWindowUnderMousePointerThatCanHandleThisEvent, value: Int64(window))
+        }
+    }
+    move?.postToPid(targetPID)
+    down?.postToPid(targetPID)
+    up?.postToPid(targetPID)
+}
+
+/// Opt-in HID click, used only when `AX_TEST_HID_CLICKS=1`. This moves the
+/// physical cursor and merges into the real HID state; nothing else in this
+/// probe is allowed to.
+func hidClickPoint(_ point: CGPoint) {
     let source = CGEventSource(stateID: .hidSystemState)
     CGEvent(mouseEventSource: source, mouseType: .mouseMoved,
             mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
@@ -134,9 +218,8 @@ func clickPoint(_ point: CGPoint) {
             mouseCursorPosition: point, mouseButton: .left)?.post(tap: .cghidEventTap)
 }
 
-// MARK: - Harness
-
 var passes: [String] = []
+var skips: [String] = []
 var failures: [String] = []
 
 func check(_ name: String, _ condition: Bool, _ detail: String = "") {
@@ -147,6 +230,13 @@ func check(_ name: String, _ condition: Bool, _ detail: String = "") {
         failures.append(name)
         print("FAIL  \(name)\(detail.isEmpty ? "" : " — \(detail)")")
     }
+}
+
+/// Cases this run cannot cover at all, with the reason. A skip never counts as
+/// a pass and never fails the suite; it is printed so the gap stays visible.
+func skip(_ name: String, _ reason: String) {
+    skips.append(name)
+    print("SKIP  \(name) — \(reason)")
 }
 
 func waitUntil(_ timeout: TimeInterval = 3, _ predicate: () -> Bool) -> Bool {
@@ -182,12 +272,7 @@ func packageBoxes(in root: AXUIElement) -> [AXUIElement] {
     findAll(root) { identifier($0).hasPrefix("package-checkbox-") }
 }
 
-guard CommandLine.arguments.count > 1, let pid = pid_t(CommandLine.arguments[1]) else {
-    print("usage: ax-scroll-list-test <pid>")
-    exit(2)
-}
-
-let app = AXUIElementCreateApplication(pid)
+let app = AXUIElementCreateApplication(targetPID)
 
 func window(titled name: String) -> AXUIElement? {
     let list = (attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? []
@@ -196,7 +281,9 @@ func window(titled name: String) -> AXUIElement? {
 
 // MARK: - TC0: main window, then open the batch workspace from the toolbar
 
-NSRunningApplication(processIdentifier: pid)?.activate(options: [])
+// The app is deliberately not activated: every assertion goes through the
+// accessibility tree, which does not require the app to be frontmost. Staying
+// unprompted is what keeps a run from stealing the user's focus.
 
 // The release build's main window is "SwitchMTP Batch"; the test builds that
 // carried a suffix ("… AX") still match this prefix, so the suite runs against
@@ -355,8 +442,8 @@ let searchField = find(workspace) { role($0) == kAXTextFieldRole as String }
 if let searchField {
     AXUIElementSetAttributeValue(searchField, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     Thread.sleep(forTimeInterval: 0.2)
-    keyStroke(0, flags: .maskCommand)      // ⌘A
-    keyStroke(51)                          // delete
+    // ⌘A is a menu key equivalent and needs a key window; delete does not.
+    for _ in 0..<12 { keyStroke(51) }
     typeText("塞尔达")
 
     let filtered = waitUntil(3) {
@@ -369,8 +456,7 @@ if let searchField {
           groupBoxes(in: workspace).allSatisfy { description($0).contains("塞尔达") })
 
     AXUIElementSetAttributeValue(searchField, kAXFocusedAttribute as CFString, kCFBooleanTrue)
-    keyStroke(0, flags: .maskCommand)
-    keyStroke(51)
+    for _ in 0..<12 { keyStroke(51) }
     check("TC7.3 清空搜索恢复全部组", waitUntil(4) {
         groupBoxes(in: workspace).count == baselineGroups
     }, "groups=\(groupBoxes(in: workspace).count) baseline=\(baselineGroups)")
@@ -392,30 +478,56 @@ check("TC8.1 收起全部后包复选框已离场",
       waitUntil(3) { packageBoxes(in: workspace).isEmpty },
       "count=\(packageBoxes(in: workspace).count)")
 
-AXUIElementPerformAction(workspace, kAXRaiseAction as CFString)
-Thread.sleep(forTimeInterval: 0.3)
-
-if let group = groupBoxes(in: workspace).first, let groupFrame = frame(group) {
-    clickPoint(CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY))
-    let overviewShown = waitUntil(3) {
-        find(workspace) { el in
-            role(el) == kAXStaticTextRole as String && stringValue(el).contains("包含的安装包")
-        } != nil
+// TC8 covers two things: a collapsed group row opens the overview and expands
+// itself (row body only — no AX element of its own), and the list expands and
+// collapses again. The row-body click needs a HID-level event; AppKit will not
+// route a delivered one into the window's content, so a default run skips it
+// and verifies expand/collapse through the chevron button instead.
+if allowHIDClicks {
+    print("      AX_TEST_HID_CLICKS=1 — the physical cursor will move for TC8.2/8.3")
+    // HID clicks only land on a key window in the active app. This is the one
+    // place a run is allowed to take focus, and only when explicitly opted in.
+    NSRunningApplication(processIdentifier: targetPID)?.activate(options: [])
+    AXUIElementPerformAction(workspace, kAXRaiseAction as CFString)
+    Thread.sleep(forTimeInterval: 0.4)
+    syntheticClickWindow = frame(workspace).flatMap { windowNumber(matching: $0) }
+    print("      click window=\(syntheticClickWindow.map(String.init) ?? "nil")")
+    if let group = groupBoxes(in: workspace).first, let groupFrame = frame(group) {
+        hidClickPoint(CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY))
+        let overviewShown = waitUntil(3) {
+            find(workspace) { el in
+                role(el) == kAXStaticTextRole as String && stringValue(el).contains("包含的安装包")
+            } != nil
+        }
+        check("TC8.2 点组行在详情区显示游戏概览", overviewShown)
+        check("TC8.3 点组行同时展开该组", waitUntil(3) { !packageBoxes(in: workspace).isEmpty },
+              "count=\(packageBoxes(in: workspace).count)")
+        hidClickPoint(CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY))
+        check("TC8.4 再点一次收起该组", waitUntil(3) { packageBoxes(in: workspace).isEmpty },
+              "count=\(packageBoxes(in: workspace).count)")
+    } else {
+        check("TC8.2 点组行在详情区显示游戏概览", false, "没有组复选框可比对")
     }
-    check("TC8.2 点组行在详情区显示游戏概览", overviewShown)
-    check("TC8.3 点组行同时展开该组", waitUntil(3) { !packageBoxes(in: workspace).isEmpty },
-          "count=\(packageBoxes(in: workspace).count)")
-    clickPoint(CGPoint(x: groupFrame.maxX + 150, y: groupFrame.midY))
-    check("TC8.4 再点一次收起该组", waitUntil(3) { packageBoxes(in: workspace).isEmpty },
-          "count=\(packageBoxes(in: workspace).count)")
-    if let expandAll = find(workspace, where: { help($0).contains("展开/收起全部") }) {
-        _ = press(expandAll)
-    }
-    check("TC8.5 再展开恢复 44 行", waitUntil(3) { packageBoxes(in: workspace).count >= 44 },
-          "count=\(packageBoxes(in: workspace).count)")
 } else {
-    check("TC8.2 点组行在详情区显示游戏概览", false, "没有组复选框可比对")
+    skip("TC8.2 点组行在详情区显示游戏概览", "行本体没有常驻 AX action；默认运行不碰硬件光标")
+    skip("TC8.3 点组行同时展开该组", "同上")
+    if let expand = findAll(workspace, where: { identifier($0).hasPrefix("group-expand-") }).first {
+        _ = press(expand)
+        check("TC8.4 展开箭头展开该组", waitUntil(3) { !packageBoxes(in: workspace).isEmpty },
+              "count=\(packageBoxes(in: workspace).count)")
+        _ = press(expand)
+        check("TC8.5 展开箭头再收起该组", waitUntil(3) { packageBoxes(in: workspace).isEmpty },
+              "count=\(packageBoxes(in: workspace).count)")
+    } else {
+        check("TC8.4 展开箭头展开该组", false, "找不到展开箭头")
+    }
 }
 
-print("PASS \(passes.count)  FAIL \(failures.count)")
+if let expandAll = find(workspace, where: { help($0).contains("展开/收起全部") }) {
+    _ = press(expandAll)
+}
+check("TC8.6 再展开恢复 44 行", waitUntil(3) { packageBoxes(in: workspace).count >= 44 },
+      "count=\(packageBoxes(in: workspace).count)")
+
+print("PASS \(passes.count)  SKIP \(skips.count)  FAIL \(failures.count)")
 exit(failures.isEmpty ? 0 : 1)
