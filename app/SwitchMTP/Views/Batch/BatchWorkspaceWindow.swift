@@ -26,18 +26,6 @@ import AppKit
 
 final class BatchWorkspaceController: NSObject, NSWindowDelegate {
     private var windowController: NSWindowController?
-    private var minSize = NSSize.zero
-    private var maxSize = NSSize.zero
-    private var isClampingSize = false
-    /// The parent window whose frame caps the workspace. Tracked so the cap
-    /// follows the parent when it is resized after the workspace opened —
-    /// a stale cap made the workspace look unresizable.
-    private weak var host: NSWindow?
-    private var hostObserver: NSObjectProtocol?
-
-    deinit {
-        if let hostObserver { NotificationCenter.default.removeObserver(hostObserver) }
-    }
 
     /// Bring an already-open workspace forward instead of opening a second one.
     func show(manager: MTPManager) {
@@ -47,14 +35,9 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
         }
 
         let host = hostWindow()
-        self.host = host
-        if let host {
-            hostObserver = NotificationCenter.default.addObserver(
-                forName: NSWindow.didResizeNotification, object: host, queue: .main
-            ) { [weak self] _ in
-                self?.refreshCeiling()
-            }
-        }
+        // The parent frame only matters for the first open: it decides the
+        // starting size and position so the window visibly belongs to the
+        // main window. Once open it is a normal, freely resizable window.
         // The workspace must never open over a parent that has slipped below
         // the floor (restored frame, accessibility resize). Grow the parent
         // first, then size against its real content area.
@@ -90,18 +73,9 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
         let chromeHeight = max(0, window.frame.height - window.contentLayoutRect.height)
         window.contentMinSize = NSSize(width: WindowMetrics.workspaceMinFrame.width,
                                        height: max(1, WindowMetrics.workspaceMinFrame.height - chromeHeight))
-        // Never let the user grow the workspace over its parent either: cap it
-        // at parent frame minus the same inset used for the default size.
-        let ceiling = host?.frame.size ?? WindowMetrics.mainMinFrame
-        let maximum = NSSize(
-            width: max(WindowMetrics.workspaceMinFrame.width,
-                       ceiling.width - WindowMetrics.workspaceInset.width),
-            height: max(WindowMetrics.workspaceMinFrame.height,
-                       ceiling.height - WindowMetrics.workspaceInset.height)
-        )
+        // No cap: the workspace stops being tied to the parent once it is on
+        // screen, so the user can grow it past the main window if they want.
         window.maxSize = NSSize(width: 10000, height: 10000)
-        minSize = WindowMetrics.workspaceMinFrame
-        maxSize = maximum
         window.setFrame(NSRect(origin: window.frame.origin, size: size), display: false)
         window.delegate = self
 
@@ -115,69 +89,10 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
     func close() {
         windowController?.window?.close()
         windowController = nil
-        dropHostObserver()
     }
 
     func windowWillClose(_ notification: Notification) {
         windowController = nil
-        dropHostObserver()
-    }
-
-    private func dropHostObserver() {
-        if let hostObserver { NotificationCenter.default.removeObserver(hostObserver) }
-        hostObserver = nil
-    }
-
-    /// Recompute the ceiling from the parent's current frame, then pull the
-    /// workspace back inside it. Called whenever the parent is resized.
-    private func refreshCeiling() {
-        guard let window = windowController?.window else { return }
-        let ceiling = host?.frame.size ?? WindowMetrics.mainMinFrame
-        let maximum = NSSize(
-            width: max(WindowMetrics.workspaceMinFrame.width,
-                       ceiling.width - WindowMetrics.workspaceInset.width),
-            height: max(WindowMetrics.workspaceMinFrame.height,
-                       ceiling.height - WindowMetrics.workspaceInset.height)
-        )
-        maxSize = maximum
-        // AppKit applies maxSize before the delegate runs, and its frame/content
-        // bookkeeping does not track a parent that grows after the window
-        // opened. Leave AppKit's cap out of the way and rely on the live
-        // clamp below so the workspace can actually be enlarged.
-        window.maxSize = NSSize(width: 10000, height: 10000)
-
-        var frame = window.frame
-        let width = min(max(frame.width, minSize.width), maximum.width)
-        let height = min(max(frame.height, minSize.height), maximum.height)
-        guard width != frame.width || height != frame.height else { return }
-        isClampingSize = true
-        frame.size = NSSize(width: width, height: height)
-        window.setFrame(frame, display: true)
-        isClampingSize = false
-    }
-
-    /// `contentMinSize` / `maxSize` are not consulted on every resize path
-    /// (Accessibility resizing can set any frame), so clamp here as well. This
-    /// keeps the workspace inside its parent no matter how it is resized.
-    func windowDidResize(_ notification: Notification) {
-        guard let window = notification.object as? NSWindow, !isClampingSize else { return }
-        if let ceiling = host?.frame.size {
-            maxSize = NSSize(
-                width: max(WindowMetrics.workspaceMinFrame.width,
-                           ceiling.width - WindowMetrics.workspaceInset.width),
-                height: max(WindowMetrics.workspaceMinFrame.height,
-                           ceiling.height - WindowMetrics.workspaceInset.height)
-            )
-        }
-        var frame = window.frame
-        let width = min(max(frame.width, minSize.width), maxSize.width)
-        let height = min(max(frame.height, minSize.height), maxSize.height)
-        guard width != frame.width || height != frame.height else { return }
-
-        isClampingSize = true
-        frame.size = NSSize(width: width, height: height)
-        window.setFrame(frame, display: true)
-        isClampingSize = false
     }
 
     /// The app's main window, never the workspace itself.

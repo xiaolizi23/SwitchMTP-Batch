@@ -45,17 +45,22 @@ enum WindowMetrics {
     /// 1010 x 620 parent, which leaves 60pt left/right and 24pt top/bottom.
     static let workspaceFrame = NSSize(width: 890, height: 520)
 
-    /// The workspace must stay readable, so it may shrink only this far when
-    /// the parent itself is smaller than expected (small screens). 890 is the
-    /// width at which the filter row (全部 / 有问题 / 仅更新DLC / 仅本体 / 排序 /
-    /// 全选 / 全不选 / 仅可选 / 导出) stops clipping its trailing buttons.
-    static let workspaceMinFrame = NSSize(width: 890, height: 470)
+    /// The workspace must stay readable, so it may shrink only this far. 890 is
+    /// the width at which the filter row (全部 / 有问题 / 仅更新DLC / 仅本体 /
+    /// 排序 / 全选 / 全不选 / 仅可选 / 导出) stops clipping its trailing buttons;
+    /// 498 is 470 of content plus the 28 pt the transparent title strip takes.
+    static let workspaceMinFrame = NSSize(width: 890, height: 498)
+
+    /// The same floor in content coordinates, for SwiftUI's root `minHeight`.
+    static let workspaceMinContentHeight: CGFloat = 470
 
     /// Space that must stay visible around the workspace.
     static let workspaceInset = NSSize(width: 120, height: 100)
 
-    /// Clamp the workspace to the parent's frame so it can never cover the
-    /// parent, while respecting its own readability floor.
+    /// Starting size for a freshly opened workspace: pulled down to the parent
+    /// frame (minus the inset) so the first open never covers the parent, but
+    /// never below the readability floor. Only the first frame is derived
+    /// here — afterwards the window resizes freely.
     static func workspaceFrameSize(forParentFrame parent: NSSize) -> NSSize {
         let width = max(workspaceMinFrame.width,
                         min(workspaceFrame.width, parent.width - workspaceInset.width))

@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.18-ax — 2026-11-26
+
+测试分支，仍不替换正式包。
+
+- **批量窗口改成「只管第一次打开」的层级关系，之后自由缩放。** 1.7.17 那套
+  「父窗口 −120 宽 / −100 高」的实时 clamp 全部删掉（`hostWidth` 跟踪、
+  `windowDidResize` 重算、`window.maxSize` 上限都去掉了）：它把两个窗口死死绑在
+  一起，可批量窗口本身能随意拖动，绑尺寸没道理。现在打开那一刻仍按父窗口
+  `workspaceFrameSize(forParentFrame:)` 推导 890×520 并居中，看得出它属于主窗口；
+  之后用户想拉多大都行，可以比主窗口大。
+- **`window.maxSize` 放到 10000×10000**，不给 AppKit 留暗上限。
+- **可读性下限统一成 890×498（frame）**，也就是 470 的内容高度加 28 的透明标题条：
+  `workspaceMinFrame` 记 frame 口径，新增 `workspaceMinContentHeight` 给 SwiftUI 根视图
+  的 `minHeight` 用，`contentMinSize` 再减一次标题条，三处终于对得上（原来 frame 写 470、
+  内容也写 470，实际下限是 498）。
+- 实测：默认打开 890×520；缩到 700×380 被夹回 890×498；拉到 1300×700 放行（比
+  1010×789 的主窗口还大），左右分栏按比例伸展、筛选栏与页脚都不裁。
+- AX 回归 PASS 25 / FAIL 0。
+- 版本 `1.7.18-ax` / build 37。
+
 ## 1.7.17-ax — 2026-11-26
 
 测试分支，仍不替换正式包。

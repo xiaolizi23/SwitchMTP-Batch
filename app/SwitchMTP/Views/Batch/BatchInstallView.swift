@@ -67,7 +67,7 @@ struct BatchInstallSheet: View {
         // main window's floor again. The three columns keep their own
         // minimums (520 / 300).
         .frame(minWidth: WindowMetrics.workspaceMinFrame.width,
-               minHeight: WindowMetrics.workspaceMinFrame.height)
+               minHeight: WindowMetrics.workspaceMinContentHeight)
         .background(Color(nsColor: .windowBackgroundColor))
         .onDrop(of: [.fileURL], isTargeted: $isDropTargeted, perform: handleDrop(providers:))
         .overlay(dropOverlay)
