@@ -21,8 +21,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/fratei/SwitchMTP/backend/fake"
-	"github.com/fratei/SwitchMTP/backend/nxmtp"
+	"github.com/xiaolizi23/SwitchMTP-Batch/backend/fake"
+	"github.com/xiaolizi23/SwitchMTP-Batch/backend/nxmtp"
 	"github.com/ganeshrvel/go-mtpfs/mtp"
 )
 

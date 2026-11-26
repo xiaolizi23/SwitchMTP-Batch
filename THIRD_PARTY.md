@@ -1,8 +1,10 @@
 # Third-Party Notices
 
-SwitchMTP is a derivative work of **SwiftMTP** (GPL-2.0) and incorporates vendored
-BSD-licensed libraries. This file satisfies GPL-2.0 §2(a) (prominent change notices)
-and the attribution requirements of the New BSD (3-clause) licenses below.
+SwitchMTP Batch is a derivative work in three layers: **SwiftMTP** (Neighbor_Z,
+GPL-2.0) → **SwitchMTP** (Francesco Fratei, GPL-2.0) → **SwitchMTP Batch**
+(xiaolizi23, 2026), and it incorporates vendored BSD-licensed libraries. This file
+satisfies GPL-2.0 §2(a) (prominent change notices) and the attribution requirements
+of the New BSD (3-clause) licenses below.
 
 ---
 
@@ -29,10 +31,24 @@ SwitchMTP is based on SwiftMTP but is **substantially modified**:
 | Switch/DBI features | Switch-specific storage classification, DBIbackend mode detection, install-storage drop targets, applet-vs-title mode guidance, and the `FetchDiagnostics` export are all new. |
 | App icon | The original MTPIcon is replaced with a new icon. |
 | Screenshots / materials | Upstream `Materials/` folder, `Comparison.md`, and `Details_and_Privacy.md` are not included. |
-| Update checker | Repointed at `github.com/fratei/SwitchMTP` releases. |
+| Update checker | Repointed at `github.com/xiaolizi23/SwitchMTP-Batch` releases. |
 
 Because SwitchMTP is a derivative work distributed under the same GPL-2.0 terms, the
-complete corresponding source code is available at https://github.com/fratei/SwitchMTP.
+complete corresponding source code is available at https://github.com/xiaolizi23/SwitchMTP-Batch.
+
+### Modifications made in SwitchMTP Batch (GPL-2.0 §2(a) change notice)
+
+SwitchMTP Batch is based on SwitchMTP by Francesco Fratei and adds the batch-install
+workspace on top:
+
+| Area | Change |
+|------|--------|
+| Batch workspace | A collect → inspect → install queue layer: whole-library scan, base/update/DLC grouping, optional signature/hash check with local `prod.keys` via bundled `hactool`, and a selectable list sent to DBI in order. |
+| Shared core | Scanning, grouping and deep-check logic extracted into a UI-free `Core/` layer shared by the GUI and the bundled `switchmtp-cli`. |
+| Bundled CLI | The universal `switchmtp-cli` is embedded in `Contents/Resources/bin/`, reusing the host's nxmtp/libusb dylibs. |
+| Branding | Product name `SwitchMTP Batch`; repository and update checker repointed to `xiaolizi23/SwitchMTP-Batch`. The bundle ID is retained from upstream for compatibility. |
+
+Copyright for these additions: Copyright (C) 2026 xiaolizi23.
 
 ---
 

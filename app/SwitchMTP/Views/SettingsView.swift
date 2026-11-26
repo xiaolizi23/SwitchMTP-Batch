@@ -13,7 +13,7 @@
 
 // Originally: SettingsView.swift — SwiftMTP
 // Copyright © Neighbor-Z. All rights reserved.
-// Modified for SwitchMTP (fratei/SwitchMTP). AI section removed.
+// Modified for SwitchMTP (xiaolizi23/SwitchMTP-Batch). AI section removed.
 import SwiftUI
 
 struct SettingsView: View {
@@ -83,7 +83,7 @@ struct SettingsView: View {
 
                     HStack(spacing: 16) {
                         Button {
-                            if let url = URL(string: "https://github.com/fratei/SwitchMTP") {
+                            if let url = URL(string: "https://github.com/xiaolizi23/SwitchMTP-Batch") {
                                 NSWorkspace.shared.open(url)
                             }
                         } label: {

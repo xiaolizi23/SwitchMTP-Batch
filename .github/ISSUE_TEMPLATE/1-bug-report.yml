@@ -8,7 +8,7 @@ body:
       value: |
         Thanks for taking the time to report this.
 
-        **Before you file:** the [Troubleshooting guide](https://github.com/fratei/SwitchMTP/blob/main/docs/TROUBLESHOOTING.md)
+        **Before you file:** the [Troubleshooting guide](https://github.com/xiaolizi23/SwitchMTP-Batch/blob/main/docs/TROUBLESHOOTING.md)
         already covers the most common problems, including the console not being
         detected, `Extra buffers exceeded`, exported files apparently going
         missing, and dates showing as `—`.

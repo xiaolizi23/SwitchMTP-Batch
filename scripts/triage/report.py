@@ -9,7 +9,7 @@ from __future__ import annotations
 from forms import ParsedIssue
 from rules import MARKER, Verdict
 
-REPO_URL = "https://github.com/fratei/SwitchMTP"
+REPO_URL = "https://github.com/xiaolizi23/SwitchMTP-Batch"
 
 _INTRO = {
     "needs-info": (

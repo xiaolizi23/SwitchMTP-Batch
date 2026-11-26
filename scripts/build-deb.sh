@@ -124,8 +124,8 @@ Priority: optional
 Architecture: ${arch}
 Depends: libusb-1.0-0
 Installed-Size: ${installed_size}
-Maintainer: fratei <fratei@users.noreply.github.com>
-Homepage: https://github.com/fratei/SwitchMTP
+Maintainer: xiaolizi23 <79792467+xiaolizi23@users.noreply.github.com>
+Homepage: https://github.com/xiaolizi23/SwitchMTP-Batch
 Description: Command-line MTP client for a Nintendo Switch running DBI
  Browses a Nintendo Switch running DBI's MTP responder and installs NSP, NSZ,
  XCI and XCZ files to it, one after another from a queue.

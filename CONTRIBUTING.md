@@ -1,6 +1,6 @@
-# Contributing to SwitchMTP
+# Contributing to SwitchMTP Batch
 
-SwitchMTP talks to a homebrew MTP responder over USB on one operating system.
+SwitchMTP Batch talks to a homebrew MTP responder over USB on one operating system.
 Almost every interesting bug lives in that intersection, and almost none of it
 can be verified in CI. That shapes everything below.
 
@@ -16,8 +16,8 @@ is **Help ▸ Report an Issue…** in the app.
 ## Getting set up
 
 ```shell
-git clone https://github.com/fratei/SwitchMTP.git
-cd SwitchMTP
+git clone https://github.com/xiaolizi23/SwitchMTP-Batch.git
+cd SwitchMTP-Batch
 ./scripts/bootstrap.sh      # checks Go, Xcode and XcodeGen, and says how to fix what is missing
 ./scripts/build-libusb.sh   # universal libusb, once
 ./scripts/build-xcode-app.sh # backend + universal app, roughly three minutes
@@ -120,5 +120,5 @@ Run it against a real issue without touching anything:
 
 ```shell
 export TRIAGE_TOKEN="$(gh auth token)"
-python3 scripts/triage/triage.py --repo fratei/SwitchMTP --issue 42 --dry-run
+python3 scripts/triage/triage.py --repo xiaolizi23/SwitchMTP-Batch --issue 42 --dry-run
 ```

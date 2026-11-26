@@ -3,11 +3,11 @@
 
 Run against one issue:
 
-    python scripts/triage/triage.py --repo fratei/SwitchMTP --issue 12 --dry-run
+    python scripts/triage/triage.py --repo xiaolizi23/SwitchMTP-Batch --issue 12 --dry-run
 
 Run against everything that needs a look (what the daily workflow does):
 
-    python scripts/triage/triage.py --repo fratei/SwitchMTP --all
+    python scripts/triage/triage.py --repo xiaolizi23/SwitchMTP-Batch --all
 
 Nothing here needs a secret beyond a token that can read and label issues, and
 `--dry-run` prints exactly what would happen without touching the repository.

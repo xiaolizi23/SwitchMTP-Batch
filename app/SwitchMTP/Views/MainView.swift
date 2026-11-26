@@ -13,7 +13,7 @@
 
 // Originally: MainView.swift — SwiftMTP
 // Copyright © Neighbor-Z. All rights reserved.
-// Modified for SwitchMTP (fratei/SwitchMTP). AI features removed.
+// Modified for SwitchMTP (xiaolizi23/SwitchMTP-Batch). AI features removed.
 import SwiftUI
 import Foundation
 import AppKit

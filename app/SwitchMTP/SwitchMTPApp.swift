@@ -301,7 +301,7 @@ struct GoMenuCommands: Commands {
     }
 
     private static func openDocs(_ path: String) {
-        let base = "https://github.com/fratei/SwitchMTP"
+        let base = "https://github.com/xiaolizi23/SwitchMTP-Batch"
         let full = path.isEmpty ? base : "\(base)/blob/main/\(path)"
         if let url = URL(string: full) {
             NSWorkspace.shared.open(url)

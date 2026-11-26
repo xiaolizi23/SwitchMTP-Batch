@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/fratei/SwitchMTP/backend/nxmtp"
+	"github.com/xiaolizi23/SwitchMTP-Batch/backend/nxmtp"
 )
 
 func TestHumanBytesUsesDecimalUnits(t *testing.T) {

@@ -19,7 +19,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/fratei/SwitchMTP/backend/nxmtp"
+	"github.com/xiaolizi23/SwitchMTP-Batch/backend/nxmtp"
 )
 
 // The MTP-capable flag is a structural test for the bulk-in/bulk-out/

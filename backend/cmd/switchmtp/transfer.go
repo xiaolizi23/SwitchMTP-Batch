@@ -20,7 +20,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/fratei/SwitchMTP/backend/nxmtp"
+	"github.com/xiaolizi23/SwitchMTP-Batch/backend/nxmtp"
 )
 
 // progressPrinter renders transfer progress to a terminal.

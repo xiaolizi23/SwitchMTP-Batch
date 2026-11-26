@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fratei/SwitchMTP/backend/nxmtp"
+	"github.com/xiaolizi23/SwitchMTP-Batch/backend/nxmtp"
 )
 
 // remotePath is a location on the device: a storage selector plus a path

@@ -5,7 +5,7 @@
 **Do not open a public issue.**
 
 Use GitHub's private reporting:
-[**Report a vulnerability**](https://github.com/fratei/SwitchMTP/security/advisories/new).
+[**Report a vulnerability**](https://github.com/xiaolizi23/SwitchMTP-Batch/security/advisories/new).
 It is private to you and the maintainers until an advisory is published.
 
 Please include what an attacker can achieve, the steps to reproduce it, and the

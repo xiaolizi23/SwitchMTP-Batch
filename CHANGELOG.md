@@ -45,6 +45,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   产物 `SwitchMTP Batch.app`（CLI 在 `Contents/Resources/bin/switchmtp-cli`）；
   GitHub Release 流水线由 DMG 改为 zip 打包。Go CLI 的 Linux deb/Arch 打包链路保留。
 
+### 署名与仓库
+
+- 仓库坐标迁移到 `xiaolizi23/SwitchMTP-Batch`：问题反馈、更新检查、帮助菜单、
+  issue 模板、workflow 仓库守卫、triage 脚本、deb/Arch 打包与文档中的仓库链接一并更新；
+  Go module path 改为 `github.com/xiaolizi23/SwitchMTP-Batch/backend`。
+- 作品级版权追加 `Copyright © 2026 xiaolizi23`（README License、About 面板、
+  Info.plist、THIRD_PARTY 变更声明）。按 GPL-2.0 保留 Neighbor_Z、fratei 的上游
+  版权行与全部第三方 attribution；bundle ID 沿用上游以兼容已安装配置。
+
 ## 1.7.20 — 2026-11-26
 
 数十包全量深检 × DBI 实机对照后，收敛深度检查的判定口径：能说清的精确到层，

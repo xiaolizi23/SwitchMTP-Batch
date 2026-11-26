@@ -1,6 +1,6 @@
 # SwitchMTP Batch：批量安装工作区
 
-这是 [fratei/SwitchMTP v1.1.0](https://github.com/fratei/SwitchMTP) 的 macOS 版本加上一个批量安装工作区后的构建。上游的 MTP 传输、DBI 连接、安装队列原样保留；新增的是“先收集 → 再检查 → 后安装”这一层。
+本工作区在 [SwitchMTP](https://github.com/fratei/SwitchMTP)（上游 macOS MTP 客户端，GPL-2.0）之上加了一层批量安装流程；上游的 MTP 传输、DBI 连接、安装队列原样保留，新增的是“先收集 → 再检查 → 后安装”这一层。
 
 界面语言跟随系统设置：上游的 String Catalog 已编译进包，简体中文、繁体中文、日文、西班牙文、俄文都会自动切换；批量工作区自身的文案是中文。
 

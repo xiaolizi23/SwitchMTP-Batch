@@ -44,7 +44,7 @@ jobs:
     # would otherwise cost a wasted run every time delegation uses a PAT), and
     # never run on a fork.
     if: >-
-      github.repository == 'fratei/SwitchMTP' &&
+      github.repository == 'xiaolizi23/SwitchMTP-Batch' &&
       github.event.issue.pull_request == null &&
       github.actor != 'github-actions[bot]' &&
       (github.event_name != 'issue_comment' ||

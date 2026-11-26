@@ -287,7 +287,7 @@ source as an alternative.
    ```
 
 3. Attach `diagnostics.json`, or paste the clipboard report, to your GitHub issue at
-   https://github.com/fratei/SwitchMTP/issues.
+   https://github.com/xiaolizi23/SwitchMTP-Batch/issues.
 
 The diagnostics include: USB device enumeration, any process holding the USB interface
 that the backend can identify, and connected-device capabilities. No personal files or

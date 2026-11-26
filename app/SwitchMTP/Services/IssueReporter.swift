@@ -25,7 +25,7 @@ enum IssueReporter {
     /// Matches `.github/ISSUE_TEMPLATE/1-bug-report.yml`. GitHub resolves this
     /// by filename, so renaming that file breaks this link.
     private static let bugTemplate = "1-bug-report.yml"
-    private static let base = "https://github.com/fratei/SwitchMTP"
+    private static let base = "https://github.com/xiaolizi23/SwitchMTP-Batch"
 
     /// Field `id`s from the bug form, and only `input` ones.
     ///

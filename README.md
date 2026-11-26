@@ -1,4 +1,4 @@
-# SwitchMTP
+# SwitchMTP Batch
 
 A native macOS app for browsing, managing, and transferring files between a Mac and a
 **Nintendo Switch running DBI's MTP responder**, plus a cross-platform command-line tool
@@ -47,7 +47,7 @@ protocol; SwitchMTP talks MTP to DBI directly and has no Java dependency.
 ## Install
 
 1. Download the latest `SwitchMTP-Batch-x.y.z-universal.zip` from the
-   [Releases](https://github.com/fratei/SwitchMTP/releases) page.
+   [Releases](https://github.com/xiaolizi23/SwitchMTP-Batch/releases) page.
 2. Unzip it and drag `SwitchMTP Batch.app` to `/Applications`.
 3. **Remove the macOS quarantine attribute:**
 
@@ -301,12 +301,13 @@ See [`THIRD_PARTY.md`](THIRD_PARTY.md) for full attribution and license texts.
 
 ## License
 
-SwitchMTP is distributed under the **GNU General Public License v2.0** — see
+SwitchMTP Batch is distributed under the **GNU General Public License v2.0** — see
 [`LICENSE`](LICENSE).
 
 ```
-SwitchMTP  Copyright (C) 2025 Francesco Fratei
-Based on SwiftMTP by Neighbor_Z (https://github.com/Neighbor-Z/SwiftMTP)
+SwitchMTP Batch  Copyright (C) 2026 xiaolizi23
+Based on SwitchMTP by Francesco Fratei (https://github.com/fratei/SwitchMTP),
+which is based on SwiftMTP by Neighbor_Z (https://github.com/Neighbor-Z/SwiftMTP)
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by

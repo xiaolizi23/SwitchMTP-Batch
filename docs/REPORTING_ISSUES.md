@@ -33,7 +33,7 @@ nobody mentions is a bug that never gets fixed.
 | **Compatibility report** | You tried a console, firmware, responder, cable or dock that may not have been tested. **Including when it all worked** — that is how the compatibility notes become trustworthy. |
 
 Questions and half-formed ideas belong in
-[Discussions](https://github.com/fratei/SwitchMTP/discussions) rather than in an
+[Discussions](https://github.com/xiaolizi23/SwitchMTP-Batch/discussions) rather than in an
 issue.
 
 ---

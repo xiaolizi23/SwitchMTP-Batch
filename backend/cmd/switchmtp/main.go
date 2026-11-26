@@ -27,7 +27,7 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/fratei/SwitchMTP/backend/nxmtp"
+	"github.com/xiaolizi23/SwitchMTP-Batch/backend/nxmtp"
 )
 
 // version is stamped at build time:

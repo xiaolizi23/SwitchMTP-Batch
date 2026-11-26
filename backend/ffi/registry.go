@@ -15,7 +15,7 @@ package main
 import (
 	"sync"
 
-	"github.com/fratei/SwitchMTP/backend/nxmtp"
+	"github.com/xiaolizi23/SwitchMTP-Batch/backend/nxmtp"
 )
 
 // registry holds the open device sessions.

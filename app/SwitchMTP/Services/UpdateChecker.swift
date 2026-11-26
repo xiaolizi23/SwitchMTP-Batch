@@ -39,8 +39,8 @@ final class UpdateChecker: ObservableObject {
     static let shared = UpdateChecker()
 
     // GitHub repository coordinates
-    private let owner = "fratei"
-    private let repo  = "SwitchMTP"
+    private let owner = "xiaolizi23"
+    private let repo  = "SwitchMTP-Batch"
 
     /// State always starts as .idle on launch.
     @Published private(set) var state: UpdateCheckState = .idle

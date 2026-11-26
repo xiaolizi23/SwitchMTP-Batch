@@ -1,4 +1,4 @@
-module github.com/fratei/SwitchMTP/backend
+module github.com/xiaolizi23/SwitchMTP-Batch/backend
 
 go 1.21
 

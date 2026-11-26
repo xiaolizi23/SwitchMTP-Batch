@@ -1,4 +1,4 @@
-# Maintainer: fratei <https://github.com/fratei>
+# Maintainer: xiaolizi23 <https://github.com/xiaolizi23>
 #
 # SwitchMTP command line tool for Arch, Manjaro, EndeavourOS and SteamOS.
 #
@@ -24,13 +24,13 @@ pkgver=0.r0.0000000
 pkgrel=1
 pkgdesc="Command line MTP client for a Nintendo Switch running DBI"
 arch=('x86_64' 'aarch64')
-url="https://github.com/fratei/SwitchMTP"
+url="https://github.com/xiaolizi23/SwitchMTP-Batch"
 license=('GPL2')
 depends=('libusb')
 makedepends=('go' 'git')
 provides=("${_pkgname}")
 conflicts=("${_pkgname}")
-source=("${_pkgname}::git+https://github.com/fratei/SwitchMTP.git")
+source=("${_pkgname}::git+https://github.com/xiaolizi23/SwitchMTP-Batch.git")
 sha256sums=('SKIP')
 
 pkgver() {

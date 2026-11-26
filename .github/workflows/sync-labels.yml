@@ -28,7 +28,7 @@ permissions:
 jobs:
   sync:
     # Forks have their own labels; syncing ours onto them would be rude.
-    if: github.repository == 'fratei/SwitchMTP'
+    if: github.repository == 'xiaolizi23/SwitchMTP-Batch'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
