@@ -198,7 +198,12 @@ func window(titled name: String) -> AXUIElement? {
 
 NSRunningApplication(processIdentifier: pid)?.activate(options: [])
 
-let mainWindowName = "SwitchMTP Batch AX"
+// The release build's main window is "SwitchMTP Batch"; the test builds that
+// carried a suffix ("… AX") still match this prefix, so the suite runs against
+// either one without editing.
+let mainWindowName = ((attr(app, kAXWindowsAttribute) as? [AXUIElement]) ?? [])
+    .map(title)
+    .first { $0.hasPrefix("SwitchMTP Batch") } ?? "SwitchMTP Batch"
 let workspaceName = "批量安装"
 
 check("TC0.1 主窗口存在", waitUntil(5) { window(titled: mainWindowName) != nil },
