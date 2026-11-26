@@ -686,6 +686,17 @@ final class BatchInstallModel: ObservableObject {
         isDeepChecking = true
         deepCheckDone = 0
         deepCheckTotal = jobs.count
+        // Mark every queued job as running up front so each row shows its live
+        // progress bar and percentage as soon as the pass starts. The state used
+        // to stay `.notRun` until the result arrived, which hid the in-flight
+        // bar (its visibility gate is `deepState != .notRun`) entirely.
+        for job in jobs {
+            updatePackage(id: job.id) { package in
+                package.deepState = .running
+                package.deepProgress = 0
+                package.deepPhase = "准备中"
+            }
+        }
         let titleKeys = DeepCheckRunner.titleKeysURL(for: keysetPath)
         // Freeze the work list: the scan may still publish new packages while
         // this runs, and those are simply not part of this pass.

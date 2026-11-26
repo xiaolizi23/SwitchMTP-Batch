@@ -35,6 +35,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   连同目标存储一起交给批量工作区，预选目标后在清单里复核、勾选再发送 DBI。
 - **抽取无 UI 批量核心层**：扫描、本体/更新/DLC 分组、深度检查移到 `Core/`，GUI 与 CLI
   共用同一套模型与校验逻辑。
+- **恢复深检行内进度条**：批量深检改为并发 runner 后，启动时漏了把队列任务置为
+  `.running`；行内条的显示条件是 `deepState != .notRun`，导致运行过程中进度条与百分比
+  完全不出现，要等结果回来才蹦出满条。现在任务入队即标 `.running`，行内条与百分比随
+  引擎实时进度填充，结束后停留为结论色满条。
 
 ### 清理
 
@@ -53,6 +57,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - 作品级版权追加 `Copyright © 2026 xiaolizi23`（README License、About 面板、
   Info.plist、THIRD_PARTY 变更声明）。按 GPL-2.0 保留 Neighbor_Z、fratei 的上游
   版权行与全部第三方 attribution；bundle ID 沿用上游以兼容已安装配置。
+- 面向用户的可见文案与帮助文档统一更名为 SwitchMTP Batch：帮助菜单标题、USB 连接
+  说明弹窗、设置页品牌、诊断提示、主窗口状态提示及各语言本地化同步；上游溯源句与
+  第三方作品名原样保留。
 
 ## 1.7.20 — 2026-11-26
 
