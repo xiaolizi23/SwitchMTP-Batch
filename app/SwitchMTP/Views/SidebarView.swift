@@ -132,21 +132,9 @@ struct SidebarView: View {
         
         Group {
             HStack {
-                VStack(alignment: .leading, spacing: 1) {
-                    Label(info.displayName, systemImage: "smartphone")
-                        .font(.system(size: 13, weight: .semibold))
-                        .foregroundStyle(isConnected ? .primary : .secondary)
-                    if !isConnected {
-                        Text(manager.deviceLeaseHolder != nil
-                             ? String(localized: "Device In Use By Another Instance")
-                             : (manager.consolePresence.mtpReady
-                                ? String(localized: "MTP responder ready")
-                                : String(localized: "Switch detected — start DBI MTP responder")))
-                            .font(.system(size: 10))
-                            .foregroundStyle(.tertiary)
-                            .lineLimit(2)
-                    }
-                }
+                Label(info.displayName, systemImage: "smartphone")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(isConnected ? .primary : .secondary)
 
                 Spacer()
                 
