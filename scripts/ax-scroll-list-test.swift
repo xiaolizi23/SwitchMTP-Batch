@@ -99,6 +99,17 @@ func description(_ el: AXUIElement) -> String {
     (attr(el, kAXDescriptionAttribute) as? String) ?? ""
 }
 
+/// Leading token of a group label, used as a search keyword. The fixture folder
+/// belongs to whoever runs the script, so no title is hard-coded.
+func searchKeyword(from groups: [AXUIElement]) -> String? {
+    for group in groups {
+        let label = description(group).trimmingCharacters(in: .whitespacesAndNewlines)
+        let prefix = label.prefix { !" ，,·（(|".contains($0) }
+        if prefix.count >= 2 { return String(prefix) }
+    }
+    return nil
+}
+
 func title(_ el: AXUIElement) -> String {
     (attr(el, kAXTitleAttribute) as? String) ?? ""
 }
@@ -444,16 +455,21 @@ if let searchField {
     Thread.sleep(forTimeInterval: 0.2)
     // ⌘A is a menu key equivalent and needs a key window; delete does not.
     for _ in 0..<12 { keyStroke(51) }
-    typeText("Sample")
 
-    let filtered = waitUntil(3) {
-        let groups = groupBoxes(in: workspace)
-        return !groups.isEmpty && groups.count < baselineGroups
+    if let keyword = searchKeyword(from: groupBoxes(in: workspace)) {
+        typeText(keyword)
+
+        let filtered = waitUntil(3) {
+            let groups = groupBoxes(in: workspace)
+            return !groups.isEmpty && groups.count < baselineGroups
+        }
+        check("TC7.1 搜索后只剩匹配组", filtered,
+              "groups=\(groupBoxes(in: workspace).count) baseline=\(baselineGroups)")
+        check("TC7.2 剩下的组都命中关键字",
+              groupBoxes(in: workspace).allSatisfy { description($0).contains(keyword) })
+    } else {
+        skip("TC7.1/TC7.2 搜索过滤", "清单里取不到可用关键字")
     }
-    check("TC7.1 搜索后只剩匹配组", filtered,
-          "groups=\(groupBoxes(in: workspace).count) baseline=\(baselineGroups)")
-    check("TC7.2 剩下的组都命中关键字",
-          groupBoxes(in: workspace).allSatisfy { description($0).contains("Sample") })
 
     AXUIElementSetAttributeValue(searchField, kAXFocusedAttribute as CFString, kCFBooleanTrue)
     for _ in 0..<12 { keyStroke(51) }

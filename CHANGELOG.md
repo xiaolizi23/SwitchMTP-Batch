@@ -25,6 +25,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - `docs/NSZ_UNPACK.md` 的样本矩阵改为匿名描述（数量、结构、体积、结论），不再列具体游戏；
   `BATCH_WORKSPACE.zh-CN.md` 的「已知限制」改为按实际真机覆盖范围描述。
 - `.gitignore` 增加 `*.keys` / `prod.keys` / `title.keys`：密钥只放仓库外，防止误提交。
+- `CHANGELOG.md` 与代码注释里的具体游戏名、库体积、主机容量一并去掉，只保留测试结论。
+- `tests/samples/` 下的 10 个合成样本不再入库：`scripts/test-inspector.sh` 每次现场生成，
+  `InspectorTests` 默认目录改为 `build/test-samples`，缺样本时给出生成命令并退出。
+  `.gitignore` 同步忽略该目录。
 - `CONTRIBUTING.md` 说明 `tools/` 下两个工具是预编译产物（含当前 SHA-256），
   重建会覆盖受跟踪文件。
 
@@ -100,7 +104,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## 1.7.20 — 2026-11-26
 
-数十包全量深检 × DBI 实机对照后，收敛深度检查的判定口径：能说清的精确到层，
+全量深检 × DBI 实机对照后，收敛深度检查的判定口径：能说清的精确到层，
 说不清的一律降级表述。
 
 - **IVFC 层级精确化**：`NCACheck` 新增 `failedLevels`，从引擎输出解析具体的
@@ -114,16 +118,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **BKTR 补丁分区标 `partialHash`**：遇到 `invalid bktr layout` 时置位，包级新增
   note「补丁分区未做内容遍历」，主 note 的哈希计数改为扣除补丁分区的全量通过数。
   13 个带补丁分区的更新包不再被表述成「全量哈希通过」，改为「部分覆盖」（颜色仍绿：
-  签名全过、主体分区哈希全过）。某个更新档 实机 DBI 4 NCA 签名全 OK、
+  签名全过、主体分区哈希全过）。某个更新档实机 DBI 4 NCA 签名全 OK、
   16 秒装完，证实补丁分区未遍历不等于有风险，只是本地没证据。
-- 全量复扫 数十包 / 约百 GB / 14.0 分钟：39 绿、3 黄、2 灰、0 红，与 1.7.17
-  基线逐项一致。两个「灰」（智慧再现本体、空前盛会本体）确认是「仅 IVFC Level 4
+- 全量复扫（数十包、百 GB 量级、14 分钟）：39 绿、3 黄、2 灰、0 红，与 1.7.17
+  基线逐项一致。两个「灰」（两个无 CNMT 清单的本体包）确认是「仅 IVFC Level 4
   不符 + 无 CNMT 清单可对照」，继续按证据不足处理，不冒充绿。
-- 补完的真机结论（**已更正**）：**某本体本体 NSZ 装得上、能启动**。上一版这里写的是
+- 补完的真机结论（**已更正**）：**某个本体 NSZ 装得上、能启动**。上一版这里写的是
   「DBI 报完成但没落地」，那是取证错误：DBI 的 MTP responder 启动时建目录树、装完不
   刷新，装完立刻 ls 读到的是旧表；内置 `Contents/registered` 的目录名是序号
   （`00000000`…）且内容经 MTP 读为空，拿它 grep NCA id 等于空扫。重启 responder 后，
-  `65540` 与 `InstalledApplications.csv` 里都有 `01000000000AF000`。
+  `65540` 与 `InstalledApplications.csv` 里都能查到对应 Title ID。
   **口径：落地核查只认重启 responder 后的 65540 + 新生成 CSV，或主机 UI 截图。**
 - BKTR 全量遍历试到根因后放弃：hactool 的 `Invalid BKTR layout` 是尾部 0x4200
   字节导致的误报，但放宽后仍因缺 titlekey 整个分区读不出来（`Titlekey: Unknown`）。
@@ -206,12 +210,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   存在时生效，生产构建不受影响；夹具模式不再抑制主机在场探测。
 - **AX 回归**：`scripts/ax-scroll-list-test.swift` + `scripts/run-ax-scroll-list-test.sh`，
   25 用例 PASS 25 / FAIL 0。
-- **真机回归（2026-11-26 20:37，DBI 标题模式 / USB 2.0 High Speed / SD 剩 剩余空间）：**
-  数十包 fixture → 只勾「Another Game 空前盛会」更新包 69.8 MB → 深度检查 1 项判绿（签名 +
+- **真机回归（2026-11-26，DBI 标题模式 / USB 2.0 High Speed）：**
+  夹具清单 → 只勾一个更新包（约 70 MB）→ 深度检查 1 项判绿（签名 +
   哈希通过）→ 确认页「1 项 / 已验证原版 1」→ 发送 → DBI 屏幕全绿：magic OK、tik OK、
   4 个 nca 传输 + 签名全 OK、旧文件删除 3 个 OK、写盘 OK、4 次内容注册 OK、建库建游戏 OK，
-  「Установка игры завершена」，总耗时 6 秒。证据 `docs/dbi-install-1.7.13-2026-11-26.png`、
-  深度检查截图 `docs/deep-check-1.7.13-2026-11-26.png`。
+  「Установка игры завершена」，总耗时 6 秒。
 - 版本 `1.7.13` / build 39。
 
 ## 1.7.12 — 2026-11-26
@@ -244,7 +247,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
-- **修复超大 NCA 因 titlekey 代次重试被跳过而离线误判红。** 包内 ticket 用某一代 titlekek 包裹 titlekey、NCA 内容实际用另一代加密时，引擎本会按 NCA 头代次重试一次；早先重试触发条件带 8GB 尺寸上限，11GB 的 某本体 本体超线被跳过，错误密钥一路解成乱码、哈希全 FAIL 被判红。去掉尺寸上限后，大包换代次重解密校验即可通过。
+- **修复超大 NCA 因 titlekey 代次重试被跳过而离线误判红。** 包内 ticket 用某一代 titlekek 包裹 titlekey、NCA 内容实际用另一代加密时，引擎本会按 NCA 头代次重试一次；早先重试触发条件带 8GB 尺寸上限，11GB 的某个本体包超线被跳过，错误密钥一路解成乱码、哈希全 FAIL 被判红。去掉尺寸上限后，大包换代次重解密校验即可通过。
 
 ### 备注
 
@@ -259,7 +262,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### 备注
 
-- 本轮**未改动红 / 绿判定逻辑**：某本体 本体在离线 hactool 报内容分区哈希 FAIL，但 DBI 实机全 OK 落地、未回滚；根因（超大 RomFS IVFC 遍历 / body key 派生 / DBI 校验覆盖面）待进一步复核。
+- 本轮**未改动红 / 绿判定逻辑**：该 11GB 本体包在离线 hactool 报内容分区哈希 FAIL，但 DBI 实机全 OK 落地、未回滚；根因（超大 RomFS IVFC 遍历 / body key 派生 / DBI 校验覆盖面）待进一步复核。
 
 ## [1.7.8] - 2026-11-25
 
@@ -348,7 +351,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
-- **Intel（x86_64）上也能解包 NSZ 了。** `nszunpack` 现在是 arm64 + x86_64 通用二进制：解压与 AES-CTR 重加密在 x86 下跑出来的 NSP 与 arm64 逐字节相同（SHA-256 相等），某更新包 v1.1.6、Sample Game 更新（417 段 + 块压缩）都是 CNMT 4/4 一致。
+- **Intel（x86_64）上也能解包 NSZ 了。** `nszunpack` 现在是 arm64 + x86_64 通用二进制：解压与 AES-CTR 重加密在 x86 下跑出来的 NSP 与 arm64 逐字节相同（SHA-256 相等），两个更新样本（其中一个 417 段 + 块压缩）都是 CNMT 4/4 一致。
 - **Intel 上不再给假签名结论。** 内置 `hactool` 的 x86 构建会把真实零售签名报成 FAIL（同一文件 arm64 是 GOOD，问题在 vendored mbedtls 的 RSA 验签路径）。应用在 x86 进程里明确不做签名判定：NSZ 走“已解包 + 与 CNMT 清单逐字节对照”，NSP 则直接说“内置引擎只有 arm64”。
 
 
@@ -357,7 +360,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Added
 
 - **NSZ 能解包了，而且解完还要自证。** 新增 `tools/nszunpack`（单文件 C，链接 vendored mbedtls 与 Homebrew 静态 zstd）：把 NCZ 的 zstd 正文解出来，按 section 记录的 key/counter 用 `IV = counter[0..7] || BE(offset>>4)` 重做 AES-CTR，写成一个可直接安装的 NSP。写完还会把每个重建 NCA 的 SHA-256 和包内 `.cnmt.xml` 的 `<Id>/<Hash>` 对照，打印 `NSZ_HASH ... match=yes`——这是「解出来的字节就是发行方签过名的那份」的直接证据。
-- **多 section 与块压缩都支持。** 更新包的 NCZ 常有几百个 section（Sample Game 更新 417 个、某个更新包更新 692 个），并带 `NCZBLOCK`（1 MiB 一块、每块一条 zstd frame，压不小的块原样存放）。旧的固定 16 条 section 上限和「块压缩不支持」都已去掉。
+- **多 section 与块压缩都支持。** 更新包的 NCZ 常有几百个 section（实测 417 个、692 个各一例），并带 `NCZBLOCK`（1 MiB 一块、每块一条 zstd frame，压不小的块原样存放）。旧的固定 16 条 section 上限和「块压缩不支持」都已去掉。
 - **深度检查对 NSZ 全自动。** `DeepVerifier.verify` 遇到 `.nsz` 先解包到临时目录，再按 NSP 逐 NCA 验签，最后把 hactool 的结论和 CNMT 哈希证明合并成一条结论；校验完删除临时文件。界面详情页新增「解包为 NSP…」，可自己选保存位置。
 - **`docs/NSZ_UNPACK.md`**：NCZ 头结构、重加密规则、14 个真实 NSZ 的测试矩阵与已知限制。
 
@@ -375,7 +378,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### Fixed
 
-- **ticket 密钥代写错的包不再被判红。** 重打包工具常见做法是把内容用某一代 titlekek 包出来，却在 ticket 的 `masterKeyRevision` 里写另一代（马车 8 DLC 就是 ticket 写 13、内容实际 12）。现在逐 NCA 验完后若哈希 FAIL、且 NCA 头的 `crypto_type` 与 ticket 代次不同、NCA ≤ 64 MB，就按 NCA 头的代次重新解密钥再验一次；`nsp.c` 打印 `NSP_NCA_RETRY: keygen 13 -> 12`，Swift 侧据此丢弃作废的第一次结果。大 NCA 不做重试，真实损坏（如 某样本 重打包）仍稳定判红。
+- **ticket 密钥代写错的包不再被判红。** 重打包工具常见做法是把内容用某一代 titlekek 包出来，却在 ticket 的 `masterKeyRevision` 里写另一代（实测某 DLC 就是 ticket 写 13、内容实际 12）。现在逐 NCA 验完后若哈希 FAIL、且 NCA 头的 `crypto_type` 与 ticket 代次不同、NCA ≤ 64 MB，就按 NCA 头的代次重新解密钥再验一次；`nsp.c` 打印 `NSP_NCA_RETRY: keygen 13 -> 12`，Swift 侧据此丢弃作废的第一次结果。大 NCA 不做重试，真实损坏（如某重打包样本）仍稳定判红。
 - **真机颜色对照测试**（内部实机记录不入库）：绿 = 签名与哈希全过，DBI 逐文件 `[ПОДПИСЬ: OK]` 并注册成功；黄 = 签名 `ПОДДЕЛЬНАЯ`，DBI 照装不误；红 = 内容 `CRC ОШИБКА ФАЙЛА`，DBI 会把内容回滚删除（虽然仍打印“安装完成”）。我们的三色语义与 DBI 的实际行为一致。
 
 ### Changed

@@ -23,7 +23,16 @@ struct InspectorTests {
         let directory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         let samples = CommandLine.arguments.count > 1
             ? URL(fileURLWithPath: CommandLine.arguments[1])
-            : directory.appendingPathComponent("tests/samples")
+            : directory.appendingPathComponent("build/test-samples")
+        // Samples are synthetic and regenerable, so they are not tracked; generate
+        // them first (scripts/test-inspector.sh does this and passes the path in).
+        guard FileManager.default.fileExists(
+            atPath: samples.appendingPathComponent("valid.nsp").path
+        ) else {
+            print("no samples at \(samples.path)")
+            print("generate with: python3 tests/make_samples.py build/test-samples")
+            exit(2)
+        }
 
         func report(_ name: String) -> ContainerReport? {
             let url = samples.appendingPathComponent(name)
@@ -92,11 +101,11 @@ struct InspectorTests {
         // Real retail IDs, where the four digits before ".cnmt.nca" are not
         // 0000. These are the cases that used to read as DLC.
         let types: [(String, PackageContentType, String)] = [
-            ("01000000000AA000", .base, "Sample Game base (…2000)"),
-            ("01000000000AA800", .update, "Sample Game update (…2800)"),
-            ("01000000000AB001", .dlc, "Sample Game add-on (…3001)"),
-            ("01000000000BA000", .base, "another retail title base (…A000)"),
-            ("01000000000CC000", .base, "third retail title base (…6000)"),
+            ("01000000000AA000", .base, "retail base (…A000)"),
+            ("01000000000AA800", .update, "retail update (…A800)"),
+            ("01000000000AB001", .dlc, "retail add-on (…B001)"),
+            ("01000000000BA000", .base, "second retail base (…B000)"),
+            ("01000000000CC000", .base, "third retail base (…C000)"),
             ("0100000000010000", .base, "synthetic base (…0000)"),
             ("0100000000010800", .update, "synthetic patch (…0800)"),
             ("0100000000021000", .dlc, "synthetic add-on (…1000)"),
@@ -126,12 +135,12 @@ struct InspectorTests {
 
         print("display names")
         let names: [(String, String)] = [
-            ("$HOME/SampleGame/[本体v1.0.0][01000000000AA000][1.0.0][中文][US].nsp", "SampleGame"),
-            ("$HOME/SampleGame/DLC/[DLC][01000000000AB001][2.12.0][中文][US].nsp", "SampleGame"),
-            ("$HOME/Another Game Another Game/升级档-v1.1.0/[01000000000FF000][US][v131072][v1.1.0][UPD].nsz",
-             "Another Game Another Game"),
-            ("$HOME/third-title/nsp本体/Third Title - v1.0.0 [01000000000CC000][v0].nsp", "Third Title"),
-            ("$HOME/fixture/[本体v1.0.0][01000000000DD000][16.0.3][中文].nsp", "fixture"),
+            ("/tmp/samples/SampleGame/[本体v1.0.0][01000000000AA000][1.0.0][中文][US].nsp", "SampleGame"),
+            ("/tmp/samples/SampleGame/DLC/[DLC][01000000000AB001][2.12.0][中文][US].nsp", "SampleGame"),
+            ("/tmp/samples/Another Game/升级档-v1.1.0/[01000000000FF000][US][v131072][v1.1.0][UPD].nsz",
+             "Another Game"),
+            ("/tmp/samples/Third Title/nsp本体/Third Title - v1.0.0 [01000000000CC000][v0].nsp", "Third Title"),
+            ("/tmp/samples/fixture/[本体v1.0.0][01000000000DD000][16.0.3][中文].nsp", "fixture"),
         ]
         for (path, expected) in names {
             let name = PackageInspector.displayName(for: URL(fileURLWithPath: path))

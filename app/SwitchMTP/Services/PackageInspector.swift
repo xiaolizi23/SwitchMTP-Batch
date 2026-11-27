@@ -330,8 +330,8 @@ enum PackageInspector {
     /// Retail title IDs put the content type in the low bits, and the four
     /// digits before `.cnmt.nca` are *not* always `0000`:
     ///
-    ///   `<Y>000` with an even Y -> application (Sample Game is
-    ///   `01000000000AA000`, another retail title is `01000000000BA000`)
+    ///   `<Y>000` with an even Y -> application (retail bases commonly end in
+    ///   `…2000` or `…A000` instead of `…0000`)
     ///   `<Y>800`                -> patch for the same application
     ///   `<Y>XXX` with an odd Y  -> add-on content #XXX (`base | 0x1000`)
     ///

@@ -1,5 +1,7 @@
 # SwitchMTP build artifacts
 .build/
+# synthetic test containers are generated, never committed
+tests/samples/
 backend/build/
 build/
 dist/

@@ -10,7 +10,7 @@ import os
 import struct
 import sys
 
-OUT = sys.argv[1] if len(sys.argv) > 1 else "tests/samples"
+OUT = sys.argv[1] if len(sys.argv) > 1 else "build/test-samples"
 
 TITLE_BASE = "0100000000010000"
 TITLE_UPDATE = "0100000000010800"
