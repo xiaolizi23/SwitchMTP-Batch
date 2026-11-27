@@ -24,10 +24,10 @@ standard MTP mechanism.
 
 发布包放在工作区根目录（本仓库的上一级），只保留最新一版：
 
-- zip 命名 `SwitchMTP-Batch-<版本号>-<架构>.zip`，架构与包内真实架构一致；
-- 旧版 zip 与旧版 app 移入根目录的 `归档/旧版发布包/`；
+- DMG 命名 `SwitchMTP-Batch-<版本号>-<架构>.dmg`，架构与包内真实架构一致；
+- 旧版 DMG 与旧版 app 移入根目录的 `归档/旧版发布包/`；
 - 根目录 `SwitchMTP Batch.app` 始终是最新构建的拷贝；
-- 版本号在 `Info.plist`、git tag、zip 名三处保持一致。
+- 版本号在 `Info.plist`、git tag、DMG 名三处保持一致。
 
 完整说明见根目录 `AGENTS.md`。
 
@@ -46,9 +46,9 @@ protocol; SwitchMTP Batch talks MTP to DBI directly and has no Java dependency.
 
 ## Install
 
-1. Download the latest `SwitchMTP-Batch-x.y.z-universal.zip` from the
+1. Download the latest `SwitchMTP-Batch-x.y.z-universal.dmg` from the
    [Releases](https://github.com/xiaolizi23/SwitchMTP-Batch/releases) page.
-2. Unzip it and drag `SwitchMTP Batch.app` to `/Applications`.
+2. Open the DMG and drag `SwitchMTP Batch.app` to `/Applications`.
 3. **Remove the macOS quarantine attribute:**
 
    ```sh
@@ -118,10 +118,10 @@ scripts/build-backend.sh
 scripts/build-xcode-app.sh
 ```
 
-The built bundle lands at `build/products/SwitchMTP Batch.app`. To ship it as a zip:
+The built bundle lands at `build/products/SwitchMTP Batch.app`. To ship it as a DMG:
 
 ```sh
-ditto --norsrc -c -k --keepParent "build/products/SwitchMTP Batch.app" SwitchMTP-Batch-<version>-universal.zip
+scripts/package-dmg.sh
 ```
 
 ---

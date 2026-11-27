@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## Unreleased
+
+### Packaging
+
+- **macOS 发布产物由 zip 改为 DMG**：新增 `scripts/package-dmg.sh`，用 hdiutil
+  生成 UDZO 压缩 DMG，根目录放 `SwitchMTP Batch.app` 与 `/Applications` 软链
+  （标准拖拽安装布局，无背景图定制），附带 `.sha256`，挂载后跑
+  `codesign --verify --deep --strict` 校验；架构标签由主二进制的真实切片自动判定。
+  Release 工作流、README 安装步骤与归档约定同步改为 DMG；不再并行产出 zip。
+
 ## 1.7.21 — 2026-11-27
 
 ### CLI

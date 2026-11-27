@@ -96,10 +96,10 @@ jobs:
       - name: Check the tag matches the app version
         if: startsWith(github.ref, 'refs/tags/')
         run: |
-          # The Linux packages take their version from the tag, but the macOS zip
+          # The Linux packages take their version from the tag, but the macOS DMG
           # takes its name from CFBundleShortVersionString, which comes from
           # project.yml. Nothing tied the two together, so forgetting the bump
-          # would publish SwitchMTP-Batch-1.0.0-universal.zip beside
+          # would publish SwitchMTP-Batch-1.0.0-universal.dmg beside
           # switchmtp_1.1.0_amd64.deb in a release called v1.1.0 -- wrong in a
           # way nobody notices until a user reports the version they installed.
           tag="${GITHUB_REF_NAME#v}"
@@ -131,12 +131,8 @@ jobs:
           ./scripts/bootstrap.sh
           ./scripts/build-xcode-app.sh
 
-      - name: Package the app as a zip
-        run: |
-          app="$(grep -m1 'MARKETING_VERSION:' app/project.yml | sed 's/.*"\(.*\)".*/\1/')"
-          ditto --norsrc -c -k --keepParent "build/products/SwitchMTP Batch.app" \
-            "build/SwitchMTP-Batch-${app}-universal.zip"
-          shasum -a 256 "build/SwitchMTP-Batch-${app}-universal.zip" > "build/SwitchMTP-Batch-${app}-universal.zip.sha256"
+      - name: Package the app as a DMG
+        run: ./scripts/package-dmg.sh
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
@@ -150,7 +146,7 @@ jobs:
           cat > release-notes.md <<'NOTES'
           ## macOS
 
-          Download `SwitchMTP-Batch-*-universal.zip`. Unzip it and drag `SwitchMTP Batch.app` to `/Applications`.
+          Download `SwitchMTP-Batch-*-universal.dmg`. Open the DMG and drag `SwitchMTP Batch.app` to `/Applications`.
 
           SwitchMTP Batch is ad-hoc signed and not notarized. After dragging `SwitchMTP Batch.app` to `/Applications`, macOS may say the app is damaged or cannot be verified. Use either of these trust paths:
 
@@ -189,8 +185,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "${GITHUB_REF_NAME}" \
-            build/SwitchMTP-Batch-*-universal.zip \
-            build/SwitchMTP-Batch-*-universal.zip.sha256 \
+            build/SwitchMTP-Batch-*.dmg \
+            build/SwitchMTP-Batch-*.dmg.sha256 \
             linux-artifacts/switchmtp_*.deb \
             linux-artifacts/switchmtp_*.tar.gz \
             linux-artifacts/SHA256SUMS-linux-*.txt \
