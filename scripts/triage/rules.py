@@ -52,7 +52,7 @@ AREA_BY_KEYWORD: Sequence[tuple[str, str]] = (
     (r"\b(upload|download|transfer|export|import|copy|progress|install\w*|nsp|nsz|xci|xcz|"
      r"stall\w*|resume|cancel\w*|speed|throughput)\b", "area:transfer"),
     (r"\b(save ?data|savedata|saves?|backup|restore)\b", "area:saves"),
-    (r"\b(cli|command.?line|terminal|switchmtp-cli|--json)\b", "area:cli"),
+    (r"\b(cli|command.?line|terminal|switchmtp-batch-cli|--json)\b", "area:cli"),
     (r"\b(build|compil\w+|xcodebuild|xcodegen|go build|make|ci|workflow|signing|"
      r"notariz\w+|dmg|gatekeeper|quarantine)\b", "area:build"),
     (r"\b(readme|docs?|documentation|typo|spelling|wording|instructions)\b", "area:docs"),

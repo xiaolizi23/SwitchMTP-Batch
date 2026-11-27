@@ -212,7 +212,7 @@ func isTerminal(f *os.File) bool {
 
 func cmdGet(opts options, args []string) error {
 	if len(args) < 2 {
-		return usagef("get needs at least one device path and a local destination, for example `switchmtp get sdcard:/switch/config.ini ./`")
+		return usagef("get needs at least one device path and a local destination, for example `switchmtp-batch get sdcard:/switch/config.ini ./`")
 	}
 
 	sources := args[:len(args)-1]
@@ -278,7 +278,7 @@ func cmdGet(opts options, args []string) error {
 
 func cmdPut(opts options, args []string) error {
 	if len(args) < 2 {
-		return usagef("put needs at least one local file and a device destination, for example `switchmtp put game.nsp sdcard:/games`")
+		return usagef("put needs at least one local file and a device destination, for example `switchmtp-batch put game.nsp sdcard:/games`")
 	}
 
 	sources := args[:len(args)-1]

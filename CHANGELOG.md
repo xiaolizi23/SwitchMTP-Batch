@@ -19,6 +19,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - 开发期的 AX / 真机 / 压力测试等内部调试记录、取证截图与对照表不再随仓库
   发布；对外文档只保留安装、排障、协议与 CLI 说明。
 
+### CLI
+
+- **两个命令行产物更名为与产品名一致的名字**：macOS 内嵌 Swift CLI
+  `switchmtp-cli` → `switchmtp-batch-cli`；跨平台 Go CLI（源码目录
+  `backend/cmd/switchmtp/` → `backend/cmd/switchmtp-batch/`）二进制
+  `switchmtp` → `switchmtp-batch`。Linux deb / Arch 包名、udev 规则文件名、
+  CI 产物与命令示例、文档与 triage 关键词同步更新；bundle id、队列名、偏好键、
+  临时文件名等内部标识保持不变。
+
 ## 1.7.21 — 2026-11-27
 
 ### CLI

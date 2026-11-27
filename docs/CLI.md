@@ -1,45 +1,45 @@
-# switchmtp-cli
+# switchmtp-batch-cli
 
-> **Two command-line tools exist.** This document describes `switchmtp-cli`, the Swift one
-> bundled in the macOS app. There is also **`switchmtp`**, a separate Go tool that links the
+> **Two command-line tools exist.** This document describes `switchmtp-batch-cli`, the Swift one
+> bundled in the macOS app. There is also **`switchmtp-batch`**, a separate Go tool that links the
 > backend directly and runs on **Linux as well as macOS** — see
 > [Command line](../README.md#command-line). They overlap but are not interchangeable:
 > this one goes through the FFI and needs the app bundle; the Go one is a single static
 > binary and is the only option on Linux.
 
-`switchmtp-cli` is the command-line interface for SwitchMTP Batch's Go MTP backend. It targets
+`switchmtp-batch-cli` is the command-line interface for SwitchMTP Batch's Go MTP backend. It targets
 a Nintendo Switch running DBI's MTP responder.
 
 The CLI ships inside the app bundle:
 
 ```sh
-"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" doctor
+"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" doctor
 ```
 
 For a source build, the same bundled path is under the build product (from the repository
 root):
 
 ```sh
-build/products/SwitchMTP\ Batch.app/Contents/Resources/bin/switchmtp-cli doctor
+build/products/SwitchMTP\ Batch.app/Contents/Resources/bin/switchmtp-batch-cli doctor
 ```
 
 Optional convenience symlink:
 
 ```sh
 mkdir -p /usr/local/bin
-ln -sf "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" /usr/local/bin/switchmtp-cli
+ln -sf "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" /usr/local/bin/switchmtp-batch-cli
 ```
 
 If something is wrong, run this first:
 
 ```sh
-switchmtp-cli doctor
+switchmtp-batch-cli doctor
 ```
 
 ## Global flags
 
 ```sh
-switchmtp-cli [--verbose] [--json] [--quiet] [--yes] [--device <id>] <command> [arguments]
+switchmtp-batch-cli [--verbose] [--json] [--quiet] [--yes] [--device <id>] <command> [arguments]
 ```
 
 - `--device <id>` selects a device when more than one usable MTP device is connected.
@@ -57,9 +57,9 @@ an exact display name, or a unique prefix of the display name. An ambiguous or u
 selector is an error — the CLI never guesses a storage.
 
 ```sh
-switchmtp-cli ls 65537:/switch/
-switchmtp-cli ls sdcard:/switch/
-switchmtp-cli ls saves:/
+switchmtp-batch-cli ls 65537:/switch/
+switchmtp-batch-cli ls sdcard:/switch/
+switchmtp-batch-cli ls saves:/
 ```
 
 ## Commands
@@ -69,7 +69,7 @@ switchmtp-cli ls saves:/
 Lists connected MTP devices.
 
 ```sh
-switchmtp-cli devices
+switchmtp-batch-cli devices
 ```
 
 With no devices attached, plain text prints a hint to run `doctor`; `--json` emits an
@@ -80,7 +80,7 @@ empty array `[]`.
 Shows the selected device profile, identity, advice, and negotiated MTP capabilities.
 
 ```sh
-switchmtp-cli --device "1406|8221|XAW10000000000" info
+switchmtp-batch-cli --device "1406|8221|XAW10000000000" info
 ```
 
 ### `storages`
@@ -91,7 +91,7 @@ virtual storages such as Installed Games/Game Card are marked as virtual/generat
 is shown as `—` when the storage does not report reliable capacity.
 
 ```sh
-switchmtp-cli storages
+switchmtp-batch-cli storages
 ```
 
 ### `ls [-a] [-R] <storage>:<path>`
@@ -104,9 +104,9 @@ summarises file/directory counts and total size. Unknown virtual file sizes are 
 - `-R`, `--recursive` walks subdirectories and prints full paths.
 
 ```sh
-switchmtp-cli ls 65537:/
-switchmtp-cli ls -a sdcard:/switch/
-switchmtp-cli ls -R saves:/
+switchmtp-batch-cli ls 65537:/
+switchmtp-batch-cli ls -a sdcard:/switch/
+switchmtp-batch-cli ls -R saves:/
 ```
 
 ### `cp <src>... <dst>` / `get` / `put`
@@ -119,12 +119,12 @@ are accepted, and every source must be on the same storage.
 
 ```sh
 # Device to Mac
-switchmtp-cli cp 65537:/switch/app.nro ~/Downloads/
-switchmtp-cli get sdcard:/switch/a.nro sdcard:/switch/b.nro ~/Downloads/
+switchmtp-batch-cli cp 65537:/switch/app.nro ~/Downloads/
+switchmtp-batch-cli get sdcard:/switch/a.nro sdcard:/switch/b.nro ~/Downloads/
 
 # Mac to device directory
-switchmtp-cli cp ~/Downloads/app.nro 65537:/switch/
-switchmtp-cli put ~/Downloads/a.nsp ~/Downloads/b.nsp sdcard:/games/
+switchmtp-batch-cli cp ~/Downloads/app.nro 65537:/switch/
+switchmtp-batch-cli put ~/Downloads/a.nsp ~/Downloads/b.nsp sdcard:/games/
 ```
 
 Read-only install storages cannot be downloaded from; the CLI rejects the operation
@@ -137,8 +137,8 @@ storage; the storage root cannot be deleted, and storages without a delete capab
 rejected.
 
 ```sh
-switchmtp-cli rm 65537:/switch/old-app.nro
-switchmtp-cli rm sdcard:/switch/a.nro sdcard:/switch/b.nro
+switchmtp-batch-cli rm 65537:/switch/old-app.nro
+switchmtp-batch-cli rm sdcard:/switch/a.nro sdcard:/switch/b.nro
 ```
 
 ### `mv <storage>:<path> <new-name>`
@@ -148,7 +148,7 @@ is refused; use `get` then `put` for that. The new name must be a bare file/fold
 (it cannot contain `/` or `\`).
 
 ```sh
-switchmtp-cli mv 65537:/switch/old.nro new.nro
+switchmtp-batch-cli mv 65537:/switch/old.nro new.nro
 ```
 
 ### `mkdir <storage>:<path>`
@@ -156,7 +156,7 @@ switchmtp-cli mv 65537:/switch/old.nro new.nro
 Creates a device directory. The storage root cannot be created as a target.
 
 ```sh
-switchmtp-cli mkdir 65537:/switch/new-folder
+switchmtp-batch-cli mkdir 65537:/switch/new-folder
 ```
 
 ### `install <file...> [--sd|--nand]`
@@ -167,8 +167,8 @@ accepted for explicitness. Files are checked locally — existence and extension
 the device is opened.
 
 ```sh
-switchmtp-cli install ~/Downloads/game.nsp
-switchmtp-cli install ~/Downloads/game.nsz --nand
+switchmtp-batch-cli install ~/Downloads/game.nsp
+switchmtp-batch-cli install ~/Downloads/game.nsz --nand
 ```
 
 After the upload completes, installation continues on the Switch. DBI does not send a
@@ -181,7 +181,7 @@ Downloads the DBI Saves storage recursively into a dated `switch-saves-...` fold
 `<dir>`.
 
 ```sh
-switchmtp-cli backup-saves ~/Backups/Switch
+switchmtp-batch-cli backup-saves ~/Backups/Switch
 ```
 
 Example destination:
@@ -196,11 +196,11 @@ Prints a human-readable diagnostic report: verdict, visible Nintendo/MTP devices
 client blockers, and ordered remediation steps.
 
 ```sh
-switchmtp-cli doctor
+switchmtp-batch-cli doctor
 ```
 
 Use `--json` to capture the raw diagnostics envelope for scripts or bug reports:
 
 ```sh
-switchmtp-cli --json doctor > diagnostics.json
+switchmtp-batch-cli --json doctor > diagnostics.json
 ```

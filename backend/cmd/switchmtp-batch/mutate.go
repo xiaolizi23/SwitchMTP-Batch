@@ -24,7 +24,7 @@ import (
 
 func cmdMkdir(opts options, args []string) error {
 	if len(args) != 1 {
-		return usagef("mkdir needs exactly one device path, for example `switchmtp mkdir sdcard:/switch/mytool`")
+		return usagef("mkdir needs exactly one device path, for example `switchmtp-batch mkdir sdcard:/switch/mytool`")
 	}
 	rp, err := parseRemotePath(args[0])
 	if err != nil {
@@ -111,7 +111,7 @@ func cmdRm(opts options, args []string) error {
 
 func cmdMv(opts options, args []string) error {
 	if len(args) != 2 {
-		return usagef("mv needs a device path and a new name, for example `switchmtp mv sdcard:/switch/old.nro new.nro`")
+		return usagef("mv needs a device path and a new name, for example `switchmtp-batch mv sdcard:/switch/old.nro new.nro`")
 	}
 	rp, err := parseRemotePath(args[0])
 	if err != nil {

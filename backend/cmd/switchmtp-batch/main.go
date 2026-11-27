@@ -10,7 +10,7 @@
 // FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
 // more details.
 
-// Command switchmtp is a command-line client for a Nintendo Switch running
+// Command switchmtp-batch is a command-line client for a Nintendo Switch running
 // DBI's MTP responder.
 //
 // It links the nxmtp engine directly rather than going through the C ABI the
@@ -64,7 +64,7 @@ func main() {
 // line, and returns the arguments that are not flags.
 //
 // Go's flag package stops parsing at the first non-flag argument, so it would
-// read `switchmtp rm sdcard:/game.nsp --yes` as a request to delete two paths,
+// read `switchmtp-batch rm sdcard:/game.nsp --yes` as a request to delete two paths,
 // one of them called "--yes". That is the natural way to type the command and
 // the resulting error ("--yes" is not a device path) blames the user for the
 // parser's limitation. Parsing after each positional argument accepts both
@@ -100,9 +100,9 @@ func parseInterspersed(fs *flag.FlagSet, args []string) ([]string, error) {
 
 func run(args []string) int {
 	var opts options
-	fs := flag.NewFlagSet("switchmtp", flag.ContinueOnError)
+	fs := flag.NewFlagSet("switchmtp-batch", flag.ContinueOnError)
 	fs.SetOutput(os.Stderr)
-	fs.StringVar(&opts.deviceID, "device", "", "device id to use (see `switchmtp devices`); defaults to the only usable device")
+	fs.StringVar(&opts.deviceID, "device", "", "device id to use (see `switchmtp-batch devices`); defaults to the only usable device")
 	fs.BoolVar(&opts.json, "json", false, "emit machine-readable JSON instead of tables")
 	fs.BoolVar(&opts.verbose, "verbose", false, "log MTP traffic to stderr")
 	fs.BoolVar(&opts.yes, "yes", false, "do not ask for confirmation before destructive operations")
@@ -157,7 +157,7 @@ func run(args []string) int {
 	case "doctor":
 		err = cmdDoctor(opts, cmdArgs)
 	default:
-		fmt.Fprintf(os.Stderr, "switchmtp: unknown command %q\n\n", cmd)
+		fmt.Fprintf(os.Stderr, "switchmtp-batch: unknown command %q\n\n", cmd)
 		usage(os.Stderr)
 		return exitUsage
 	}
@@ -187,13 +187,13 @@ func usagef(format string, a ...any) error {
 func report(err error) int {
 	var ue *usageError
 	if errors.As(err, &ue) {
-		fmt.Fprintf(os.Stderr, "switchmtp: %s\n", ue.msg)
+		fmt.Fprintf(os.Stderr, "switchmtp-batch: %s\n", ue.msg)
 		return exitUsage
 	}
 
 	var ne *nxmtp.Error
 	if errors.As(err, &ne) {
-		fmt.Fprintf(os.Stderr, "switchmtp: %s\n", ne.Error())
+		fmt.Fprintf(os.Stderr, "switchmtp-batch: %s\n", ne.Error())
 		if ne.Hint != "" {
 			fmt.Fprintf(os.Stderr, "\n%s\n", ne.Hint)
 		}
@@ -212,7 +212,7 @@ func report(err error) int {
 		return exitError
 	}
 
-	fmt.Fprintf(os.Stderr, "switchmtp: %v\n", err)
+	fmt.Fprintf(os.Stderr, "switchmtp-batch: %v\n", err)
 	return exitError
 }
 
@@ -324,15 +324,15 @@ func noUsableDeviceError(refs []nxmtp.DeviceRef) error {
 		Kind: nxmtp.KindNoDevice,
 		Op:   "selectDevice",
 		Msg:  "no Nintendo Switch running an MTP responder was found",
-		Hint: "Open DBI on the console and choose \"Run MTP responder\", then reconnect the USB cable.\nRun `switchmtp doctor` for a full diagnosis.",
+		Hint: "Open DBI on the console and choose \"Run MTP responder\", then reconnect the USB cable.\nRun `switchmtp-batch doctor` for a full diagnosis.",
 	}
 }
 
 func usage(w *os.File) {
-	fmt.Fprint(w, `switchmtp — command-line client for a Nintendo Switch running DBI's MTP responder
+	fmt.Fprint(w, `switchmtp-batch — command-line client for a Nintendo Switch running DBI's MTP responder
 
 Usage:
-  switchmtp [flags] <command> [arguments]
+  switchmtp-batch [flags] <command> [arguments]
 
 Commands:
   devices              List connected devices
@@ -351,10 +351,10 @@ Commands:
 Device paths are written <storage>:<path>, where <storage> is a storage id, a
 name such as "sdcard", or a prefix of the storage's display name:
 
-  switchmtp ls sdcard:/
-  switchmtp ls 65537:/switch
-  switchmtp get sdcard:/switch/config.ini ./
-  switchmtp install ~/Downloads/*.nsp
+  switchmtp-batch ls sdcard:/
+  switchmtp-batch ls 65537:/switch
+  switchmtp-batch get sdcard:/switch/config.ini ./
+  switchmtp-batch install ~/Downloads/*.nsp
 
 Flags:
   --device <id>  Device to use; defaults to the only usable one

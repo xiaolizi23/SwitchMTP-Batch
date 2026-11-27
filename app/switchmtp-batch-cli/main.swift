@@ -411,10 +411,10 @@ private enum NxmtpClient {
 
 private func printUsage() {
     print("""
-    switchmtp-cli - command-line access to SwitchMTP's DBI MTP backend
+    switchmtp-batch-cli - command-line access to SwitchMTP's DBI MTP backend
 
     Usage:
-      switchmtp-cli [--verbose] [--json] [--device <id>] <command> [arguments]
+      switchmtp-batch-cli [--verbose] [--json] [--device <id>] <command> [arguments]
 
     Commands:
       version                         Show the CLI version and exit
@@ -520,7 +520,7 @@ private func run() -> ExitCode {
                 ]
                 print(jsonString(info) ?? "{\"version\":\"\(cliVersion)\"}")
             } else {
-                print("switchmtp-cli \(cliVersion) (\(hostArch))")
+                print("switchmtp-batch-cli \(cliVersion) (\(hostArch))")
             }
             return .success
         case "devices":

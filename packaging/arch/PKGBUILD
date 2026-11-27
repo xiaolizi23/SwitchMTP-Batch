@@ -3,7 +3,7 @@
 # SwitchMTP command line tool for Arch, Manjaro, EndeavourOS and SteamOS.
 #
 # This is a -git package because SwitchMTP has no tagged releases yet. When it
-# does, this becomes a `switchmtp` package with `source` pinned to the tag and
+# does, this becomes a `switchmtp-batch` package with `source` pinned to the tag and
 # the pkgver() function below deleted.
 #
 # Only the CLI is packaged. The SwitchMTP GUI is macOS-only, and that is a
@@ -18,8 +18,8 @@
 # Flatpak cannot install one, and without it /dev/bus/usb is root-only and the
 # desktop's own MTP handlers claim the console before this tool can.
 
-pkgname=switchmtp-git
-_pkgname=switchmtp
+pkgname=switchmtp-batch-git
+_pkgname=switchmtp-batch
 pkgver=0.r0.0000000
 pkgrel=1
 pkgdesc="Command line MTP client for a Nintendo Switch running DBI"
@@ -51,7 +51,7 @@ build() {
   export GOFLAGS="-modcacherw"
   export GOPATH="${srcdir}/gopath"
 
-  # `switchmtp version` reports whatever is linked into main.version. Matching
+  # `switchmtp-batch version` reports whatever is linked into main.version. Matching
   # what scripts/build-deb.sh does keeps the two packages reporting the same
   # thing; with no tags upstream, `--always` yields the short commit.
   local ver
@@ -59,8 +59,8 @@ build() {
 
   go build \
     -ldflags "-s -w -X main.version=${ver}" \
-    -o "${srcdir}/switchmtp" \
-    ./cmd/switchmtp
+    -o "${srcdir}/switchmtp-batch" \
+    ./cmd/switchmtp-batch
 }
 
 check() {
@@ -72,13 +72,13 @@ check() {
 }
 
 package() {
-  install -Dm755 "${srcdir}/switchmtp" "${pkgdir}/usr/bin/switchmtp"
+  install -Dm755 "${srcdir}/switchmtp-batch" "${pkgdir}/usr/bin/switchmtp-batch"
 
   # The vendor directory, not /etc/udev/rules.d, which is reserved for rules the
   # administrator wrote. udev sorts by filename across both, so this still runs
   # after 69-libmtp.rules and still has the last word on ID_MTP_DEVICE.
-  install -Dm644 "${srcdir}/${_pkgname}/packaging/linux/69-switchmtp.rules" \
-    "${pkgdir}/usr/lib/udev/rules.d/69-switchmtp.rules"
+  install -Dm644 "${srcdir}/${_pkgname}/packaging/linux/69-switchmtp-batch.rules" \
+    "${pkgdir}/usr/lib/udev/rules.d/69-switchmtp-batch.rules"
 
   install -Dm644 "${srcdir}/${_pkgname}/packaging/linux/README.md" \
     "${pkgdir}/usr/share/doc/${_pkgname}/README.md"

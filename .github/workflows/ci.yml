@@ -98,22 +98,22 @@ jobs:
           version="$(git describe --tags --always --dirty 2>/dev/null || echo dev)"
           CGO_ENABLED=1 go build -trimpath \
             -ldflags "-s -w -X main.version=${version}" \
-            -o "../build/switchmtp-linux-${{ matrix.arch }}" ./cmd/switchmtp
+            -o "../build/switchmtp-batch-linux-${{ matrix.arch }}" ./cmd/switchmtp-batch
 
       # Running the binary is a cheap end-to-end check that the cgo link
       # actually worked. doctor is the only command that is meaningful with no
       # device attached, which is exactly the runner's situation.
       - name: Smoke-test the Linux CLI
         run: |
-          "./build/switchmtp-linux-${{ matrix.arch }}" version
-          "./build/switchmtp-linux-${{ matrix.arch }}" --json doctor > /tmp/doctor.json
+          "./build/switchmtp-batch-linux-${{ matrix.arch }}" version
+          "./build/switchmtp-batch-linux-${{ matrix.arch }}" --json doctor > /tmp/doctor.json
           python3 -c "import json,sys; d=json.load(open('/tmp/doctor.json')); assert d['platform']=='linux', d['platform']; print('doctor reported:', d['summary'])"
 
       - name: Upload the Linux CLI
         uses: actions/upload-artifact@v4
         with:
-          name: switchmtp-linux-${{ matrix.arch }}
-          path: build/switchmtp-linux-${{ matrix.arch }}
+          name: switchmtp-batch-linux-${{ matrix.arch }}
+          path: build/switchmtp-batch-linux-${{ matrix.arch }}
           if-no-files-found: error
 
   build:

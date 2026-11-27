@@ -57,7 +57,7 @@ info "Building Release CLI (arm64 + x86_64)"
 rm -rf "${CLI_STAGE}"
 xcodebuild \
   -project "${APP_DIR}/SwitchMTPBatch.xcodeproj" \
-  -scheme switchmtp-cli \
+  -scheme switchmtp-batch-cli \
   -configuration Release \
   -destination 'generic/platform=macOS' \
   -derivedDataPath "${BUILD}/cli-release-derived" \
@@ -68,17 +68,17 @@ xcodebuild \
     tail -40 "${BUILD}/xcodebuild-cli.log" >&2
     die "CLI xcodebuild failed (full log: ${BUILD}/xcodebuild-cli.log)"
   }
-[[ -f "${CLI_STAGE}/switchmtp-cli" ]] || die "expected CLI binary missing: ${CLI_STAGE}/switchmtp-cli"
+[[ -f "${CLI_STAGE}/switchmtp-batch-cli" ]] || die "expected CLI binary missing: ${CLI_STAGE}/switchmtp-batch-cli"
 mkdir -p "${PRODUCT}/Contents/Resources/bin"
-cp -f "${CLI_STAGE}/switchmtp-cli" "${PRODUCT}/Contents/Resources/bin/switchmtp-cli"
-chmod +x "${PRODUCT}/Contents/Resources/bin/switchmtp-cli"
+cp -f "${CLI_STAGE}/switchmtp-batch-cli" "${PRODUCT}/Contents/Resources/bin/switchmtp-batch-cli"
+chmod +x "${PRODUCT}/Contents/Resources/bin/switchmtp-batch-cli"
 
 # Sign the CLI with its own non-sandbox entitlements, then re-sign the host app
 # so its CodeResources manifest picks up the newly added binary. --deep is
 # avoided: it would re-sign the CLI with the app's entitlements.
 codesign --force --sign - --timestamp=none --options runtime \
-  --entitlements "${APP_DIR}/Resources/switchmtp-cli.entitlements" \
-  "${PRODUCT}/Contents/Resources/bin/switchmtp-cli"
+  --entitlements "${APP_DIR}/Resources/switchmtp-batch-cli.entitlements" \
+  "${PRODUCT}/Contents/Resources/bin/switchmtp-batch-cli"
 codesign --force --sign - --timestamp=none \
   --entitlements "${APP_DIR}/Resources/SwitchMTPBatch.entitlements" \
   "${PRODUCT}"
@@ -89,12 +89,12 @@ ditto "${PRODUCT}" "${DEST}"
 
 info "Verifying"
 lipo -info "${DEST}/Contents/MacOS/SwitchMTPBatch"
-lipo -info "${DEST}/Contents/Resources/bin/switchmtp-cli"
+lipo -info "${DEST}/Contents/Resources/bin/switchmtp-batch-cli"
 codesign --verify --deep --strict "${DEST}"
 # hactool exits non-zero when run with no arguments (it just prints its usage
 # banner); this is only a "the binary launches" smoke check, so tolerate that
 # expected exit code under set -o pipefail.
 "${DEST}/Contents/Resources/bin/hactool" 2>&1 | head -2 || true
-"${DEST}/Contents/Resources/bin/switchmtp-cli" version
+"${DEST}/Contents/Resources/bin/switchmtp-batch-cli" version
 
 info "Done: ${DEST}"

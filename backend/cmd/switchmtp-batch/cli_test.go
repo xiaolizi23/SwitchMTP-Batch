@@ -177,7 +177,7 @@ func TestPutThenLsThenGetRoundTrips(t *testing.T) {
 
 	dir := t.TempDir()
 	src := filepath.Join(dir, "payload.txt")
-	content := strings.Repeat("switchmtp round trip\n", 64)
+	content := strings.Repeat("switchmtp-batch round trip\n", 64)
 	if err := os.WriteFile(src, []byte(content), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
@@ -253,7 +253,7 @@ func TestRmRefusesToMixStorages(t *testing.T) {
 // Global flags must work after the subcommand as well as before it.
 //
 // Go's flag package stops at the first positional argument, so before this was
-// handled `switchmtp rm sdcard:/doomed.txt --yes` treated "--yes" as a second
+// handled `switchmtp-batch rm sdcard:/doomed.txt --yes` treated "--yes" as a second
 // path to delete and failed with `"--yes" is not a device path`. That is the
 // order most people type, and it was hit immediately the first time the CLI was
 // driven against real hardware.

@@ -21,7 +21,7 @@ standard MTP mechanism.
 
 ## Requirements
 
-- **macOS 12 (Monterey) or later** for the app. The `switchmtp` command-line tool also
+- **macOS 12 (Monterey) or later** for the app. The `switchmtp-batch` command-line tool also
   runs on Linux — see [Command line](#command-line)
 - A Nintendo Switch (original / Mariko / Lite / OLED) with **[DBI](https://github.com/rashevskyv/dbi)
   installed**
@@ -85,8 +85,8 @@ protocol; SwitchMTP Batch talks MTP to DBI directly and has no Java dependency.
   **Dump Gamecard…**, **Install to SD Card…**, **Install to NAND…**, and
   **Copy Diagnostics**
 - JSON diagnostics copied to the clipboard for bug reports
-- Command-line interface (`switchmtp-cli`) bundled inside the app, plus a separate
-  cross-platform Go tool (`switchmtp`) that runs on Linux too — see [Command line](#command-line)
+- Command-line interface (`switchmtp-batch-cli`) bundled inside the app, plus a separate
+  cross-platform Go tool (`switchmtp-batch`) that runs on Linux too — see [Command line](#command-line)
 
 ---
 
@@ -130,11 +130,11 @@ SwitchMTP Batch.app (SwiftUI, GPL-2.0)
 The Swift app communicates with the Go backend entirely through a JSON-over-C-function
 API. See [`docs/FFI_PROTOCOL.md`](docs/FFI_PROTOCOL.md) for the full contract.
 
-There is a second, independent front-end: the `switchmtp` command-line tool links
+There is a second, independent front-end: the `switchmtp-batch` command-line tool links
 `backend/nxmtp` directly as a Go package, bypassing the FFI entirely.
 
 ```
-switchmtp (Go)
+switchmtp-batch (Go)
   └── backend/nxmtp/   ← the same engine, no C boundary
 ```
 
@@ -150,27 +150,27 @@ Two command-line tools exist, and they are not the same thing:
 
 | | Language | Where it runs | Notes |
 | --- | --- | --- | --- |
-| `switchmtp-cli` | Swift | macOS only | Bundled inside the app; goes through the FFI |
-| `switchmtp` | Go | macOS, Linux | Links `nxmtp` directly; no app required |
+| `switchmtp-batch-cli` | Swift | macOS only | Bundled inside the app; goes through the FFI |
+| `switchmtp-batch` | Go | macOS, Linux | Links `nxmtp` directly; no app required |
 
 Build the Go one from a checkout:
 
 ```bash
-cd backend && go build -o ../build/switchmtp ./cmd/switchmtp
+cd backend && go build -o ../build/switchmtp-batch ./cmd/switchmtp-batch
 ```
 
 Device paths are written `<storage>:<path>`. The storage part accepts a numeric storage
 id, a friendly name, or a unique prefix of the storage's display name:
 
 ```bash
-switchmtp devices                              # what is connected
-switchmtp storages                             # what the console exposes
-switchmtp ls sdcard:/switch                    # browse
-switchmtp ls -R 65537:/atmosphere              # recursively
-switchmtp get sdcard:/switch/config.ini ./     # copy off the console
-switchmtp put homebrew.nro sdcard:/switch      # copy onto it
-switchmtp install ~/Downloads/*.nsp            # queue installs, one at a time
-switchmtp doctor                               # explain why it will not connect
+switchmtp-batch devices                              # what is connected
+switchmtp-batch storages                             # what the console exposes
+switchmtp-batch ls sdcard:/switch                    # browse
+switchmtp-batch ls -R 65537:/atmosphere              # recursively
+switchmtp-batch get sdcard:/switch/config.ini ./     # copy off the console
+switchmtp-batch put homebrew.nro sdcard:/switch      # copy onto it
+switchmtp-batch install ~/Downloads/*.nsp            # queue installs, one at a time
+switchmtp-batch doctor                               # explain why it will not connect
 ```
 
 `--json` makes every command emit machine-readable output. Exit codes distinguish the
@@ -184,25 +184,25 @@ tool and vice versa.
 Install the Debian package, which carries the binary and the udev rule:
 
 ```sh
-scripts/build-deb.sh && sudo apt install ./build/switchmtp_*.deb
+scripts/build-deb.sh && sudo apt install ./build/switchmtp-batch_*.deb
 ```
 
 The rule matters: `/dev/bus/usb` is root-only by default, and your desktop's own MTP
 handlers (gvfs, kio-mtp) claim the console before SwitchMTP Batch can. One rule fixes both. If
 you install the binary some other way, see [`packaging/linux/README.md`](packaging/linux/README.md)
-or run `switchmtp doctor`, which checks for the rule and prints it if it is missing.
+or run `switchmtp-batch doctor`, which checks for the rule and prints it if it is missing.
 
 **Be aware that your desktop can already do most of this.** Unlike macOS, which has no MTP
 support whatsoever, GNOME and KDE mount the Switch automatically and let you browse, read
 and write it in your file manager with no setup at all — including, as far as we can tell,
-the install storages. What `switchmtp` adds on Linux is narrower than on macOS: a serial
+the install storages. What `switchmtp-batch` adds on Linux is narrower than on macOS: a serial
 install queue (copying several NSPs at once in a file manager is exactly the concurrency
 DBI does not want), install targets that are labelled rather than looking like ordinary
 folders, and files refused by name instead of an opaque `libmtp error`.
 
 A caveat that follows from that: **the two cannot be used interchangeably in one session.**
-Once `switchmtp` touches the console, an existing gvfs mount goes stale and every write
-through it fails until you unmount and remount. Nautilus for browsing, `switchmtp install`
+Once `switchmtp-batch` touches the console, an existing gvfs mount goes stale and every write
+through it fails until you unmount and remount. Nautilus for browsing, `switchmtp-batch install`
 for installing, is the combination that works.
 
 ---

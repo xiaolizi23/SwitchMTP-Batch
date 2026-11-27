@@ -202,7 +202,7 @@ func (d *Device) getUSBOccupyingPIDs() string {
 // upstream fork hard-coded "SwiftMTP"; we match our own binaries instead.
 func isOwnProcess(name string) bool {
 	switch name {
-	case "SwitchMTP", "switchmtp-cli", "switchmtp-doctor", "SwiftMTP":
+	case "SwitchMTP", "switchmtp-batch-cli", "switchmtp-batch", "SwiftMTP":
 		return true
 	}
 	return false

@@ -119,7 +119,7 @@
        fact:
 
        ```shell
-       "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" --json doctor
+       "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" --json doctor
        ```
 
     SwitchMTP never quits anything on your Mac by itself; see

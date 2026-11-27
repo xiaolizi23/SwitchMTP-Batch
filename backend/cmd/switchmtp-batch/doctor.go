@@ -189,9 +189,9 @@ func usbClassName(class uint8) string {
 // udevRulePaths are the locations a rule may legitimately live in: the
 // admin-owned directory first, then the package-owned one.
 var udevRulePaths = []string{
-	"/etc/udev/rules.d/69-switchmtp.rules",
-	"/lib/udev/rules.d/69-switchmtp.rules",
-	"/usr/lib/udev/rules.d/69-switchmtp.rules",
+	"/etc/udev/rules.d/69-switchmtp-batch.rules",
+	"/lib/udev/rules.d/69-switchmtp-batch.rules",
+	"/usr/lib/udev/rules.d/69-switchmtp-batch.rules",
 }
 
 // checkUdevRule looks for the permissions rule. It returns nil off Linux,
@@ -247,12 +247,12 @@ func findForeignNintendoRule() string {
 const udevInstallInstructions = `
 If you have a checkout of the repository:
 
-  sudo cp packaging/linux/69-switchmtp.rules /etc/udev/rules.d/
+  sudo cp packaging/linux/69-switchmtp-batch.rules /etc/udev/rules.d/
   sudo udevadm control --reload-rules && sudo udevadm trigger
 
 Otherwise paste this (one time, needs sudo):
 
-  sudo tee /etc/udev/rules.d/69-switchmtp.rules >/dev/null <<'EOF'
+  sudo tee /etc/udev/rules.d/69-switchmtp-batch.rules >/dev/null <<'EOF'
   # Nintendo Switch, MTP mode (DBI or Horizon OS).
   SUBSYSTEM=="usb", ATTR{idVendor}=="057e", ATTR{idProduct}=="201d", TAG+="uaccess", GROUP="plugdev", MODE="0660", ENV{ID_MTP_DEVICE}="", ENV{ID_GPHOTO2}=""
   # Nintendo Switch 2, MTP mode.

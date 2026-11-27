@@ -33,7 +33,7 @@ func cmdVersion(opts options) error {
 			"arch":    runtime.GOARCH,
 		})
 	}
-	fmt.Printf("switchmtp %s (%s, %s/%s)\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("switchmtp-batch %s (%s, %s/%s)\n", version, runtime.Version(), runtime.GOOS, runtime.GOARCH)
 	return nil
 }
 
@@ -56,7 +56,7 @@ func cmdDevices(opts options, args []string) error {
 
 	if len(refs) == 0 {
 		fmt.Println("No Nintendo devices found.")
-		fmt.Println("\nRun `switchmtp doctor` to find out why.")
+		fmt.Println("\nRun `switchmtp-batch doctor` to find out why.")
 		return nil
 	}
 
@@ -229,7 +229,7 @@ func cmdLs(opts options, args []string) error {
 	}
 	rest := fs.Args()
 	if len(rest) != 1 {
-		return usagef("ls needs exactly one device path, for example `switchmtp ls sdcard:/`")
+		return usagef("ls needs exactly one device path, for example `switchmtp-batch ls sdcard:/`")
 	}
 
 	rp, err := parseRemotePath(rest[0])

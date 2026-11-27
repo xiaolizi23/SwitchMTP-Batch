@@ -86,7 +86,7 @@ body:
       label: SwitchMTP version
       description: >
         From **SwitchMTP ▸ About SwitchMTP**, or run
-        `"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" --version`.
+        `"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" --version`.
       placeholder: "1.0.0 (1)"
     validations:
       required: true
@@ -170,7 +170,7 @@ body:
       label: Diagnostics report
       description: >
         In the app choose **Switch ▸ Copy Diagnostics** and paste here, or run
-        `"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" --json doctor`.
+        `"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" --json doctor`.
         This lists USB devices, anything holding the USB interface, and the
         connected console's capabilities. It contains no personal files or save
         data.

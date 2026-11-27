@@ -54,33 +54,33 @@ jobs:
           # binary and the packaged one are provably the same build. Fedora,
           # openSUSE and anyone not using a package manager get this; it does
           # not carry the udev rule, so the tarball ships the rule beside it.
-          version="$(basename build/switchmtp_*_*.deb | sed 's/^switchmtp_//; s/_[^_]*\.deb$//')"
-          mkdir -p extract/switchmtp
-          dpkg-deb -x build/switchmtp_*_*.deb extract/payload
-          cp extract/payload/usr/bin/switchmtp extract/switchmtp/
-          cp packaging/linux/69-switchmtp.rules extract/switchmtp/
-          cp packaging/linux/README.md extract/switchmtp/
-          cp LICENSE extract/switchmtp/
-          tar -C extract -czf "build/switchmtp_${version}_linux-${{ matrix.arch }}.tar.gz" switchmtp
-          ( cd build && sha256sum switchmtp_*.deb switchmtp_*.tar.gz > "SHA256SUMS-linux-${{ matrix.arch }}.txt" )
+          version="$(basename build/switchmtp-batch_*_*.deb | sed 's/^switchmtp-batch_//; s/_[^_]*\.deb$//')"
+          mkdir -p extract/switchmtp-batch
+          dpkg-deb -x build/switchmtp-batch_*_*.deb extract/payload
+          cp extract/payload/usr/bin/switchmtp-batch extract/switchmtp-batch/
+          cp packaging/linux/69-switchmtp-batch.rules extract/switchmtp-batch/
+          cp packaging/linux/README.md extract/switchmtp-batch/
+          cp LICENSE extract/switchmtp-batch/
+          tar -C extract -czf "build/switchmtp-batch_${version}_linux-${{ matrix.arch }}.tar.gz" switchmtp-batch
+          ( cd build && sha256sum switchmtp-batch_*.deb switchmtp-batch_*.tar.gz > "SHA256SUMS-linux-${{ matrix.arch }}.txt" )
           ls -la build/
 
       - name: Verify the packaged binary runs
         run: |
-          dpkg-deb -x build/switchmtp_*_*.deb /tmp/verify
-          /tmp/verify/usr/bin/switchmtp version
+          dpkg-deb -x build/switchmtp-batch_*_*.deb /tmp/verify
+          /tmp/verify/usr/bin/switchmtp-batch version
           # No console is attached to a runner, so this must exit cleanly saying
           # so rather than crashing. It is the cheapest proof the cgo/libusb
           # link is intact in the artifact we are about to publish.
-          /tmp/verify/usr/bin/switchmtp devices || true
+          /tmp/verify/usr/bin/switchmtp-batch devices || true
 
       - name: Upload Linux artifacts
         uses: actions/upload-artifact@v4
         with:
           name: linux-${{ matrix.arch }}
           path: |
-            build/switchmtp_*.deb
-            build/switchmtp_*.tar.gz
+            build/switchmtp-batch_*.deb
+            build/switchmtp-batch_*.tar.gz
             build/SHA256SUMS-linux-*.txt
           if-no-files-found: error
 
@@ -100,7 +100,7 @@ jobs:
           # takes its name from CFBundleShortVersionString, which comes from
           # project.yml. Nothing tied the two together, so forgetting the bump
           # would publish SwitchMTP-Batch-1.0.0-universal.dmg beside
-          # switchmtp_1.1.0_amd64.deb in a release called v1.1.0 -- wrong in a
+          # switchmtp-batch_1.1.0_amd64.deb in a release called v1.1.0 -- wrong in a
           # way nobody notices until a user reports the version they installed.
           tag="${GITHUB_REF_NAME#v}"
           app="$(grep -m1 'MARKETING_VERSION:' app/project.yml | sed 's/.*"\(.*\)".*/\1/')"
@@ -158,26 +158,26 @@ jobs:
 
           ## Linux
 
-          Linux gets the `switchmtp` command-line tool. There is no Linux GUI, deliberately: GNOME and KDE already mount the Switch and let you browse, read and write it in your own file manager with no setup, so a GUI would largely duplicate Nautilus and Dolphin. What this tool adds is the part they do not do — a serial install queue, install targets labelled rather than looking like ordinary folders, and files refused by name instead of an opaque `libmtp error`.
+          Linux gets the `switchmtp-batch` command-line tool. There is no Linux GUI, deliberately: GNOME and KDE already mount the Switch and let you browse, read and write it in your own file manager with no setup, so a GUI would largely duplicate Nautilus and Dolphin. What this tool adds is the part they do not do — a serial install queue, install targets labelled rather than looking like ordinary folders, and files refused by name instead of an opaque `libmtp error`.
 
           On Debian, Ubuntu and derivatives:
 
           ```sh
-          sudo apt install ./switchmtp_*_amd64.deb   # or _arm64.deb
+          sudo apt install ./switchmtp-batch_*_amd64.deb   # or _arm64.deb
           ```
 
-          On Arch, Manjaro and SteamOS, build `switchmtp-git` from `packaging/arch/PKGBUILD`.
+          On Arch, Manjaro and SteamOS, build `switchmtp-batch-git` from `packaging/arch/PKGBUILD`.
 
-          Anywhere else, take the `.tar.gz`, put `switchmtp` on your `PATH`, and install the udev rule beside it:
+          Anywhere else, take the `.tar.gz`, put `switchmtp-batch` on your `PATH`, and install the udev rule beside it:
 
           ```sh
-          sudo cp 69-switchmtp.rules /etc/udev/rules.d/
+          sudo cp 69-switchmtp-batch.rules /etc/udev/rules.d/
           sudo udevadm control --reload-rules && sudo udevadm trigger
           ```
 
-          That rule is not optional — without it `/dev/bus/usb` is root-only and your desktop's MTP handler claims the console first. The `.deb` installs it for you. Run `switchmtp doctor` if anything does not connect.
+          That rule is not optional — without it `/dev/bus/usb` is root-only and your desktop's MTP handler claims the console first. The `.deb` installs it for you. Run `switchmtp-batch doctor` if anything does not connect.
 
-          **The two cannot be used at the same time.** Once `switchmtp` opens the console, a file manager's cached MTP mount goes stale and every write through it fails until you unmount and remount.
+          **The two cannot be used at the same time.** Once `switchmtp-batch` opens the console, a file manager's cached MTP mount goes stale and every write through it fails until you unmount and remount.
           NOTES
 
       - name: Create GitHub Release
@@ -187,8 +187,8 @@ jobs:
           gh release create "${GITHUB_REF_NAME}" \
             build/SwitchMTP-Batch-*.dmg \
             build/SwitchMTP-Batch-*.dmg.sha256 \
-            linux-artifacts/switchmtp_*.deb \
-            linux-artifacts/switchmtp_*.tar.gz \
+            linux-artifacts/switchmtp-batch_*.deb \
+            linux-artifacts/switchmtp-batch_*.tar.gz \
             linux-artifacts/SHA256SUMS-linux-*.txt \
             --generate-notes \
             --notes "$(cat release-notes.md)"

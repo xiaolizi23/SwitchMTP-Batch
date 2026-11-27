@@ -16,9 +16,9 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "55587B4900CB9A107BD45D31"
-               BuildableName = "switchmtp-cli"
-               BlueprintName = "switchmtp-cli"
+               BlueprintIdentifier = "1F4D7728D4DFA106F623BE1A"
+               BuildableName = "switchmtp-batch-cli"
+               BlueprintName = "switchmtp-batch-cli"
                ReferencedContainer = "container:SwitchMTPBatch.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -33,9 +33,9 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "55587B4900CB9A107BD45D31"
-            BuildableName = "switchmtp-cli"
-            BlueprintName = "switchmtp-cli"
+            BlueprintIdentifier = "1F4D7728D4DFA106F623BE1A"
+            BuildableName = "switchmtp-batch-cli"
+            BlueprintName = "switchmtp-batch-cli"
             ReferencedContainer = "container:SwitchMTPBatch.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -56,9 +56,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "55587B4900CB9A107BD45D31"
-            BuildableName = "switchmtp-cli"
-            BlueprintName = "switchmtp-cli"
+            BlueprintIdentifier = "1F4D7728D4DFA106F623BE1A"
+            BuildableName = "switchmtp-batch-cli"
+            BlueprintName = "switchmtp-batch-cli"
             ReferencedContainer = "container:SwitchMTPBatch.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
@@ -75,9 +75,9 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "55587B4900CB9A107BD45D31"
-            BuildableName = "switchmtp-cli"
-            BlueprintName = "switchmtp-cli"
+            BlueprintIdentifier = "1F4D7728D4DFA106F623BE1A"
+            BuildableName = "switchmtp-batch-cli"
+            BlueprintName = "switchmtp-batch-cli"
             ReferencedContainer = "container:SwitchMTPBatch.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>

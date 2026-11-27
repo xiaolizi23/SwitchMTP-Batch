@@ -86,7 +86,7 @@ body:
       label: Diagnostics report
       description: >
         **Switch ▸ Copy Diagnostics** in the app, or
-        `"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" --json doctor`.
+        `"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" --json doctor`.
         For a console that is never detected this is the single most valuable
         thing in the report, because it shows what was on the USB bus.
       render: json

@@ -2,7 +2,7 @@
 
 This directory holds the Linux-side assets for SwitchMTP Batch. There is no Linux GUI
 and, on current evidence, there should not be one — see "How this fits alongside
-your desktop" below. The Go backend and the `switchmtp` command line tool both
+your desktop" below. The Go backend and the `switchmtp-batch` command line tool both
 run on Linux today, and the CLI is the Linux product. What is here is the piece
 that has to be right before it can work: USB access.
 
@@ -10,7 +10,7 @@ The quickest way to find out whether a machine is set up correctly is to build
 the tool and ask it:
 
 ```sh
-cd ../../backend && go build -o /tmp/switchmtp ./cmd/switchmtp && /tmp/switchmtp doctor
+cd ../../backend && go build -o /tmp/switchmtp-batch ./cmd/switchmtp-batch && /tmp/switchmtp-batch doctor
 ```
 
 `doctor` checks for the rule below, notices when an equivalent one has already
@@ -25,24 +25,24 @@ lists all eight storages including the two install targets, and reads and writes
 files with no setup at all. If you only want to copy files to the SD card, use
 your file manager — you do not need this tool.
 
-`switchmtp` is worth installing for the things `gvfs` does not do:
+`switchmtp-batch` is worth installing for the things `gvfs` does not do:
 
-- **Installing games**, one after another, from a queue (`switchmtp install a.nsp b.nsp`).
+- **Installing games**, one after another, from a queue (`switchmtp-batch install a.nsp b.nsp`).
   Copying several titles at once through a file manager asks DBI to do something
   it does not want to do.
 - **Telling you what a storage is for.** `gvfs` shows DBI's install targets as
   ordinary folders; drop the wrong file in and you get `libmtp error: Could not
-  send object`. `switchmtp` labels them drop-only and names the four extensions
+  send object`. `switchmtp-batch` labels them drop-only and names the four extensions
   they accept.
 - **Long transfers**, where reliability and progress reporting matter.
 
-### ⚠️ `switchmtp` and your file manager cannot share the device
+### ⚠️ `switchmtp-batch` and your file manager cannot share the device
 
 They do not fight over it in the way you might expect — `gvfsd-mtp` keeps the USB
-node open the whole time and `switchmtp` still works, because on Linux contention
+node open the whole time and `switchmtp-batch` still works, because on Linux contention
 happens when a program claims the USB *interface*, not when it opens the device.
 
-What actually breaks is `gvfs`'s cached session. **Once `switchmtp` has touched
+What actually breaks is `gvfs`'s cached session. **Once `switchmtp-batch` has touched
 the console, the existing mount goes stale**, and every subsequent write through
 the file manager fails almost instantly with:
 
@@ -67,7 +67,7 @@ work.
 
 ```sh
 scripts/build-deb.sh
-sudo apt install ./build/switchmtp_*.deb
+sudo apt install ./build/switchmtp-batch_*.deb
 ```
 
 This is the recommended route, for a reason worth stating: **a package can install
@@ -75,7 +75,7 @@ the udev rule, and a Flatpak or AppImage cannot.** That rule is the difference
 between the tool working and the desktop claiming the console first, so any
 format that cannot ship it leaves every user with a manual `sudo` step.
 
-The package installs `switchmtp` to `/usr/bin`, the rule to
+The package installs `switchmtp-batch` to `/usr/bin`, the rule to
 `/usr/lib/udev/rules.d/` — the vendor directory, leaving `/etc/udev/rules.d/`
 free for your own overrides — and reloads udev, so the rule applies without
 replugging. Removing the package reverses both, handing MTP back to your desktop
@@ -89,19 +89,19 @@ libusb, so it cannot be cross-compiled from macOS without a cross toolchain.
 Build the binary directly and install the rule by hand:
 
 ```sh
-cd backend && go build -o /tmp/switchmtp ./cmd/switchmtp
-sudo install -m 0755 /tmp/switchmtp /usr/local/bin/switchmtp
-sudo cp packaging/linux/69-switchmtp.rules /etc/udev/rules.d/
+cd backend && go build -o /tmp/switchmtp-batch ./cmd/switchmtp-batch
+sudo install -m 0755 /tmp/switchmtp-batch /usr/local/bin/switchmtp-batch
+sudo cp packaging/linux/69-switchmtp-batch.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
-## `69-switchmtp.rules`
+## `69-switchmtp-batch.rules`
 
 A udev rule granting the logged-in user access to a Nintendo Switch, and
 stopping the desktop's own MTP handlers from claiming it first.
 
 ```sh
-sudo cp 69-switchmtp.rules /etc/udev/rules.d/
+sudo cp 69-switchmtp-batch.rules /etc/udev/rules.d/
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 
@@ -157,7 +157,7 @@ packages (`.deb`, `.rpm`, AUR) can install it from a post-install hook.
 ## Removing it
 
 ```sh
-sudo rm /etc/udev/rules.d/69-switchmtp.rules
+sudo rm /etc/udev/rules.d/69-switchmtp-batch.rules
 sudo udevadm control --reload-rules && sudo udevadm trigger
 ```
 

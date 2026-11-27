@@ -4,8 +4,8 @@ backend/build/
 build/
 dist/
 
-# `go build ./cmd/switchmtp` from backend/ lands the binary here.
-backend/switchmtp
+# `go build ./cmd/switchmtp-batch` from backend/ lands the binary here.
+backend/switchmtp-batch
 
 # third_party/libusb is a build artifact of scripts/build-libusb.sh;
 # the script itself (scripts/build-libusb.sh) IS tracked.

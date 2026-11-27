@@ -38,7 +38,7 @@ Two things worth knowing:
 - **It needs no privileges.** SwitchMTP Batch never kills `ptpcamerad`, never asks for an
   administrator password, and works from inside the App Sandbox.
 - **`ptpcamerad` will still be listed** as a process on the device even when everything
-  is working, because it re-attaches at the device level. `switchmtp-cli doctor` only
+  is working, because it re-attaches at the device level. `switchmtp-batch-cli doctor` only
   reports processes holding the *interface*, which is what actually blocks a claim.
 
 SwitchMTP Batch explains this in the app the first time you launch it, before it touches the USB
@@ -52,7 +52,7 @@ Connects to Your Switch**.
 2. **Quit Image Capture and Photos**, and dismiss any "import photos?" prompt.
 3. **Unplug and reconnect the Switch**, then restart DBI's MTP responder
    (main menu → **X** → *Run MTP responder*).
-4. **Run the diagnostics**: `switchmtp-cli doctor`, or **Switch → Copy Diagnostics** in
+4. **Run the diagnostics**: `switchmtp-batch-cli doctor`, or **Switch → Copy Diagnostics** in
    the app. It names the process holding the interface and what to do about it.
 5. **Try a different USB-C cable.** Many cables carry power only. This is the second most
    common cause of "not detected" after interface conflicts.
@@ -64,7 +64,7 @@ Connects to Your Switch**.
 
 ```sh
 # Inside the app bundle
-"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" doctor
+"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" doctor
 ```
 
 `doctor` reports the current USB device list, any occupying PIDs, and actionable
@@ -253,7 +253,7 @@ same layout.
 
 SwitchMTP Batch filters these out by USB interface class: it accepts still-image (class 6, which
 is what DBI reports) and vendor-specific interfaces that name themselves "MTP". If a
-device still slips through, include the output of `switchmtp-cli --json doctor` in a bug
+device still slips through, include the output of `switchmtp-batch-cli --json doctor` in a bug
 report.
 
 ---
@@ -283,7 +283,7 @@ source as an alternative.
 2. Or from the command line:
 
    ```sh
-   "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" --json doctor > diagnostics.json
+   "/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" --json doctor > diagnostics.json
    ```
 
 3. Attach `diagnostics.json`, or paste the clipboard report, to your GitHub issue at

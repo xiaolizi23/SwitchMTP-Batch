@@ -12,7 +12,7 @@
 # FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
 # more details.
 #
-# Builds a .deb containing the switchmtp command line tool and the udev rule it
+# Builds a .deb containing the switchmtp-batch command line tool and the udev rule it
 # needs. Must be run on a Debian-derived system: it needs dpkg-deb, and the Go
 # build is cgo against libusb so it cannot be cross-compiled from macOS without
 # a cross toolchain.
@@ -89,35 +89,35 @@ stage="$(mktemp -d)"
 trap 'rm -rf "${stage}"' EXIT
 chmod 0755 "${stage}"
 
-echo "Building switchmtp ${version} (${arch})"
+echo "Building switchmtp-batch ${version} (${arch})"
 
 mkdir -p "${stage}/usr/bin" \
          "${stage}/usr/lib/udev/rules.d" \
-         "${stage}/usr/share/doc/switchmtp" \
+         "${stage}/usr/share/doc/switchmtp-batch" \
          "${stage}/DEBIAN"
 
 (
     cd backend
     CGO_ENABLED=1 go build -trimpath \
         -ldflags "-s -w -X main.version=${raw_version}" \
-        -o "${stage}/usr/bin/switchmtp" ./cmd/switchmtp
+        -o "${stage}/usr/bin/switchmtp-batch" ./cmd/switchmtp-batch
 )
 
 # Vendor directory, not /etc: /etc/udev/rules.d is reserved for rules the local
 # administrator has written or overridden, and dropping a package file there
 # means their edits are silently replaced on upgrade. udev merges both
-# directories and sorts by filename across them, so 69-switchmtp.rules still
+# directories and sorts by filename across them, so 69-switchmtp-batch.rules still
 # sorts after 69-libmtp.rules and still gets the last word on ID_MTP_DEVICE.
-install -m 0644 packaging/linux/69-switchmtp.rules \
-    "${stage}/usr/lib/udev/rules.d/69-switchmtp.rules"
+install -m 0644 packaging/linux/69-switchmtp-batch.rules \
+    "${stage}/usr/lib/udev/rules.d/69-switchmtp-batch.rules"
 
-install -m 0644 LICENSE "${stage}/usr/share/doc/switchmtp/copyright"
-install -m 0644 packaging/linux/README.md "${stage}/usr/share/doc/switchmtp/README.md"
+install -m 0644 LICENSE "${stage}/usr/share/doc/switchmtp-batch/copyright"
+install -m 0644 packaging/linux/README.md "${stage}/usr/share/doc/switchmtp-batch/README.md"
 
 installed_size="$(du -ks "${stage}" | cut -f1)"
 
 cat > "${stage}/DEBIAN/control" <<EOF
-Package: switchmtp
+Package: switchmtp-batch
 Version: ${version}
 Section: utils
 Priority: optional
@@ -133,7 +133,7 @@ Description: Command-line MTP client for a Nintendo Switch running DBI
  Your desktop can already browse the console over MTP without this package. What
  it cannot do is install titles reliably, tell you which storages only accept
  game files, or queue several installs so DBI is asked for one at a time. Note
- that the two cannot be used at once: after switchmtp has opened the console, a
+ that the two cannot be used at once: after switchmtp-batch has opened the console, a
  file manager's cached MTP mount goes stale and needs remounting.
  .
  Installs a udev rule granting the logged-in user access to the console and
@@ -175,7 +175,7 @@ EOF
 chmod 0755 "${stage}/DEBIAN/postinst" "${stage}/DEBIAN/postrm"
 
 mkdir -p build
-output="build/switchmtp_${version}_${arch}.deb"
+output="build/switchmtp-batch_${version}_${arch}.deb"
 dpkg-deb --root-owner-group --build "${stage}" "${output}" >/dev/null
 
 echo "Wrote ${output}"

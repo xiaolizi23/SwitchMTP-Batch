@@ -33,12 +33,12 @@ Options:
   --large-file <sid:/path>   Opt in to reading one >4 GiB file end-to-end and verifying byte count
   --mode <title|applet|unknown>
                              Record how DBI was launched (default: unknown)
-  --device <id>              Pass a specific switchmtp-cli device id
+  --device <id>              Pass a specific switchmtp-batch-cli device id
   --stress-count <n>         Number of read-only repeated ls operations for stability probe (default: 10)
   -h, --help                 Show this help
 
 Environment:
-  SWITCHMTP_CLI              Override path to switchmtp-cli
+  SWITCHMTP_CLI              Override path to switchmtp-batch-cli
 USAGE
 }
 
@@ -87,19 +87,19 @@ locate_cli() {
     return
   fi
 
-  local bundled="${PRODUCTS}/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli"
-  local standalone="${PRODUCTS}/switchmtp-cli"
+  local bundled="${PRODUCTS}/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli"
+  local standalone="${PRODUCTS}/switchmtp-batch-cli"
   if [[ -x "${bundled}" ]]; then
     printf '%s\n' "${bundled}"
   elif [[ -x "${standalone}" ]]; then
     printf '%s\n' "${standalone}"
   else
-    die "switchmtp-cli was not found. Run scripts/build-xcode-app.sh first, or set SWITCHMTP_CLI=/path/to/switchmtp-cli."
+    die "switchmtp-batch-cli was not found. Run scripts/build-xcode-app.sh first, or set SWITCHMTP_CLI=/path/to/switchmtp-batch-cli."
   fi
 }
 
 CLI="$(locate_cli)"
-command -v python3 >/dev/null 2>&1 || die "python3 is required to parse switchmtp-cli JSON output. Install Xcode command line tools or run on the build Mac."
+command -v python3 >/dev/null 2>&1 || die "python3 is required to parse switchmtp-batch-cli JSON output. Install Xcode command line tools or run on the build Mac."
 
 mkdir -p "${BUILD_ROOT}" "${WORK_DIR}"
 trap 'rm -rf "${WORK_DIR}"' EXIT
@@ -257,22 +257,22 @@ append "## Diagnostics"
 DOCTOR_TXT_OUT="${WORK_DIR}/doctor.txt.out"
 DOCTOR_TXT_ERR="${WORK_DIR}/doctor.txt.err"
 if run_cli_global "${DOCTOR_TXT_OUT}" "${DOCTOR_TXT_ERR}" doctor; then doctor_status=0; else doctor_status=$?; fi
-append_command_block "switchmtp-cli doctor" "${doctor_status}" "${DOCTOR_TXT_OUT}" "${DOCTOR_TXT_ERR}" "text"
+append_command_block "switchmtp-batch-cli doctor" "${doctor_status}" "${DOCTOR_TXT_OUT}" "${DOCTOR_TXT_ERR}" "text"
 
 DOCTOR_JSON_OUT="${WORK_DIR}/doctor.json.out"
 DOCTOR_JSON_ERR="${WORK_DIR}/doctor.json.err"
 if run_cli_global "${DOCTOR_JSON_OUT}" "${DOCTOR_JSON_ERR}" --json doctor; then doctor_json_status=0; else doctor_json_status=$?; fi
-append_command_block "switchmtp-cli --json doctor" "${doctor_json_status}" "${DOCTOR_JSON_OUT}" "${DOCTOR_JSON_ERR}" "json"
+append_command_block "switchmtp-batch-cli --json doctor" "${doctor_json_status}" "${DOCTOR_JSON_OUT}" "${DOCTOR_JSON_ERR}" "json"
 
 DEVICES_TXT_OUT="${WORK_DIR}/devices.txt.out"
 DEVICES_TXT_ERR="${WORK_DIR}/devices.txt.err"
 if run_cli_global "${DEVICES_TXT_OUT}" "${DEVICES_TXT_ERR}" devices; then devices_status=0; else devices_status=$?; fi
-append_command_block "switchmtp-cli devices" "${devices_status}" "${DEVICES_TXT_OUT}" "${DEVICES_TXT_ERR}" "text"
+append_command_block "switchmtp-batch-cli devices" "${devices_status}" "${DEVICES_TXT_OUT}" "${DEVICES_TXT_ERR}" "text"
 
 DEVICES_JSON_OUT="${WORK_DIR}/devices.json.out"
 DEVICES_JSON_ERR="${WORK_DIR}/devices.json.err"
 if run_cli_global "${DEVICES_JSON_OUT}" "${DEVICES_JSON_ERR}" --json devices; then devices_json_status=0; else devices_json_status=$?; fi
-append_command_block "switchmtp-cli --json devices" "${devices_json_status}" "${DEVICES_JSON_OUT}" "${DEVICES_JSON_ERR}" "json"
+append_command_block "switchmtp-batch-cli --json devices" "${devices_json_status}" "${DEVICES_JSON_OUT}" "${DEVICES_JSON_ERR}" "json"
 
 device_count="$(json_eval "${DEVICES_JSON_OUT}" 'print(len(data or []))')"
 if [[ "${device_count}" == "0" ]]; then
@@ -307,22 +307,22 @@ append "- Device ID: ${DEVICE_ID:-auto-selection failed}"
 INFO_TXT_OUT="${WORK_DIR}/info.txt.out"
 INFO_TXT_ERR="${WORK_DIR}/info.txt.err"
 if run_cli "${INFO_TXT_OUT}" "${INFO_TXT_ERR}" info; then info_status=0; else info_status=$?; fi
-append_command_block "switchmtp-cli info" "${info_status}" "${INFO_TXT_OUT}" "${INFO_TXT_ERR}" "text"
+append_command_block "switchmtp-batch-cli info" "${info_status}" "${INFO_TXT_OUT}" "${INFO_TXT_ERR}" "text"
 
 INFO_JSON_OUT="${WORK_DIR}/info.json.out"
 INFO_JSON_ERR="${WORK_DIR}/info.json.err"
 if run_cli "${INFO_JSON_OUT}" "${INFO_JSON_ERR}" --json info; then info_json_status=0; else info_json_status=$?; fi
-append_command_block "switchmtp-cli --json info" "${info_json_status}" "${INFO_JSON_OUT}" "${INFO_JSON_ERR}" "json"
+append_command_block "switchmtp-batch-cli --json info" "${info_json_status}" "${INFO_JSON_OUT}" "${INFO_JSON_ERR}" "json"
 
 STORAGES_TXT_OUT="${WORK_DIR}/storages.txt.out"
 STORAGES_TXT_ERR="${WORK_DIR}/storages.txt.err"
 if run_cli "${STORAGES_TXT_OUT}" "${STORAGES_TXT_ERR}" storages; then storages_status=0; else storages_status=$?; fi
-append_command_block "switchmtp-cli storages" "${storages_status}" "${STORAGES_TXT_OUT}" "${STORAGES_TXT_ERR}" "text"
+append_command_block "switchmtp-batch-cli storages" "${storages_status}" "${STORAGES_TXT_OUT}" "${STORAGES_TXT_ERR}" "text"
 
 STORAGES_JSON_OUT="${WORK_DIR}/storages.json.out"
 STORAGES_JSON_ERR="${WORK_DIR}/storages.json.err"
 if run_cli "${STORAGES_JSON_OUT}" "${STORAGES_JSON_ERR}" --json storages; then storages_json_status=0; else storages_json_status=$?; fi
-append_command_block "switchmtp-cli --json storages" "${storages_json_status}" "${STORAGES_JSON_OUT}" "${STORAGES_JSON_ERR}" "json"
+append_command_block "switchmtp-batch-cli --json storages" "${storages_json_status}" "${STORAGES_JSON_OUT}" "${STORAGES_JSON_ERR}" "json"
 
 append ""
 append "## Storage table"
@@ -352,7 +352,7 @@ if [[ -n "${read_sid}" ]]; then
   LS_ROOT_JSON_OUT="${WORK_DIR}/ls-root.json.out"
   LS_ROOT_JSON_ERR="${WORK_DIR}/ls-root.json.err"
   if run_cli "${LS_ROOT_JSON_OUT}" "${LS_ROOT_JSON_ERR}" --verbose --json ls "${read_sid}:/"; then ls_root_status=0; else ls_root_status=$?; fi
-  append_command_block "switchmtp-cli --verbose --json ls ${read_sid}:/" "${ls_root_status}" "${LS_ROOT_JSON_OUT}" "${LS_ROOT_JSON_ERR}" "json"
+  append_command_block "switchmtp-batch-cli --verbose --json ls ${read_sid}:/" "${ls_root_status}" "${LS_ROOT_JSON_OUT}" "${LS_ROOT_JSON_ERR}" "json"
 
   prop_list_cap="$(json_eval "${INFO_JSON_OUT}" 'print("yes" if ((data or {}).get("capabilities") or {}).get("getObjectPropList") else "no")')"
   if [[ "${ls_root_status}" -eq 0 ]]; then
@@ -412,7 +412,7 @@ else
 
   MKDIR_OUT="${WORK_DIR}/mkdir.out"; MKDIR_ERR="${WORK_DIR}/mkdir.err"
   if run_cli "${MKDIR_OUT}" "${MKDIR_ERR}" mkdir "${write_sid}:${scratch}"; then mkdir_status=0; else mkdir_status=$?; fi
-  append_command_block "switchmtp-cli mkdir ${write_sid}:${scratch}" "${mkdir_status}" "${MKDIR_OUT}" "${MKDIR_ERR}" "text"
+  append_command_block "switchmtp-batch-cli mkdir ${write_sid}:${scratch}" "${mkdir_status}" "${MKDIR_OUT}" "${MKDIR_ERR}" "text"
 
   if [[ "${mkdir_status}" -ne 0 ]]; then
     record_probe "3" "FAIL" "SetObjectPropValue(ObjectFileName) rename" "Could not create scratch directory on safe storage ${write_kind}; rename was not attempted."
@@ -420,12 +420,12 @@ else
   else
     CP_RENAME_OUT="${WORK_DIR}/cp-rename.out"; CP_RENAME_ERR="${WORK_DIR}/cp-rename.err"
     if run_cli "${CP_RENAME_OUT}" "${CP_RENAME_ERR}" cp "${local_scratch}/rename-source.txt" "${write_sid}:${scratch}/"; then cp_rename_status=0; else cp_rename_status=$?; fi
-    append_command_block "switchmtp-cli cp rename-source.txt ${write_sid}:${scratch}/" "${cp_rename_status}" "${CP_RENAME_OUT}" "${CP_RENAME_ERR}" "text"
+    append_command_block "switchmtp-batch-cli cp rename-source.txt ${write_sid}:${scratch}/" "${cp_rename_status}" "${CP_RENAME_OUT}" "${CP_RENAME_ERR}" "text"
 
     MV_OUT="${WORK_DIR}/mv.out"; MV_ERR="${WORK_DIR}/mv.err"
     if [[ "${cp_rename_status}" -eq 0 ]]; then
       if run_cli "${MV_OUT}" "${MV_ERR}" mv "${write_sid}:${scratch}/rename-source.txt" "${scratch}/renamed-by-switchmtp.txt"; then mv_status=0; else mv_status=$?; fi
-      append_command_block "switchmtp-cli mv ${write_sid}:${scratch}/rename-source.txt ${scratch}/renamed-by-switchmtp.txt" "${mv_status}" "${MV_OUT}" "${MV_ERR}" "text"
+      append_command_block "switchmtp-batch-cli mv ${write_sid}:${scratch}/rename-source.txt ${scratch}/renamed-by-switchmtp.txt" "${mv_status}" "${MV_OUT}" "${MV_ERR}" "text"
       if [[ "${mv_status}" -eq 0 ]]; then
         record_probe "3" "PASS" "SetObjectPropValue(ObjectFileName) rename" "Rename succeeded on ${write_kind} scratch directory."
       elif [[ "${rename_cap}" == "no" ]]; then
@@ -439,11 +439,11 @@ else
 
     CP_EMOJI_OUT="${WORK_DIR}/cp-emoji.out"; CP_EMOJI_ERR="${WORK_DIR}/cp-emoji.err"
     if run_cli "${CP_EMOJI_OUT}" "${CP_EMOJI_ERR}" cp "${local_scratch}/emoji-🧪-switchmtp.txt" "${write_sid}:${scratch}/"; then cp_emoji_status=0; else cp_emoji_status=$?; fi
-    append_command_block "switchmtp-cli cp emoji file ${write_sid}:${scratch}/" "${cp_emoji_status}" "${CP_EMOJI_OUT}" "${CP_EMOJI_ERR}" "text"
+    append_command_block "switchmtp-batch-cli cp emoji file ${write_sid}:${scratch}/" "${cp_emoji_status}" "${CP_EMOJI_OUT}" "${CP_EMOJI_ERR}" "text"
 
     LS_SCRATCH_OUT="${WORK_DIR}/ls-scratch.json.out"; LS_SCRATCH_ERR="${WORK_DIR}/ls-scratch.json.err"
     if run_cli "${LS_SCRATCH_OUT}" "${LS_SCRATCH_ERR}" --json ls "${write_sid}:${scratch}"; then ls_scratch_status=0; else ls_scratch_status=$?; fi
-    append_command_block "switchmtp-cli --json ls ${write_sid}:${scratch}" "${ls_scratch_status}" "${LS_SCRATCH_OUT}" "${LS_SCRATCH_ERR}" "json"
+    append_command_block "switchmtp-batch-cli --json ls ${write_sid}:${scratch}" "${ls_scratch_status}" "${LS_SCRATCH_OUT}" "${LS_SCRATCH_ERR}" "json"
 
     if [[ "${cp_emoji_status}" -eq 0 && "${ls_scratch_status}" -eq 0 ]]; then
       emoji_found="$(json_eval "${LS_SCRATCH_OUT}" 'print("yes" if any(e.get("name") == "emoji-🧪-switchmtp.txt" for e in (data or [])) else "no")')"
@@ -460,7 +460,7 @@ else
       RM_OUT="${WORK_DIR}/rm-$(printf '%s' "${remote}" | tr '/🧪' '___').out"
       RM_ERR="${WORK_DIR}/rm-$(printf '%s' "${remote}" | tr '/🧪' '___').err"
       if run_cli "${RM_OUT}" "${RM_ERR}" rm "${write_sid}:${remote}"; then rm_status=0; else rm_status=$?; fi
-      append_command_block "cleanup: switchmtp-cli rm ${write_sid}:${remote}" "${rm_status}" "${RM_OUT}" "${RM_ERR}" "text"
+      append_command_block "cleanup: switchmtp-batch-cli rm ${write_sid}:${remote}" "${rm_status}" "${RM_OUT}" "${RM_ERR}" "text"
     done
   fi
   rm -rf "${local_scratch}"
@@ -486,7 +486,7 @@ else
     large_name="$(remote_base "${large_path}")"
     LARGE_LS_OUT="${WORK_DIR}/large-ls.json.out"; LARGE_LS_ERR="${WORK_DIR}/large-ls.json.err"
     if run_cli "${LARGE_LS_OUT}" "${LARGE_LS_ERR}" --json ls "${large_sid}:${large_parent}"; then large_ls_status=0; else large_ls_status=$?; fi
-    append_command_block "switchmtp-cli --json ls ${large_sid}:${large_parent}" "${large_ls_status}" "${LARGE_LS_OUT}" "${LARGE_LS_ERR}" "json"
+    append_command_block "switchmtp-batch-cli --json ls ${large_sid}:${large_parent}" "${large_ls_status}" "${LARGE_LS_OUT}" "${LARGE_LS_ERR}" "json"
 
     large_name_json="$(json_escape "${large_name}")"
     expected_size="$(json_eval "${LARGE_LS_OUT}" $'name = '"${large_name_json}"$'\nfor e in data or []:\n    if e.get("name") == name:\n        print("unknown" if e.get("sizeUnknown") else e.get("size", ""))\n        break\n')"
@@ -501,7 +501,7 @@ else
       mkdir -p "${download_dir}"
       LARGE_CP_OUT="${WORK_DIR}/large-cp.json.out"; LARGE_CP_ERR="${WORK_DIR}/large-cp.json.err"
       if run_cli "${LARGE_CP_OUT}" "${LARGE_CP_ERR}" --json cp "${LARGE_FILE}" "${download_dir}/"; then large_cp_status=0; else large_cp_status=$?; fi
-      append_command_block "switchmtp-cli --json cp ${LARGE_FILE} ${download_dir}/" "${large_cp_status}" "${LARGE_CP_OUT}" "${LARGE_CP_ERR}" "json"
+      append_command_block "switchmtp-batch-cli --json cp ${LARGE_FILE} ${download_dir}/" "${large_cp_status}" "${LARGE_CP_OUT}" "${LARGE_CP_ERR}" "json"
       downloaded="${download_dir}/${large_name}"
       if [[ "${large_cp_status}" -eq 0 && -f "${downloaded}" ]]; then
         actual_size="$(stat -f '%z' "${downloaded}")"
@@ -541,7 +541,7 @@ if [[ -n "${read_sid}" && "${STRESS_COUNT}" -gt 0 ]]; then
     if run_cli "${STRESS_OUT}" "${STRESS_ERR}" --json ls "${read_sid}:/"; then stress_status=0; else stress_status=$?; fi
     if [[ "${stress_status}" -ne 0 ]]; then
       stress_fail=$((stress_fail + 1))
-      append_command_block "stress ${i}: switchmtp-cli --json ls ${read_sid}:/" "${stress_status}" "${STRESS_OUT}" "${STRESS_ERR}" "json"
+      append_command_block "stress ${i}: switchmtp-batch-cli --json ls ${read_sid}:/" "${stress_status}" "${STRESS_OUT}" "${STRESS_ERR}" "json"
     fi
     i=$((i + 1))
   done

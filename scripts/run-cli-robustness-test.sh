@@ -9,7 +9,7 @@
 # issued, so it is safe to run with the Switch disconnected.
 #
 #   ./scripts/run-cli-robustness-test.sh
-#   CLI_BIN=/path/to/switchmtp-cli ./scripts/run-cli-robustness-test.sh
+#   CLI_BIN=/path/to/switchmtp-batch-cli ./scripts/run-cli-robustness-test.sh
 #   FIXTURE=/path/to/games ./scripts/run-cli-robustness-test.sh
 #
 # Exit status 0 = every case passed.
@@ -22,14 +22,14 @@ FIXTURE=${FIXTURE:-${SWITCHMTP_BATCH_TEST_FOLDER:-$HOME/fixture}}
 if [ -n "${CLI_BIN:-}" ]; then
     BIN="$CLI_BIN"
 else
-    BIN="$ROOT/build/cli-derived/Build/Products/Debug/switchmtp-cli"
+    BIN="$ROOT/build/cli-derived/Build/Products/Debug/switchmtp-batch-cli"
 fi
 if [ ! -x "$BIN" ]; then
-    echo "missing CLI binary at $BIN — build the switchmtp-cli scheme first" >&2
+    echo "missing CLI binary at $BIN — build the switchmtp-batch-cli scheme first" >&2
     exit 2
 fi
 
-WORK=$(mktemp -d /tmp/switchmtp-cli-robust.XXXXXX)
+WORK=$(mktemp -d /tmp/switchmtp-batch-cli-robust.XXXXXX)
 trap 'rm -rf "$WORK"' EXIT INT TERM
 EMPTY="$WORK/empty"
 mkdir -p "$EMPTY"

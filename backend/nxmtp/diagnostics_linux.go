@@ -23,10 +23,10 @@ const platformHostNoun = "this computer"
 // enumerates but cannot be opened.
 var (
 	platformNoInterfaceAdvice = []string{
-		"Check that the SwitchMTP udev rule is installed in /etc/udev/rules.d/69-switchmtp.rules, then unplug and reconnect.",
+		"Check that the SwitchMTP udev rule is installed in /etc/udev/rules.d/69-switchmtp-batch.rules, then unplug and reconnect.",
 	}
 	platformNoUSBAdvice = []string{
-		"Check that your user can read /dev/bus/usb -- SwitchMTP needs its udev rule installed in /etc/udev/rules.d/69-switchmtp.rules.",
+		"Check that your user can read /dev/bus/usb -- SwitchMTP needs its udev rule installed in /etc/udev/rules.d/69-switchmtp-batch.rules.",
 		"Then restart SwitchMTP.",
 	}
 )

@@ -44,8 +44,8 @@ workspace on top:
 | Area | Change |
 |------|--------|
 | Batch workspace | A collect → inspect → install queue layer: whole-library scan, base/update/DLC grouping, optional signature/hash check with local `prod.keys` via bundled `hactool`, and a selectable list sent to DBI in order. |
-| Shared core | Scanning, grouping and deep-check logic extracted into a UI-free `Core/` layer shared by the GUI and the bundled `switchmtp-cli`. |
-| Bundled CLI | The universal `switchmtp-cli` is embedded in `Contents/Resources/bin/`, reusing the host's nxmtp/libusb dylibs. |
+| Shared core | Scanning, grouping and deep-check logic extracted into a UI-free `Core/` layer shared by the GUI and the bundled `switchmtp-batch-cli`. |
+| Bundled CLI | The universal `switchmtp-batch-cli` is embedded in `Contents/Resources/bin/`, reusing the host's nxmtp/libusb dylibs. |
 | Branding | Product name `SwitchMTP Batch`; repository and update checker repointed to `xiaolizi23/SwitchMTP-Batch`. The bundle ID is retained from upstream for compatibility. |
 
 Copyright for these additions: Copyright (C) 2026 xiaolizi23.

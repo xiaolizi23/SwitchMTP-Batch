@@ -1,7 +1,7 @@
 # SwitchMTP — USB access for a Nintendo Switch running DBI's MTP responder.
 #
 # Install with:
-#   sudo cp packaging/linux/69-switchmtp.rules /etc/udev/rules.d/
+#   sudo cp packaging/linux/69-switchmtp-batch.rules /etc/udev/rules.d/
 #   sudo udevadm control --reload-rules && sudo udevadm trigger
 #
 # This file does two separate jobs. Both are needed.

@@ -68,7 +68,7 @@ func TestUdevInstructionsMatchTheShippedRule(t *testing.T) {
 		`GROUP="plugdev"`,        // the Debian/Ubuntu fallback
 		`ENV{ID_MTP_DEVICE}=""`,  // stops gvfs claiming the device
 		"udevadm control --reload-rules",
-		"69-switchmtp.rules",
+		"69-switchmtp-batch.rules",
 	} {
 		if !strings.Contains(udevInstallInstructions, want) {
 			t.Errorf("udev instructions are missing %q", want)
@@ -86,7 +86,7 @@ func TestUdevInstructionsMatchTheShippedRule(t *testing.T) {
 // this pins them together — every rule line in the shipped file must appear in
 // the instructions verbatim.
 func TestUdevInstructionsDoNotDriftFromThePackagedFile(t *testing.T) {
-	const shipped = "../../../packaging/linux/69-switchmtp.rules"
+	const shipped = "../../../packaging/linux/69-switchmtp-batch.rules"
 
 	b, err := os.ReadFile(shipped)
 	if err != nil {

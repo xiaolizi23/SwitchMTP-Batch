@@ -60,7 +60,7 @@ The second version can be reproduced on a different console. The first cannot.
 **Switch ▸ Copy Diagnostics** in the app, or from a terminal:
 
 ```shell
-"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-cli" --json doctor
+"/Applications/SwitchMTP Batch.app/Contents/Resources/bin/switchmtp-batch-cli" --json doctor
 ```
 
 It lists the USB devices present, which process is holding the interface, the
