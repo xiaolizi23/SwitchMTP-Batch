@@ -135,11 +135,11 @@ struct InspectorTests {
 
         print("display names")
         let names: [(String, String)] = [
-            ("/Volumes/Data/马里奥赛车8豪华版/[本体v1.0.0][0100152000022000][1.0.0][中文][US].nsp", "马里奥赛车8豪华版"),
-            ("/Volumes/Data/马里奥赛车8豪华版/DLC/[DLC][0100152000023001][2.12.0][中文][US].nsp", "马里奥赛车8豪华版"),
-            ("/Volumes/Data/马里奥派对 Super Mario Party/升级档-v1.1.0/[010036B0034E4800][US][v131072][v1.1.0][UPD].nsz",
+            ("/Volumes/Switch/马里奥赛车8豪华版/[本体v1.0.0][0100152000022000][1.0.0][中文][US].nsp", "马里奥赛车8豪华版"),
+            ("/Volumes/Switch/马里奥赛车8豪华版/DLC/[DLC][0100152000023001][2.12.0][中文][US].nsp", "马里奥赛车8豪华版"),
+            ("/Volumes/Switch/马里奥派对 Super Mario Party/升级档-v1.1.0/[010036B0034E4800][US][v131072][v1.1.0][UPD].nsz",
              "马里奥派对 Super Mario Party"),
-            ("/Volumes/Data/王国之泪/nsp本体/薩爾達傳說 王國之淚 - v1.0.0 [0100F2C0115B6000][v0].nsp", "薩爾達傳說 王國之淚"),
+            ("/Volumes/Switch/王国之泪/nsp本体/薩爾達傳說 王國之淚 - v1.0.0 [0100F2C0115B6000][v0].nsp", "薩爾達傳說 王國之淚"),
             ("/tmp/samples/fixture/[本体v1.0.0][010015100B514000][16.0.3][中文].nsp", "fixture"),
         ]
         for (path, expected) in names {
