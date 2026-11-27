@@ -4,11 +4,11 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
-## Unreleased
+## 1.7.22 — 2026-11-27
 
 ### GUI
 
-- **批量清单支持右键移除**（1.7.22）。此前只有「选择文件夹 / 选择文件」能把内容加进来，
+- **批量清单支持右键移除**。此前只有「选择文件夹 / 选择文件」能把内容加进来，
   右键游戏组行、包行都没有菜单，想删掉一项得先点选某个包、再到右侧详情页按唯一的
   「移除此组」按钮；单包根本删不掉。
   现在：
@@ -20,6 +20,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   所以「重新扫描」不会把手动移出的项加回来；只有显式重新导入该目录（走「选择文件夹 /
   选择文件」或重新拖入）才会清掉该目录下的排除记录，恢复原样。退出 app 后排除记录不保留。
 - 右侧详情页的「移除此组」按钮文案改为「从清单移除此游戏」，与右键菜单同一动作。
+
+## Unreleased
 
 ### Packaging
 
