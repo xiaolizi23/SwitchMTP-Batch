@@ -381,7 +381,7 @@ enum DeepVerifier {
 
         // The engine tells us whether it managed to derive any title key at all.
         // Without a key, hash mismatches are an artefact of not decrypting — not
-        // proof of a bad package. (one retail sample: 3/4 NCAs hash GOOD once the
+        // proof of a bad package. (RE1 retail sample: 3/4 NCAs hash GOOD once the
         // ticket key is derived, which is how this distinction was calibrated.)
         let registeredKeys = Self.markerValue("NSP_KEYSTATE", field: "registered", in: output) ?? 1
 

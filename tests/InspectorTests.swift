@@ -101,11 +101,11 @@ struct InspectorTests {
         // Real retail IDs, where the four digits before ".cnmt.nca" are not
         // 0000. These are the cases that used to read as DLC.
         let types: [(String, PackageContentType, String)] = [
-            ("01000000000AA000", .base, "retail base (…A000)"),
-            ("01000000000AA800", .update, "retail update (…A800)"),
-            ("01000000000AB001", .dlc, "retail add-on (…B001)"),
-            ("01000000000BA000", .base, "second retail base (…B000)"),
-            ("01000000000CC000", .base, "third retail base (…C000)"),
+            ("0100152000022000", .base, "Mario Kart 8 Deluxe base (…2000)"),
+            ("0100152000022800", .update, "Mario Kart 8 Deluxe update (…2800)"),
+            ("0100152000023001", .dlc, "Mario Kart 8 Deluxe add-on (…3001)"),
+            ("010050F00BC1A000", .base, "Resident Evil HD base (…A000)"),
+            ("0100F2C0115B6000", .base, "Tears of the Kingdom base (…6000)"),
             ("0100000000010000", .base, "synthetic base (…0000)"),
             ("0100000000010800", .update, "synthetic patch (…0800)"),
             ("0100000000021000", .dlc, "synthetic add-on (…1000)"),
@@ -114,7 +114,7 @@ struct InspectorTests {
             expect(PackageInspector.contentType(for: titleID, fileName: "x.nsp") == expected,
                    "\(label) is \(expected.rawValue)")
         }
-        expect(PackageInspector.isValidTitleID("01000000000AA000"), "retail title id accepted")
+        expect(PackageInspector.isValidTitleID("0100152000022000"), "retail title id accepted")
         expect(!PackageInspector.isValidTitleID("CC1324AA881AD518"), "content hash rejected as title id")
 
         print("title id from container names")
@@ -122,25 +122,25 @@ struct InspectorTests {
         // title ID, as 32 hex digits. This is the case that left a 44-package
         // library with no title IDs, no covers and no base/update merging.
         expect(PackageInspector.titleIDFrom(names: ["ae1700a1629a87db70a11dc4c20ab4b0.cnmt.nca",
-                                                    "01000000000dd8000000000000000011.tik"]) == "01000000000DD800",
+                                                    "010015100b5148000000000000000011.tik"]) == "010015100B514800",
                "32-hex ticket name yields the title id")
-        expect(PackageInspector.titleIDFrom(names: ["01000000000AA0000000000000000000.tik"]) == "01000000000AA000",
+        expect(PackageInspector.titleIDFrom(names: ["01001520000220000000000000000000.tik"]) == "0100152000022000",
                "zero-padded ticket name yields the title id")
-        expect(PackageInspector.titleIDFrom(names: ["01000000000AA000.cnmt.nca",
-                                                    "01000000000AC800.cnmt.nca"]) == "01000000000AA000",
+        expect(PackageInspector.titleIDFrom(names: ["0100152000022000.cnmt.nca",
+                                                    "0100152000023800.cnmt.nca"]) == "0100152000022000",
                "CNMT name still wins over ticket")
-        expect(PackageInspector.titleIDFromFileName("[本体v1.0.0][01000000000EE000][18.0.0][中文].xci") == "01000000000EE000",
+        expect(PackageInspector.titleIDFromFileName("[本体v1.0.0][0100FD8022DAA000][18.0.0][中文].xci") == "0100FD8022DAA000",
                "release-name bracket is used for cartridge images")
         expect(PackageInspector.titleIDFromFileName("no-id-here.nsp") == nil, "name without title id yields nothing")
 
         print("display names")
         let names: [(String, String)] = [
-            ("/tmp/samples/SampleGame/[本体v1.0.0][01000000000AA000][1.0.0][中文][US].nsp", "SampleGame"),
-            ("/tmp/samples/SampleGame/DLC/[DLC][01000000000AB001][2.12.0][中文][US].nsp", "SampleGame"),
-            ("/tmp/samples/Another Game/升级档-v1.1.0/[01000000000FF000][US][v131072][v1.1.0][UPD].nsz",
-             "Another Game"),
-            ("/tmp/samples/Third Title/nsp本体/Third Title - v1.0.0 [01000000000CC000][v0].nsp", "Third Title"),
-            ("/tmp/samples/fixture/[本体v1.0.0][01000000000DD000][16.0.3][中文].nsp", "fixture"),
+            ("/Volumes/Data/马里奥赛车8豪华版/[本体v1.0.0][0100152000022000][1.0.0][中文][US].nsp", "马里奥赛车8豪华版"),
+            ("/Volumes/Data/马里奥赛车8豪华版/DLC/[DLC][0100152000023001][2.12.0][中文][US].nsp", "马里奥赛车8豪华版"),
+            ("/Volumes/Data/马里奥派对 Super Mario Party/升级档-v1.1.0/[010036B0034E4800][US][v131072][v1.1.0][UPD].nsz",
+             "马里奥派对 Super Mario Party"),
+            ("/Volumes/Data/王国之泪/nsp本体/薩爾達傳說 王國之淚 - v1.0.0 [0100F2C0115B6000][v0].nsp", "薩爾達傳說 王國之淚"),
+            ("/tmp/samples/fixture/[本体v1.0.0][010015100B514000][16.0.3][中文].nsp", "fixture"),
         ]
         for (path, expected) in names {
             let name = PackageInspector.displayName(for: URL(fileURLWithPath: path))
@@ -149,7 +149,7 @@ struct InspectorTests {
         expect(PackageInspector.isGenericName("升级档-v1.1.0"), "version-only folder is generic")
         expect(PackageInspector.isGenericName("nsz本体"), "payload folder is generic")
         expect(PackageInspector.isGenericName("DLC"), "DLC folder is generic")
-        expect(!PackageInspector.isGenericName("SampleGame"), "real title is not generic")
+        expect(!PackageInspector.isGenericName("马里奥赛车8豪华版"), "real title is not generic")
 
         print("deep-check classification")
         func block(_ body: String, keys: Int = 1) -> String {

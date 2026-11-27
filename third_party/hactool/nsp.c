@@ -89,7 +89,7 @@ static int register_ticket_key(hactool_ctx_t *tool_ctx, FILE *file, uint64_t off
 
     /* The ticket wraps the title key with titlekek[ticket keygen]. The NCA's
      * own key revision is often different (0x0 in the ticket, 0x6 in the NCA
-     * header on one retail sample), so letting hactool re-decrypt with the NCA's
+     * header on retail RE1), so letting hactool re-decrypt with the NCA's
      * revision produced garbage keys and every hash read as corrupt. Decrypt
      * here, with the ticket's revision, and hand over the plaintext key. */
     {
@@ -249,7 +249,7 @@ void nsp_process(nsp_ctx_t *ctx) {
          * a stale ticket generation shows up first, and a wrong generation
          * would otherwise read as "content corrupt". The retry only re-derives
          * the title key and re-verifies in memory; it writes no large file, so
-         * there is deliberately no size cap (an 11 GB main NCA was
+         * there is deliberately no size cap (an 11 GB Overcooked main NCA was
          * previously skipped here and misreported as corrupt). */
         int hash_bad = 0;
         for (unsigned int s = 0; s < 4; s++) {

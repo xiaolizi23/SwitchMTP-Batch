@@ -316,7 +316,7 @@ enum PackageInspector {
     }
 
     /// Last resort: the release-name bracket, e.g.
-    /// `[本体v1.0.0][01000000000DD000][16.0.3][中文].nsp`. Cartridge images
+    /// `[本体v1.0.0][010015100B514000][16.0.3][中文].nsp`. Cartridge images
     /// carry no ticket at all, and repacks often hash the CNMT name, so without
     /// this an XCI would stay unidentified.
     static func titleIDFromFileName(_ fileName: String) -> String? {
@@ -330,8 +330,8 @@ enum PackageInspector {
     /// Retail title IDs put the content type in the low bits, and the four
     /// digits before `.cnmt.nca` are *not* always `0000`:
     ///
-    ///   `<Y>000` with an even Y -> application (retail bases commonly end in
-    ///   `…2000` or `…A000` instead of `…0000`)
+    ///   `<Y>000` with an even Y -> application (Mario Kart 8 Deluxe is
+    ///   `0100152000022000`, Resident Evil HD is `010050F00BC1A000`)
     ///   `<Y>800`                -> patch for the same application
     ///   `<Y>XXX` with an odd Y  -> add-on content #XXX (`base | 0x1000`)
     ///
@@ -405,7 +405,7 @@ enum PackageInspector {
     /// Turns a file/folder name into something worth showing in a list.
     ///
     /// Release naming is noisy in a very consistent way: `[本体v1.0.0]`,
-    /// `[01000000000AA000]`, `[中文]`, `[US]`, `(0.41 GB)`, `v1.0.0`, `.nsp`.
+    /// `[0100152000022000]`, `[中文]`, `[US]`, `(0.41 GB)`, `v1.0.0`, `.nsp`.
     /// Every one of those is stripped; whatever survives is the game's name.
     /// When nothing survives (*"升级档-v1.1.0"*, *"nsz本体"*) the enclosing
     /// folders are walked instead, because that is where a dump keeps the real
