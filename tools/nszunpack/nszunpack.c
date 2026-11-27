@@ -143,8 +143,8 @@ typedef struct {
 //   optionally "NCZBLOCK" + u8 version/type/+2, u32 blockCount, u64 bodySize,
 //   u32 compressedSize[blockCount]
 //
-// Update packages routinely carry hundreds of sections (Sample Game's update
-// has 417, another update's has 692), so the table cannot be a fixed array
+// Update packages routinely carry hundreds of sections (one sample update has
+// 417, another has 692), so the table cannot be a fixed array
 // and the header window has to grow with it.
 static void ncz_read(FILE *f, uint64_t entry_offset, uint64_t entry_size, ncz_t *out, const char *name) {
     memset(out, 0, sizeof *out);
