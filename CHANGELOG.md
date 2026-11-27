@@ -18,6 +18,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 - 开发期的 AX / 真机 / 压力测试等内部调试记录、取证截图与对照表不再随仓库
   发布；对外文档只保留安装、排障、协议与 CLI 说明。
+- 公开前把仍留在 git 历史里的实机取证（主机已安装应用 CSV、DBI 屏幕截图）、
+  扫描结果表、AX / 压力 / 崩溃测试记录与 UI 对比图从历史中剔除——共 60 个路径，
+  归档在仓库外。`docs/DBI_COLOR_TEST.md`、`docs/ENGLISH_TITLE_NAMING_2026-11-26.md`、
+  `docs/GROUP_ROW_CLICK_SEMANTICS_2026-11-26.md` 及其截图同步移出。
+- `docs/NSZ_UNPACK.md` 的样本矩阵改为匿名描述（数量、结构、体积、结论），不再列具体游戏；
+  `BATCH_WORKSPACE.zh-CN.md` 的「已知限制」改为按实际真机覆盖范围描述。
+- `.gitignore` 增加 `*.keys` / `prod.keys` / `title.keys`：密钥只放仓库外，防止误提交。
+- `CONTRIBUTING.md` 说明 `tools/` 下两个工具是预编译产物（含当前 SHA-256），
+  重建会覆盖受跟踪文件。
 
 ### CLI
 
@@ -156,7 +165,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - **移除中文名库**：删除 `startCatalogLoad()`、`catalogReady` 等状态与界面提示，不再下载
   中文库；`requestMissingNames()` 对所有缺英文名的组发请求，命中 `CatalogNames.json` 缓存。
 - 已知边界：目录未收录的 title 回退文件名（可能仍是中文）；无缓存首次运行会逐条异步替换，
-  十几秒内补齐。记录见 `docs/ENGLISH_TITLE_NAMING_2026-11-26.md`。
+  十几秒内补齐。
 - 版本 `1.7.15` / build 41。
 
 ## 1.7.14 — 2026-11-26
@@ -168,7 +177,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   选中并显示组概览；双击行才展开/收起；点箭头只展开、不改变选中，三种意图分开。
 - AX 回归脚本跟随更新：默认仍 24 PASS / 2 SKIP（点击语义两项因行本体无常驻 AX
   action 而跳过，用箭头覆盖展开/收起）；`AX_TEST_HID_CLICKS=1` 下以单击 / 双击
-  验证完整交互，25 PASS。记录见 `docs/GROUP_ROW_CLICK_SEMANTICS_2026-11-26.md`。
+  验证完整交互，25 PASS。
 - 版本 `1.7.14` / build 40。
 
 ## 1.7.13 — 2026-11-26
@@ -367,7 +376,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 ### Fixed
 
 - **ticket 密钥代写错的包不再被判红。** 重打包工具常见做法是把内容用某一代 titlekek 包出来，却在 ticket 的 `masterKeyRevision` 里写另一代（马车 8 DLC 就是 ticket 写 13、内容实际 12）。现在逐 NCA 验完后若哈希 FAIL、且 NCA 头的 `crypto_type` 与 ticket 代次不同、NCA ≤ 64 MB，就按 NCA 头的代次重新解密钥再验一次；`nsp.c` 打印 `NSP_NCA_RETRY: keygen 13 -> 12`，Swift 侧据此丢弃作废的第一次结果。大 NCA 不做重试，真实损坏（如 某样本 重打包）仍稳定判红。
-- **真机颜色对照测试**（`docs/DBI_COLOR_TEST.md`，截图在 `docs/dbi-color-test/`）：绿 = 签名与哈希全过，DBI 逐文件 `[ПОДПИСЬ: OK]` 并注册成功；黄 = 签名 `ПОДДЕЛЬНАЯ`，DBI 照装不误；红 = 内容 `CRC ОШИБКА ФАЙЛА`，DBI 会把内容回滚删除（虽然仍打印“安装完成”）。我们的三色语义与 DBI 的实际行为一致。
+- **真机颜色对照测试**（内部实机记录不入库）：绿 = 签名与哈希全过，DBI 逐文件 `[ПОДПИСЬ: OK]` 并注册成功；黄 = 签名 `ПОДДЕЛЬНАЯ`，DBI 照装不误；红 = 内容 `CRC ОШИБКА ФАЙЛА`，DBI 会把内容回滚删除（虽然仍打印“安装完成”）。我们的三色语义与 DBI 的实际行为一致。
 
 ### Changed
 

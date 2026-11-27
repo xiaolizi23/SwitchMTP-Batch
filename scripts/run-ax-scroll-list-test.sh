@@ -19,7 +19,7 @@ ROOT=$(cd "$(dirname "$0")/.." && pwd)
 APP="$ROOT/build/products/SwitchMTP Batch.app"
 BIN="$APP/Contents/MacOS/SwitchMTPBatch"
 TEST="$ROOT/build/tools/ax-scroll-list-test"
-FIXTURE=${FIXTURE:-${SWITCHMTP_BATCH_TEST_FOLDER:-$HOME/fixture}}
+FIXTURE=${FIXTURE:-${SWITCHMTP_BATCH_TEST_FOLDER:-${HOME}/SwitchMTP-Batch-fixture}}
 
 if [ ! -x "$BIN" ]; then
     echo "missing $BIN — run scripts/build-xcode-app.sh first" >&2

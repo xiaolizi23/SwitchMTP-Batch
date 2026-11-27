@@ -31,6 +31,16 @@ export DEVELOPER_DIR="$(xcode-select -p)"          # before building the app
 export SDKROOT="$(xcrun --sdk macosx --show-sdk-path)"  # before any cgo work
 ```
 
+`tools/hactool/hactool` and `tools/nszunpack/nszunpack` are committed **prebuilt**:
+`build-xcode-app.sh` copies them into the app bundle instead of compiling them, so a
+fresh clone needs no Homebrew zstd. Rebuild them with `./scripts/build-hactool.sh` and
+`./scripts/build-nszunpack.sh` — both write into the tracked paths, so the working tree
+goes dirty and the diff is binary noise; keep that out of feature commits. At v1.7.21
+their SHA-256 are `a2d0525bfe1e2e5d29a51fbe57c3515d6fe018b5a6d15da45a6873a4d872c3ad` and
+`e776e7e2a4cc01cfa0dfc83d5dde7028146e73b8d9f0f68ce2189bf0aaed551e`; if yours differ after
+a rebuild, that is expected (compiler and zstd versions change), just check the app still
+launches each tool successfully.
+
 ---
 
 ## Running the tests

@@ -26,6 +26,11 @@ app/*.xcodeproj/xcuserdata/
 # macOS
 .DS_Store
 
+# Keys are per-console and must never enter the repo; they live beside it.
+*.keys
+prod.keys
+title.keys
+
 # Python bytecode from scripts/triage
 __pycache__/
 *.py[cod]

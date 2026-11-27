@@ -91,39 +91,25 @@ tools/nszunpack/nszunpack unpack "/path/to/game.nsz" /tmp/game.nsp
 应用内：详情面板新增「解包为 NSP…」按钮，选好保存位置即可；深度检查会对
 NSZ 自动解包到临时目录、校验完再删除。
 
-## 6. 真文件测试矩阵（2026-11-25，本机 14 个 NSZ）
+## 6. 样本测试矩阵（2026-11-25，14 个零售 NSZ）
 
-| 包 | 结构 | 解包 | CNMT 哈希 |
-|---|---|---|---|
-| Sample Game 本体 | 3 sections | 408 MiB | 4/4 一致 |
-| Sample Game 更新 | 417 sections + NCZBLOCK | 289 MiB | 4/4 一致 |
-| 某本体 v1.1.0（升级档） | 4 sections | 38 MiB | 4/4 一致 |
-| 某本体 本体 | 3 sections | 6.0 GiB | 无 cnmt.xml |
-| 某个更新包 本体 | 3 sections | 5.4 GiB | 无 cnmt.xml |
-| 某个更新包 v1.1.0 | 692 sections + NCZBLOCK | 190 MiB | 4/4 一致 |
-| 某更新包 本体 | 3 sections | 18 MiB | 无 cnmt.xml |
-| 某更新包 v1.0.7 | 4 sections + NCZBLOCK | 83 MiB | 4/4 一致 |
-| 某更新包 本体 | 3 sections | 180 MiB | 无 cnmt.xml |
-| 某更新包 v1.1.6 | 131 sections + NCZBLOCK | 92 MiB | 4/4 一致 |
-| Another Game 本体 | 3 sections | 2.7 GiB | 4/4 一致 |
-| Another Game v1.1.0 | 3 sections | 118 MiB | 无 cnmt.xml |
-| Sample Game B 本体 | 3 sections | 2.1 GiB | 无 cnmt.xml |
-| Sample Game B v1.2.2 | 5 sections + NCZBLOCK | 86 MiB | 4/4 一致 |
+样本覆盖本体、更新档与 DLC，体积从十几 MiB 到 6 GiB；结构上三种形态都出现过：3–4
+sections 的普通包、带 NCZBLOCK 的几百 sections、以及 6 GiB 级的单 NCA 包。
 
-全部 14 个都成功解包（rc=0），无 zstd 错误、无 section 越界。
+- 14/14 全部解包成功（rc=0），无 zstd 错误、无 section 越界。
+- 13/14 的解包结果与包内 `.cnmt.xml` 哈希 4/4 一致；1 个 5.4 GiB 的样本包内没有清单，
+  只能给出引擎结论，界面显示「无法确认」。
+- 反例测试：把某样本解包出的 NSP 中间 16 字节翻转，深度检查从绿变成「内容无法确认」
+  （不会误判成绿，也不会冤枉成红）。
 
 ### 6.1 应用内深度检查的最终结论（14/14 跑完）
 
-| 结果 | 数量 | 包 |
+| 结果 | 数量 | 说明 |
 |---|---|---|
-| 绿（签名 + 哈希通过） | 13 | 上述 14 个里除某个更新包本体以外的全部 |
-| 无法确认 | 1 | 某个更新包本体（5.4 GiB，包内无 CNMT 清单；引擎在 RomFS 层级表上报不一致） |
+| 绿（签名 + 哈希通过） | 13 | 多个带 NCZBLOCK 的升级档（最长 692 sections）都跑通 |
+| 无法确认 | 1 | 5.4 GiB 样本，包内无 CNMT 清单；引擎在 RomFS 层级表上报不一致 |
 
-另外三个曾经卡在「无法验证」的升级档（某本体 v1.1.0、某个更新包 v1.1.0、某更新包 v1.1.6、
-Sample Game B v1.2.2）在修掉两处会导致引擎中途 `exit` 的地方后，全部变成绿。
-
-反例测试：把 某更新包 本体解包出的 NSP 中间 16 字节翻转，深度检查从绿变成
-「内容无法确认」（不会误判成绿，也不会冤枉成红）。
+几个曾卡在「无法验证」的升级档，在修掉两处会导致引擎中途 `exit` 的地方后，全部变成绿。
 
 ## 7. 已知限制
 

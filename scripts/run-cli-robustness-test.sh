@@ -17,7 +17,7 @@
 set -eu
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-FIXTURE=${FIXTURE:-${SWITCHMTP_BATCH_TEST_FOLDER:-$HOME/fixture}}
+FIXTURE=${FIXTURE:-${SWITCHMTP_BATCH_TEST_FOLDER:-${HOME}/SwitchMTP-Batch-fixture}}
 
 if [ -n "${CLI_BIN:-}" ]; then
     BIN="$CLI_BIN"
