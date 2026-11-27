@@ -10,7 +10,9 @@
 //   * every package checkbox is an addressable AXButton with its own identifier;
 //   * pressing those buttons actually flips the model (single item, whole group,
 //     select all / none);
-//   * the search field still filters, and clearing it restores the full list.
+//   * the search field still filters, and clearing it restores the full list;
+//   * a right click opens the row menu and its two removal items really drop
+//     one package / one whole game, without a rescan resurrecting them.
 //
 // Usage: ax-scroll-list-test <pid>       (see run-ax-scroll-list-test.sh)
 // Exit status 0 = all cases passed.
@@ -99,15 +101,23 @@ func description(_ el: AXUIElement) -> String {
     (attr(el, kAXDescriptionAttribute) as? String) ?? ""
 }
 
-/// Leading token of a group label, used as a search keyword. The fixture folder
-/// belongs to whoever runs the script, so no title is hard-coded.
-func searchKeyword(from groups: [AXUIElement]) -> String? {
-    for group in groups {
-        let label = description(group).trimmingCharacters(in: .whitespacesAndNewlines)
-        let prefix = label.prefix { !" ，,·（(|".contains($0) }
-        if prefix.count >= 2 { return String(prefix) }
+/// A Title ID shown in the list, used as a search keyword.
+///
+/// The group label cannot be used: once the Chinese catalogue has loaded it is
+/// the official Chinese name, while the filter matches display names, Title IDs
+/// and file names — searching for it legitimately returns nothing. A Title ID is
+/// printed on every group row and is always matched by the filter.
+func searchKeyword(in root: AXUIElement) -> String? {
+    let hex = CharacterSet(charactersIn: "0123456789abcdefABCDEF")
+    let candidates = findAll(root) { el in
+        guard role(el) == kAXStaticTextRole as String else { return false }
+        let text = stringValue(el).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard text.count >= 8, text.count <= 16 else { return false }
+        return text.unicodeScalars.allSatisfy { hex.contains($0) }
     }
-    return nil
+    guard let el = candidates.first else { return nil }
+    let text = stringValue(el).trimmingCharacters(in: .whitespacesAndNewlines)
+    return String(text.prefix(8)).lowercased()
 }
 
 func title(_ el: AXUIElement) -> String {
@@ -167,6 +177,43 @@ func findAll(_ root: AXUIElement, where predicate: (AXUIElement) -> Bool) -> [AX
     var out: [AXUIElement] = []
     walk(root) { el, _ in if predicate(el) { out.append(el) } }
     return out
+}
+
+
+// MARK: - Row context menus
+
+/// Opens the row's right-click menu through AX. The menu hangs off the group
+/// checkbox itself for game rows and off the row's AXGroup for package rows,
+/// so a couple of parents are tried before giving up.
+func showRowMenu(for el: AXUIElement) -> Bool {
+    var current: AXUIElement? = el
+    for _ in 0..<4 {
+        guard let candidate = current else { break }
+        _ = AXUIElementPerformAction(candidate, "AXShowMenu" as CFString)
+        if waitUntil(2, { removalMenuItem() != nil }) { return true }
+        current = attr(candidate, kAXParentAttribute) as! AXUIElement?
+    }
+    return false
+}
+
+/// The destructive "从清单移除「…」" item of whatever menu is currently open.
+func removalMenuItem() -> AXUIElement? {
+    findAll(app) { el in
+        role(el) == "AXMenuItem" && title(el).contains("从清单移除")
+    }.first
+}
+
+/// Escape closes a popup that is still tracking. Posted to the app only.
+func dismissMenus() {
+    keyStroke(53)
+    Thread.sleep(forTimeInterval: 0.25)
+}
+
+/// The package count of a group row, read from its "selected/total" value.
+func groupPackageCount(_ el: AXUIElement) -> Int {
+    let parts = stringValue(el).split(separator: "/")
+    guard parts.count == 2 else { return 0 }
+    return Int(parts[1]) ?? 0
 }
 
 // MARK: - Synthetic typing (the search field only updates on real key events)
@@ -456,7 +503,7 @@ if let searchField {
     // ⌘A is a menu key equivalent and needs a key window; delete does not.
     for _ in 0..<12 { keyStroke(51) }
 
-    if let keyword = searchKeyword(from: groupBoxes(in: workspace)) {
+    if let keyword = searchKeyword(in: workspace) {
         typeText(keyword)
 
         let filtered = waitUntil(3) {
@@ -465,8 +512,13 @@ if let searchField {
         }
         check("TC7.1 搜索后只剩匹配组", filtered,
               "groups=\(groupBoxes(in: workspace).count) baseline=\(baselineGroups)")
-        check("TC7.2 剩下的组都命中关键字",
-              groupBoxes(in: workspace).allSatisfy { description($0).contains(keyword) })
+        // Rows print the Title ID they matched, so the hit is visible in the
+        // filtered list instead of only being implied by a smaller count.
+        check("TC7.2 结果里能看到命中的 Title ID",
+              findAll(workspace) { el in
+                  role(el) == kAXStaticTextRole as String && stringValue(el).contains(keyword)
+              }.count > 0,
+              "keyword=\(keyword)")
     } else {
         skip("TC7.1/TC7.2 搜索过滤", "清单里取不到可用关键字")
     }
@@ -553,6 +605,75 @@ if let expandAll = find(workspace, where: { help($0).contains("展开/收起全�
 }
 check("TC8.6 再展开恢复 44 行", waitUntil(3) { packageBoxes(in: workspace).count >= 44 },
       "count=\(packageBoxes(in: workspace).count)")
+
+
+// MARK: - TC9: right-click removal, and a rescan that respects it
+
+// Everything here mutates the plan, so it runs last. A small group is chosen
+// on purpose: the rest of the list stays addressable for the package case.
+let groupsForRemoval = groupBoxes(in: workspace)
+if let group = groupsForRemoval.min(by: { groupPackageCount($0) < groupPackageCount($1) }),
+   groupPackageCount(group) > 0 {
+    let memberCount = groupPackageCount(group)
+    let label = description(group)
+    let totalBefore = selectionSummary(in: workspace)?.total ?? 0
+
+    check("TC9.1 组行右键能打开菜单", showRowMenu(for: group) && removalMenuItem() != nil,
+          "label=\(label)")
+    if let item = removalMenuItem() {
+        _ = press(item)
+        check("TC9.2 菜单项移除整个游戏（\(memberCount) 项）",
+              waitUntil(4) { selectionSummary(in: workspace)?.total == totalBefore - memberCount },
+              "before=\(totalBefore) after=\(selectionSummary(in: workspace)?.total ?? -1)")
+        check("TC9.2b 提示明确说明不删硬盘文件",
+              findAll(workspace) { el in
+                  role(el) == kAXStaticTextRole as String && stringValue(el).contains("硬盘文件没有改动")
+              }.count > 0)
+    } else {
+        check("TC9.2 菜单项移除整个游戏（\(memberCount) 项）", false, "菜单里没有移除项")
+    }
+} else {
+    check("TC9.1 组行右键能打开菜单", false, "没有可比对的组")
+}
+
+if let package = packageBoxes(in: workspace).first {
+    let label = description(package)
+    let totalBefore = selectionSummary(in: workspace)?.total ?? 0
+    check("TC9.3 包行右键能打开菜单", showRowMenu(for: package) && removalMenuItem() != nil,
+          "label=\(label)")
+    if let item = removalMenuItem() {
+        _ = press(item)
+        check("TC9.4 菜单项只移除一个包",
+              waitUntil(4) { selectionSummary(in: workspace)?.total == totalBefore - 1 },
+              "before=\(totalBefore) after=\(selectionSummary(in: workspace)?.total ?? -1)")
+    } else {
+        check("TC9.4 菜单项只移除一个包", false, "菜单里没有移除项")
+    }
+} else {
+    check("TC9.3 包行右键能打开菜单", false, "没有包行")
+}
+
+let totalAfterRemoval = selectionSummary(in: workspace)?.total ?? -1
+if let rescan = find(workspace, where: { el in
+    role(el) == kAXButtonRole as String && help(el).contains("重新扫描")
+}) {
+    _ = press(rescan)
+    // Scanning the same folder only re-reads headers; wait for the headline to
+    // leave the "正在扫描" state instead of guessing a duration.
+    let settled = waitUntil(30) {
+        let scanning = findAll(workspace) { el in
+            role(el) == kAXStaticTextRole as String && stringValue(el).contains("正在扫描")
+        }
+        return scanning.isEmpty && selectionSummary(in: workspace) != nil
+    }
+    check("TC9.5 重新扫描不会把移除的行加回来",
+          settled && selectionSummary(in: workspace)?.total == totalAfterRemoval,
+          "before=\(totalAfterRemoval) after=\(selectionSummary(in: workspace)?.total ?? -1)")
+} else {
+    check("TC9.5 重新扫描不会把移除的行加回来", false, "找不到重新扫描按钮")
+}
+
+dismissMenus()
 
 print("PASS \(passes.count)  SKIP \(skips.count)  FAIL \(failures.count)")
 exit(failures.isEmpty ? 0 : 1)

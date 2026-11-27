@@ -34,15 +34,19 @@ enum BatchScanner {
     ///   - urls: Files and/or folders to scan.
     ///   - existingPaths: Standardized paths from a prior scan; matching files
     ///     are skipped so a merge does not re-inspect unchanged packages.
+    ///   - excludedPaths: Standardized paths the user removed from the plan by
+    ///     hand. They are skipped exactly like `existingPaths`, so re-scanning
+    ///     the same folder cannot resurrect a row that was deleted on purpose.
     ///   - progress: Called with the running package count and the folder being
     ///     walked. Optional; the GUI uses it for its scanning headline.
     /// - Returns: Packages in walk order, not grouped or sorted.
     static func scan(urls: [URL],
                      existingPaths: Set<String> = [],
+                     excludedPaths: Set<String> = [],
                      shouldCancel: () -> Bool = { false },
                      progress: ((_ found: Int, _ folder: String) -> Void)? = nil) -> [InstallPackage] {
         var found: [(URL, PackageFormat, Int64)] = []
-        var seen = existingPaths
+        var seen = existingPaths.union(excludedPaths)
         var scannedDirs = 0
 
         func walk(_ url: URL) {

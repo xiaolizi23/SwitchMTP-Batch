@@ -111,6 +111,12 @@ final class BatchInstallModel: ObservableObject {
     private var scanGeneration = 0
     private var refreshScheduled = false
 
+    /// Paths the user dropped from the plan by hand. A rescan must not bring
+    /// them back, otherwise "remove this row" would only last until the next
+    /// refresh; re-importing the same folder explicitly clears it again
+    /// (`importURLs`), which is the undo path.
+    private var excludedPaths: Set<String> = []
+
     private let recentRootsKey = "batchInstallRecentRoots"
     private let keySetPathKey = "batchInstallKeySetPath"
 
@@ -241,6 +247,9 @@ final class BatchInstallModel: ObservableObject {
         var newRoots: [URL] = []
         for url in urls {
             let standardized = url.standardizedFileURL
+            // Picking the folder again is the explicit "put it back" gesture:
+            // rows removed by right-click become visible to this scan again.
+            clearExclusions(under: standardized)
             guard !roots.contains(where: { $0.standardizedFileURL == standardized }) else { continue }
             newRoots.append(standardized)
         }
@@ -258,6 +267,14 @@ final class BatchInstallModel: ObservableObject {
     func removeRoot(_ url: URL) {
         roots.removeAll { $0.standardizedFileURL == url.standardizedFileURL }
         persistRoots()
+    }
+
+    /// Forgets every exclusion at or below `url`. Only an explicit import
+    /// clears exclusions; `rescanAll` deliberately keeps them.
+    private func clearExclusions(under url: URL) {
+        let base = url.standardizedFileURL.path
+        let prefix = base.hasSuffix("/") ? base : base + "/"
+        excludedPaths = excludedPaths.filter { $0 != base && !$0.hasPrefix(prefix) }
     }
 
     func clearAll() {
@@ -280,6 +297,7 @@ final class BatchInstallModel: ObservableObject {
         scannedBytes = 0
         scanHeadline = ""
         roots = []
+        excludedPaths.removeAll()
         persistRoots()
         banner = nil
     }
@@ -303,11 +321,13 @@ final class BatchInstallModel: ObservableObject {
         banner = nil
 
         let existing = packages
+        let excluded = excludedPaths
         DispatchQueue.global(qos: .userInitiated).async { [weak self] in
             let existingPaths = Set(existing.map { $0.url.standardizedFileURL.path })
             let found = BatchScanner.scan(
                 urls: urls,
                 existingPaths: existingPaths,
+                excludedPaths: excluded,
                 shouldCancel: { token.isCancelled }) { count, folder in
                 DispatchQueue.main.async { [weak self] in
                     guard let self, generation == self.scanGeneration else { return }
@@ -552,9 +572,43 @@ final class BatchInstallModel: ObservableObject {
         }
     }
 
+    // MARK: - Removing rows
+
+    /// Drops one package from the plan. The file on disk is not touched; its
+    /// path is excluded so a later rescan cannot bring the row back — that is
+    /// what makes "remove" mean the same thing here as it does in Finder.
+    /// Picking the folder again is the undo (`importURLs`).
+    func removePackage(_ id: InstallPackage.ID) {
+        guard let index = packages.firstIndex(where: { $0.id == id }) else { return }
+        let gone = packages[index]
+        let name = displayTitle(for: gone)
+        excludedPaths.insert(gone.url.standardizedFileURL.path)
+        packages.remove(at: index)
+        finishRemoval(count: 1, name: name)
+    }
+
+    /// Drops every member of a group — base, updates and add-ons — because the
+    /// game is the unit the row represents, even when a filter or a search is
+    /// only showing part of it on screen.
     func removePackages(in groupID: String) {
+        let gone = packages.filter { $0.groupKey == groupID }
+        guard !gone.isEmpty else { return }
+        let name = groups.first(where: { $0.id == groupID })?.name ?? gone[0].displayName
+        for package in gone {
+            excludedPaths.insert(package.url.standardizedFileURL.path)
+        }
         packages.removeAll { $0.groupKey == groupID }
+        finishRemoval(count: gone.count, name: name)
+    }
+
+    private func finishRemoval(count: Int, name: String) {
+        scannedFileCount = packages.count
+        scannedBytes = totalBytes
         rebuildGroups()
+        bannerIsError = false
+        banner = count == 1
+            ? "已从清单移除「\(name)」，硬盘文件没有改动。重新扫描不会把它加回来；重新选择该文件夹可恢复。"
+            : "已从清单移除「\(name)」共 \(count) 项，硬盘文件没有改动。重新扫描不会把它们加回来；重新选择该文件夹可恢复。"
     }
 
     /// Mutates one package and mirrors the copy into every group snapshot that

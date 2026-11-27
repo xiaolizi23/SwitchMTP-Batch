@@ -536,6 +536,37 @@ struct BatchInstallSheet: View {
             selectedGroupID = group.id
             selectedPackageID = nil
         }
+        .contextMenu { groupContextMenu(group) }
+    }
+
+    /// Right-click menu for a game row. Every item repeats the name, because a
+    /// right click does not move the row selection highlight — the label has to
+    /// carry the target instead of the tint.
+    @ViewBuilder
+    private func groupContextMenu(_ group: InstallPackageGroup) -> some View {
+        let expanded = expandedGroups.contains(group.id)
+        let allSelected = group.eligibleCount > 0 && group.eligibleSelectedCount == group.eligibleCount
+
+        Button(allSelected ? "取消勾选「\(group.name)」" : "勾选「\(group.name)」") {
+            model.setGroupSelection(group, selected: !allSelected)
+        }
+        .disabled(group.eligibleCount == 0)
+
+        Button(expanded ? "收起「\(group.name)」" : "展开「\(group.name)」") {
+            setExpanded(group.id, expanded: !expanded)
+        }
+
+        Divider()
+
+        Button("在访达中显示") { revealInFinder(group.packages.map(\.url)) }
+
+        Divider()
+
+        Button(role: .destructive) {
+            removeRow(for: group)
+        } label: {
+            Text("从清单移除「\(group.name)」")
+        }
     }
 
     private func groupHeader(_ group: InstallPackageGroup) -> some View {
@@ -720,6 +751,65 @@ struct BatchInstallSheet: View {
             selectedPackageID = package.id
             selectedGroupID = nil
         }
+        .contextMenu { packageContextMenu(package) }
+    }
+
+    /// Right-click menu for a package row. Same rule as the group menu: the
+    /// item titles name the row they act on.
+    @ViewBuilder
+    private func packageContextMenu(_ package: InstallPackage) -> some View {
+        let title = model.displayTitle(for: package)
+
+        Button(package.isSelected ? "取消勾选「\(title)」" : "勾选「\(title)」") {
+            model.togglePackage(package.id)
+        }
+        .disabled(!package.isSelectable || package.isSubmitted)
+
+        Button("在访达中显示") { revealInFinder([package.url]) }
+
+        if package.format == .nsz && !package.isSubmitted {
+            Button("解包为 NSP…") { chooseUnpackDestination(for: package) }
+        }
+
+        Divider()
+
+        Button(role: .destructive) {
+            removeRow(for: package)
+        } label: {
+            Text("从清单移除「\(title)」")
+        }
+    }
+
+    private func setExpanded(_ id: String, expanded: Bool) {
+        if expanded {
+            expandedGroups.insert(id)
+        } else {
+            expandedGroups.remove(id)
+        }
+    }
+
+    /// Reveals the row's file in Finder. A game can span several folders, so
+    /// the first member decides which folder gets opened.
+    private func revealInFinder(_ urls: [URL]) {
+        guard let first = urls.first else { return }
+        NSWorkspace.shared.activateFileViewerSelecting([first])
+    }
+
+    /// Removal is list-only: it never deletes the file, and the model marks the
+    /// path so a rescan will not re-add it. Selection and expansion are cleared
+    /// here so the detail pane cannot keep pointing at a row that is gone.
+    private func removeRow(for group: InstallPackageGroup) {
+        if selectedGroupID == group.id { selectedGroupID = nil }
+        if let selected = selectedPackageID, group.packages.contains(where: { $0.id == selected }) {
+            selectedPackageID = nil
+        }
+        expandedGroups.remove(group.id)
+        model.removePackages(in: group.id)
+    }
+
+    private func removeRow(for package: InstallPackage) {
+        if selectedPackageID == package.id { selectedPackageID = nil }
+        model.removePackage(package.id)
     }
 
     private func packageHelp(_ package: InstallPackage) -> String {        if package.isSubmitted { return "已交给 DBI，本次不再重复发送" }
@@ -987,7 +1077,7 @@ struct BatchInstallSheet: View {
                         model.removePackages(in: package.groupKey)
                         selectedPackageID = nil
                     } label: {
-                        Label("移除此组", systemImage: "trash")
+                        Label("从清单移除此游戏", systemImage: "trash")
                     }
                     .controlSize(.small)
                 }
