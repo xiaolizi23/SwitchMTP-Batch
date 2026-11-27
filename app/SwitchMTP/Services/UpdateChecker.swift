@@ -27,8 +27,16 @@ enum UpdateCheckState: Equatable {
     case updateAvailable(version: String, releaseUrl: URL)
     /// Already on the latest version
     case upToDate
+    /// No published release yet: the repository is private (anonymous API is
+    /// rejected) or no GitHub Release has been cut. Not a network failure.
+    case noRelease
     /// Check failed (network or server error)
     case failed
+}
+
+/// Internal error distinguishing "no published release" from a real failure.
+enum UpdateCheckError: Error {
+    case noRelease
 }
 
 // MARK: - UpdateChecker
@@ -64,6 +72,8 @@ final class UpdateChecker: ObservableObject {
             } else {
                 state = .upToDate
             }
+        } catch UpdateCheckError.noRelease {
+            state = .noRelease
         } catch {
             state = .failed
         }
@@ -129,14 +139,18 @@ final class UpdateChecker: ObservableObject {
         request.timeoutInterval = 15
 
         let (data, response) = try await URLSession.shared.data(for: request)
-        if let httpResponse = response as? HTTPURLResponse,
-           !(200..<300).contains(httpResponse.statusCode) {
-            throw URLError(.badServerResponse)
+        if let httpResponse = response as? HTTPURLResponse {
+            // A private repo answers anonymous requests with 404; treat that
+            // like "no published release" rather than a hard failure.
+            if httpResponse.statusCode == 404 { throw UpdateCheckError.noRelease }
+            if !(200..<300).contains(httpResponse.statusCode) {
+                throw URLError(.badServerResponse)
+            }
         }
 
         let releases = try JSONDecoder().decode([GitHubRelease].self, from: data)
         guard let latest = releases.first(where: { !$0.prerelease }) else {
-            throw URLError(.zeroByteResource)
+            throw UpdateCheckError.noRelease
         }
         return latest
     }

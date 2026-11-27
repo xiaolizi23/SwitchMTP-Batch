@@ -229,12 +229,12 @@
       "zh-Hans": "无法收集诊断信息",
       "zh-Hant": "無法收集診斷資訊"
     },
-    "Could not find CLI_USAGE.md in the application bundle.": {
-      "es": "No se encontró CLI_USAGE.md en el paquete de la aplicación.",
-      "ja": "アプリケーションバンドル内に CLI_USAGE.md が見つかりませんでした。",
-      "ru": "Файл CLI_USAGE.md не найден в пакете приложения.",
-      "zh-Hans": "在应用程序包中找不到 CLI_USAGE.md。",
-      "zh-Hant": "在應用程式套件中找不到 CLI_USAGE.md。"
+    "Could not find the CLI guide in the application bundle.": {
+      "es": "No se encontró la guía de la CLI en el paquete de la aplicación.",
+      "ja": "アプリケーションバンドル内に CLI ガイドが見つかりませんでした。",
+      "ru": "Руководство CLI не найдено в пакете приложения.",
+      "zh-Hans": "在应用程序包中找不到 CLI 使用指南。",
+      "zh-Hant": "在應用程式套件中找不到 CLI 使用指南。"
     },
     "Date not reported by the device": {
       "es": "El dispositivo no informa de la fecha",
@@ -977,6 +977,13 @@
       "es": "No hay ningún almacenamiento seleccionado. Elige uno en la barra lateral e inténtalo de nuevo.",
       "ru": "Хранилище не выбрано. Выберите хранилище на боковой панели и повторите попытку.",
       "ja": "ストレージが選択されていません。サイドバーでストレージを選択してから、もう一度お試しください。"
+    },
+    "No published release yet.": {
+      "es": "Aún no hay versiones publicadas.",
+      "ja": "公開リリースはまだありません。",
+      "ru": "Публичных выпусков пока нет.",
+      "zh-Hans": "暂无已发布的版本。",
+      "zh-Hant": "暫無已發布的版本。"
     }
   }
 }

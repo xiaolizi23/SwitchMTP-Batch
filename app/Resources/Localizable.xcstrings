@@ -3591,46 +3591,6 @@
         }
       }
     },
-    "Could not find CLI_USAGE.md in the application bundle.": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Could not find CLI_USAGE.md in the application bundle."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No se encontró CLI_USAGE.md en el paquete de la aplicación."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "アプリケーションバンドル内に CLI_USAGE.md が見つかりませんでした。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Файл CLI_USAGE.md не найден в пакете приложения."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在应用程序包中找不到 CLI_USAGE.md。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "在應用程式套件中找不到 CLI_USAGE.md。"
-          }
-        }
-      }
-    },
     "Create": {
       "extractionState": "manual",
       "localizations": {
@@ -15373,6 +15333,87 @@
     },
     "—": {
       "shouldTranslate": false
+    },
+    "Could not find the CLI guide in the application bundle.": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Could not find the CLI guide in the application bundle."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se encontró la guía de la CLI en el paquete de la aplicación."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリケーションバンドル内に CLI ガイドが見つかりませんでした。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Руководство CLI не найдено в пакете приложения."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在应用程序包中找不到 CLI 使用指南。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在應用程式套件中找不到 CLI 使用指南。"
+          }
+        }
+      }
+    },
+    "No published release yet.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No published release yet."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Aún no hay versiones publicadas."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "公開リリースはまだありません。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Публичных выпусков пока нет."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暂无已发布的版本。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "暫無已發布的版本。"
+          }
+        }
+      }
     }
   },
   "version": "1.0"

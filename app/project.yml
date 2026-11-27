@@ -47,6 +47,9 @@ targets:
         buildPhase: resources
       - path: ../THIRD_PARTY.md
         buildPhase: resources
+      # CLI usage guide, exported by the "Export CLI Usage Guide" menu item.
+      - path: ../docs/CLI.md
+        buildPhase: resources
     settings:
       base:
         PRODUCT_NAME: SwitchMTPBatch

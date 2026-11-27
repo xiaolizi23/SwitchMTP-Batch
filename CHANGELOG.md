@@ -39,6 +39,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `.running`；行内条的显示条件是 `deepState != .notRun`，导致运行过程中进度条与百分比
   完全不出现，要等结果回来才蹦出满条。现在任务入队即标 `.running`，行内条与百分比随
   引擎实时进度填充，结束后停留为结论色满条。
+- **修复「导出 CLI 使用指南」失败**：导出按钮去 bundle 里找从未打包的 `CLI_USAGE.md`，
+  必然报「在应用程序包中找不到」。现把 `docs/CLI.md` 作为资源编入 bundle，导出读取它。
+- **更新检查区分「暂无发布版本」与网络失败**：私有仓库对匿名 API 返回 404、或仓库还没
+  切 GitHub Release 时，原先一律标红「检查更新失败」。现在 404 / 无 release 归为灰色
+  「暂无已发布的版本」；只有真正的网络或服务器错误才报失败。
 
 ### 清理
 

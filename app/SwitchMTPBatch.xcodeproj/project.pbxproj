@@ -20,6 +20,7 @@
 		2B462E4B0AE9ED69A674EC38 /* BatchGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A35705E7C89FA86B79AD82 /* BatchGrouper.swift */; };
 		3232C230A20562A35F06F46A /* BatchScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 118F96B11DA513FDAC864E2D /* BatchScanner.swift */; };
 		3262F17C56504F29B3CBC0B9 /* CLIUSBMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 764F9AB8F26B17D6696FA94C /* CLIUSBMonitor.swift */; };
+		32BB447F34F03682E0A3A5D4 /* CLI.md in Resources */ = {isa = PBXBuildFile; fileRef = 22F756949DC2EEAC32353C7A /* CLI.md */; };
 		3AB869051D34C1838F6956E4 /* BatchGrouper.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9A35705E7C89FA86B79AD82 /* BatchGrouper.swift */; };
 		407BD0581A24EB8426C68267 /* PackageInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B17A61DD50CE75EC03BE039 /* PackageInspector.swift */; };
 		408381398BF79F52007237F1 /* BatchScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 118F96B11DA513FDAC864E2D /* BatchScanner.swift */; };
@@ -112,6 +113,7 @@
 		2003448EE8FDFA0900B88974 /* FavoriteItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FavoriteItem.swift; sourceTree = "<group>"; };
 		207AAC06E7F18614FC9184A7 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		213E3D5109EC59B11FC783CB /* libusb-1.0.0.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libusb-1.0.0.dylib"; path = "../third_party/libusb/lib/libusb-1.0.0.dylib"; sourceTree = "<group>"; };
+		22F756949DC2EEAC32353C7A /* CLI.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = CLI.md; sourceTree = "<group>"; };
 		233ECF7304E35A5E256ED211 /* USBMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = USBMonitor.swift; sourceTree = "<group>"; };
 		27F3376BE787331D591994A8 /* THIRD_PARTY.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = THIRD_PARTY.md; sourceTree = "<group>"; };
 		2F0CFA2E520E359F76C0B137 /* TransferBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TransferBar.swift; sourceTree = "<group>"; };
@@ -188,6 +190,14 @@
 				C9810D759F1045FD568F35D3 /* T2S.json */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		26BED0C15AE5176B8CAB726D /* docs */ = {
+			isa = PBXGroup;
+			children = (
+				22F756949DC2EEAC32353C7A /* CLI.md */,
+			);
+			path = docs;
 			sourceTree = "<group>";
 		};
 		3194C93CE4CCFE1182244F1C = {
@@ -302,6 +312,7 @@
 			children = (
 				5A4DDD334534E38895C0B02A /* LICENSE */,
 				27F3376BE787331D591994A8 /* THIRD_PARTY.md */,
+				26BED0C15AE5176B8CAB726D /* docs */,
 			);
 			name = "SwitchMTP-Batch";
 			path = ..;
@@ -428,6 +439,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				ABB43F4D2D13E802384F3CBB /* Assets.xcassets in Resources */,
+				32BB447F34F03682E0A3A5D4 /* CLI.md in Resources */,
 				E6FD0FCCD4F713D9D677F107 /* Credits.html in Resources */,
 				F124F2D881D4A4949481EFB0 /* LICENSE in Resources */,
 				02973F176241256DBBFA1ED0 /* Localizable.xcstrings in Resources */,

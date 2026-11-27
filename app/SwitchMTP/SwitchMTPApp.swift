@@ -156,7 +156,7 @@ struct FileMenuCommands: Commands {
         panel.prompt = String(localized: "Export")
         
         if panel.runModal() == .OK, let destinationURL = panel.url {
-            if let sourceURL = Bundle.main.url(forResource: "CLI_USAGE", withExtension: "md") {
+            if let sourceURL = Bundle.main.url(forResource: "CLI", withExtension: "md") {
                 do {
                     if FileManager.default.fileExists(atPath: destinationURL.path) {
                         try FileManager.default.removeItem(at: destinationURL)
@@ -173,7 +173,7 @@ struct FileMenuCommands: Commands {
             } else {
                 let alert = NSAlert()
                 alert.messageText = String(localized: "Export Failed")
-                alert.informativeText = String(localized: "Could not find CLI_USAGE.md in the application bundle.")
+                alert.informativeText = String(localized: "Could not find the CLI guide in the application bundle.")
                 alert.alertStyle = .critical
                 alert.addButton(withTitle: "OK")
                 alert.runModal()

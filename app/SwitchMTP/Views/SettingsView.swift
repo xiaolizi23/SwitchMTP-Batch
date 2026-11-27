@@ -155,6 +155,11 @@ private struct UpdateButtonRow: View {
                         .foregroundStyle(.secondary)
                         .font(.callout)
                         .help(String(localized: "App is up to date."))
+                case .noRelease:
+                    Text(String(localized: "No published release yet.", comment: "No release available status"))
+                        .foregroundStyle(.secondary)
+                        .font(.callout)
+                        .help(String(localized: "No published release yet."))
                 case .failed:
                     Text(String(localized: "Check failed", comment: "Update check failed status"))
                         .foregroundStyle(.red)
