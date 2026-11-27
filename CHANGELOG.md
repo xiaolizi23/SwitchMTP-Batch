@@ -14,12 +14,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
   `codesign --verify --deep --strict` 校验；架构标签由主二进制的真实切片自动判定。
   Release 工作流、README 安装步骤与归档约定同步改为 DMG；不再并行产出 zip。
 
+### Docs
+
+- 开发期的 AX / 真机 / 压力测试等内部调试记录、取证截图与对照表不再随仓库
+  发布；对外文档只保留安装、排障、协议与 CLI 说明。
+
 ## 1.7.21 — 2026-11-27
 
 ### CLI
 
-逐项复核上游 Go CLI（`backend/cmd/switchmtp/`）后补齐并修正 Swift CLI，详见
-`docs/CLI_UPSTREAM_DIFF_2026-11-27.md`。
+逐项复核上游 Go CLI（`backend/cmd/switchmtp/`）后补齐并修正 Swift CLI。
 
 - **对齐上游**：存储选择器按 数字 id → kind 别名 → 显示名精确匹配 → 唯一前缀 解析，
   歧义报错不猜测；`ls -R` 递归、目录优先排序与底部统计；`rm` 多路径/同存储/只读/根保护；
@@ -97,8 +101,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - 全量复扫 数十包 / 约百 GB / 14.0 分钟：39 绿、3 黄、2 灰、0 红，与 1.7.17
   基线逐项一致。两个「灰」（智慧再现本体、空前盛会本体）确认是「仅 IVFC Level 4
   不符 + 无 CNMT 清单可对照」，继续按证据不足处理，不冒充绿。
-- 报告与数据：`docs/REAL_SAMPLE_CROSSCHECK_2026-11-26.md`、
-  `docs/扫描结果_1.7.20_2026-11-26.xlsx`、`docs/实机证据_2026-11-26/`。
 - 补完的真机结论（**已更正**）：**某本体本体 NSZ 装得上、能启动**。上一版这里写的是
   「DBI 报完成但没落地」，那是取证错误：DBI 的 MTP responder 启动时建目录树、装完不
   刷新，装完立刻 ls 读到的是旧表；内置 `Contents/registered` 的目录名是序号
@@ -209,7 +211,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 - 搜索框清空改用逐字符 delete：⌘A 是需要 key window 的菜单快捷键，后台投递无效。
 - TC8 行点选（8.2/8.3）默认 SKIP：AppKit 不把投递的鼠标事件路由进窗口内容；
   需要时用 `AX_TEST_HID_CLICKS=1` 恢复原 HID 路径（会移动真实光标，25 PASS）。
-  记录见 `docs/AX_INPUT_ISOLATION_2026-11-26.md`。
 
 ## [1.7.11] - 2026-11-26
 
@@ -229,7 +230,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### 备注
 
-- 本轮未改动红 / 绿判定主逻辑。DBI 实机对照与根因记录见 `docs/REAL_SAMPLE_CROSSCHECK_2026-11-25.md`。
+- 本轮未改动红 / 绿判定主逻辑。
 
 ## [1.7.9] - 2026-11-25
 
@@ -240,7 +241,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ### 备注
 
-- 本轮**未改动红 / 绿判定逻辑**：某本体 本体在离线 hactool 报内容分区哈希 FAIL，但 DBI 实机全 OK 落地、未回滚；根因（超大 RomFS IVFC 遍历 / body key 派生 / DBI 校验覆盖面）待进一步复核。对照记录见 `docs/REAL_SAMPLE_CROSSCHECK_2026-11-25.md`。
+- 本轮**未改动红 / 绿判定逻辑**：某本体 本体在离线 hactool 报内容分区哈希 FAIL，但 DBI 实机全 OK 落地、未回滚；根因（超大 RomFS IVFC 遍历 / body key 派生 / DBI 校验覆盖面）待进一步复核。
 
 ## [1.7.8] - 2026-11-25
 

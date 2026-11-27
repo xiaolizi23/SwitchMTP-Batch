@@ -15,21 +15,9 @@ standard MTP mechanism.
 > **This tree also carries the batch install workspace.** Drag a whole game library in,
 > review the base/update/DLC it found, check each package, then send the selection to DBI
 > in order. It adds an optional signature/hash pass with your own `prod.keys` via a bundled
-> `hactool`. See [BATCH_WORKSPACE.zh-CN.md](BATCH_WORKSPACE.zh-CN.md) (Chinese) and
-> [docs/IMPLEMENTATION_NOTES.md](docs/IMPLEMENTATION_NOTES.md).
+> `hactool`. See [BATCH_WORKSPACE.zh-CN.md](BATCH_WORKSPACE.zh-CN.md) (Chinese).
 
 ---
-
-## 发布与归档约定
-
-发布包放在工作区根目录（本仓库的上一级），只保留最新一版：
-
-- DMG 命名 `SwitchMTP-Batch-<版本号>-<架构>.dmg`，架构与包内真实架构一致；
-- 旧版 DMG 与旧版 app 移入根目录的 `归档/旧版发布包/`；
-- 根目录 `SwitchMTP Batch.app` 始终是最新构建的拷贝；
-- 版本号在 `Info.plist`、git tag、DMG 名三处保持一致。
-
-完整说明见根目录 `AGENTS.md`。
 
 ## Requirements
 
