@@ -16,6 +16,7 @@ extern void FetchAvailableDevices(on_cb_result_t onDone);
 extern void Initialize(char *initInputJson, on_cb_result_t onDone);
 extern void FetchDeviceInfo(char *deviceInputJson, on_cb_result_t onDone);
 extern void FetchStorages(char *deviceInputJson, on_cb_result_t onDone);
+extern void FetchInstalledTitles(char *deviceInputJson, on_cb_result_t onDone);
 extern void Walk(char *walkInputJson, on_cb_result_t onDone);
 extern void MakeDirectory(char *makeDirectoryInputJson, on_cb_result_t onDone);
 extern void RenameFile(char *renameFileInputJson, on_cb_result_t onDone);

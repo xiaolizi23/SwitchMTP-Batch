@@ -33,6 +33,11 @@ final class MTPManager: ObservableObject {
     /// Kept separate from `errorMessage` so recovery never looks like a failure.
     @Published var queueNotice: String? = nil
     @Published var availableDevices: [MTPDeviceInfo] = []
+    /// Title IDs the console reports as already installed, normalized to the
+    /// bare uppercase form (no 0x prefix, no spaces). Filled once a session
+    /// comes up and cleared on disconnect. Used only to flag duplicates in
+    /// the batch plan; it never claims an install succeeded.
+    @Published private(set) var installedTitleIDs: Set<String> = []
     @Published private(set) var isTransferActive: Bool = false {
         didSet {
             guard isTransferActive != oldValue else { return }
@@ -322,6 +327,13 @@ final class MTPManager: ObservableObject {
         // mid-transfer cannot swallow the transfer's completion.
         static let transferDone: NxmtpOnCbResult = { jsonPtr in
             CallbackRouter.manager?.handleTransferDone(jsonPtr: jsonPtr)
+        }
+
+        // The installed-titles manifest also bypasses `operation`: it is a
+        // one-shot read after connect, and must not block or be swallowed by a
+        // walk or a transfer that arms right after.
+        static let installedDone: NxmtpOnCbResult = { jsonPtr in
+            CallbackRouter.manager?.handleInstalledTitlesDone(jsonPtr: jsonPtr)
         }
     }
     
@@ -818,8 +830,11 @@ final class MTPManager: ObservableObject {
                 // the drain loop deliberately stops itself. Re-arm it now that
                 // the console is back, or they would wait forever.
                 self.scheduleInstallQueueDrain()
+                // Read the installed-applications manifest for duplicate
+                // checking in the batch plan. Independent callback slot.
+                self.fetchInstalledTitles()
             }
-            
+
         case .walking:
             // Check if this walk was superseded by a newer directory request.
             if let dict = try? JSONSerialization.jsonObject(with: Data(jsonString.utf8)) as? [String: Any],
@@ -1833,6 +1848,7 @@ final class MTPManager: ObservableObject {
         // A different card could be behind the next connection, so nothing kept
         // from this one can be trusted.
         listingCache.removeAll()
+        installedTitleIDs = []
         walkingPath = nil
         showingCachedListing = false
         uploadDestinationCacheKey = nil
@@ -1888,7 +1904,43 @@ final class MTPManager: ObservableObject {
             }
         }
     }
-    
+
+    /// Reads the responder's installed-applications manifest once the session
+    /// is up. It runs on its own callback slot (see `installedDone`) so a walk
+    /// or transfer armed right after connect cannot swallow it. A read failure
+    /// leaves the set empty: the manifest is a startup snapshot and some
+    /// responders do not expose it, so this must never surface as a blocking
+    /// banner over a normal install.
+    private func fetchInstalledTitles() {
+        guard !deviceId.isEmpty else { return }
+        let input: [String: Any] = ["deviceId": deviceId]
+        guard let jsonString = toJsonString(input) else { return }
+        DispatchQueue.global(qos: .utility).async {
+            jsonString.withCString { ptr in
+                NxmtpFetchInstalledTitles(ptr, CallbackRouter.installedDone)
+            }
+        }
+    }
+
+    private func handleInstalledTitlesDone(jsonPtr: UnsafeMutablePointer<CChar>?) {
+        guard let jsonPtr else { return }
+        let jsonString = String(cString: jsonPtr)
+        let set = Self.parseInstalledTitleIDs(parseEnvelopeData(jsonString))
+        DispatchQueue.main.async {
+            self.installedTitleIDs = set
+        }
+    }
+
+    private static func parseInstalledTitleIDs(_ any: Any?) -> Set<String> {
+        guard let list = any as? [[String: Any]] else { return [] }
+        var set = Set<String>()
+        for entry in list {
+            let id = normalizeTitleID(entry["titleId"] as? String ?? "")
+            if !id.isEmpty { set.insert(id) }
+        }
+        return set
+    }
+
     /// Takes (or keeps) the process-wide console lease.
     @discardableResult
     private func ensureDeviceLease() -> Bool {

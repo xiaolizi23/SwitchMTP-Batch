@@ -186,6 +186,23 @@ final class BatchInstallModel: ObservableObject {
         packages.filter { $0.isSelected && $0.needsTitleModeAdvisory }.count
     }
 
+    /// Whether the console manifest already lists this package's title. Only
+    /// base games and DLC are matched: update titles (`…800`) are not listed in
+    /// the manifest and are never flagged as duplicates, so no update/reinstall
+    /// verdict is drawn here.
+    func isAlreadyOnConsole(_ package: InstallPackage) -> Bool {
+        guard package.contentType == .base || package.contentType == .dlc,
+              let id = package.normalizedTitleID else { return false }
+        return manager.installedTitleIDs.contains(id)
+    }
+
+    /// Selected base/DLC packages the console already reports as installed.
+    /// These are the rows the confirm sheet marks, and the ones the overwrite
+    /// prompt lists before sending.
+    var selectedAlreadyInstalled: [InstallPackage] {
+        selectedPackages.filter { isAlreadyOnConsole($0) }
+    }
+
     // MARK: - Install queue bridge
 
     /// Soft-pause state mirrored from the manager's serial queue.

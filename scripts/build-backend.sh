@@ -92,7 +92,8 @@ lipo -info "${BUILD}/nxmtp.dylib"
 otool -L "${BUILD}/nxmtp.dylib" | sed -n '2,$p'
 
 missing=()
-expected=(FetchAvailableDevices Initialize FetchDeviceInfo FetchStorages Walk
+expected=(FetchAvailableDevices Initialize FetchDeviceInfo FetchStorages
+          FetchInstalledTitles Walk
           MakeDirectory RenameFile DeleteFile FileExists DownloadFiles
           UploadFiles CancelTransfer Dispose FetchDiagnostics)
 for sym in "${expected[@]}"; do

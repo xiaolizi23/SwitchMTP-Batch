@@ -260,6 +260,18 @@ func FetchStorages(deviceInputJson *C.char, onDone C.on_cb_result_t) {
 	})
 }
 
+//export FetchInstalledTitles
+func FetchInstalledTitles(deviceInputJson *C.char, onDone C.on_cb_result_t) {
+	var in deviceInput
+	if err := decodeInput(deviceInputJson, &in); err != nil {
+		emitError(onDone, err)
+		return
+	}
+	withClient(in.DeviceID, onDone, func(c *nxmtp.Client) (interface{}, error) {
+		return c.InstalledTitles()
+	})
+}
+
 //export Walk
 func Walk(walkInputJson *C.char, onDone C.on_cb_result_t) {
 	var in walkInput

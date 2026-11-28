@@ -87,6 +87,13 @@ struct BatchConfirmSheet: View {
                             Text(model.displayTitle(for: package))
                                 .font(.system(size: 11))
                                 .lineLimit(1)
+                            if model.isAlreadyOnConsole(package) {
+                                Text("主机已有")
+                                    .font(.system(size: 9, weight: .semibold))
+                                    .padding(.horizontal, 5).padding(.vertical, 1)
+                                    .background(Capsule().fill(Color.purple.opacity(0.15)))
+                                    .foregroundStyle(.purple)
+                            }
                             Spacer()
                             Text(package.sizeText)
                                 .font(.system(size: 10))
@@ -147,8 +154,7 @@ struct BatchConfirmSheet: View {
                 Button("取消") { dismiss() }
                     .keyboardShortcut(.cancelAction)
                 Button {
-                    model.commit(plan: plan)
-                    onFinished()
+                    confirmAndCommit()
                 } label: {
                     Label("开始安装 \(plan.packages.count) 项", systemImage: "arrow.up.circle.fill")
                 }
@@ -179,6 +185,35 @@ struct BatchConfirmSheet: View {
                 .foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+
+    /// Sends the plan after one explicit prompt about titles already on the
+    /// console. Every selected base/DLC the manifest lists is shown in the
+    /// prompt, one per line; updates are excluded by `isAlreadyOnConsole` and
+    /// are never asked about. Cancelling leaves the sheet open and sends nothing.
+    private func confirmAndCommit() {
+        let duplicates = plan.packages.filter { model.isAlreadyOnConsole($0) }
+        guard !duplicates.isEmpty else {
+            model.commit(plan: plan)
+            onFinished()
+            return
+        }
+
+        let names = duplicates.map { model.displayTitle(for: $0) }
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        if names.count == 1 {
+            alert.messageText = "「\(names[0])」已安装在主机上，是否确认覆盖安装？"
+        } else {
+            alert.messageText = "有 \(names.count) 个游戏已安装在主机上，是否确认覆盖安装？"
+        }
+        alert.informativeText = "已在主机上：\n" + names.joined(separator: "\n")
+        alert.addButton(withTitle: "覆盖安装")
+        alert.addButton(withTitle: "取消")
+
+        guard alert.runModal() == .alertFirstButtonReturn else { return }
+        model.commit(plan: plan)
+        onFinished()
     }
 
     private func color(_ verdict: PackageVerdict) -> Color {

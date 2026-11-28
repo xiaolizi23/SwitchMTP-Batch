@@ -19,6 +19,16 @@
 
 import Foundation
 
+/// Strips the 0x prefix and whitespace and upper-cases a title ID, matching
+/// the backend's normalization so console manifest rows and local package IDs
+/// compare equal regardless of how they were written.
+func normalizeTitleID(_ s: String) -> String {
+    var t = s.trimmingCharacters(in: .whitespacesAndNewlines)
+    if t.lowercased().hasPrefix("0x") { t = String(t.dropFirst(2)) }
+    t = t.replacingOccurrences(of: " ", with: "")
+    return t.uppercased()
+}
+
 /// Container format, taken from the extension. NSZ/XCZ are NSP/XCI whose
 /// NCAs are individually zstd-compressed; the outer container is unchanged.
 enum PackageFormat: String, CaseIterable, Sendable {
@@ -302,6 +312,15 @@ struct InstallPackage: Identifiable, Sendable {
     /// The Mac side cannot read whether DBI is running in applet or title mode,
     /// so format is the only observable signal available here.
     var needsTitleModeAdvisory: Bool { format.isCompressed }
+
+    /// Title ID normalized the same way as the console's CSV rows: bare
+    /// uppercase, no 0x prefix, no spaces. Nil when the package has no usable
+    /// title ID.
+    var normalizedTitleID: String? {
+        guard let titleID else { return nil }
+        let normalized = normalizeTitleID(titleID)
+        return normalized.isEmpty ? nil : normalized
+    }
 }
 
 /// A title group shown as one expandable row in the plan.

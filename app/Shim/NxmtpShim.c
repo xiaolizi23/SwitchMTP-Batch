@@ -36,6 +36,10 @@ void NxmtpFetchStorages(const char *deviceInputJson, NxmtpOnCbResult onDone) {
   FetchStorages(NX_IN(deviceInputJson), (on_cb_result_t)onDone);
 }
 
+void NxmtpFetchInstalledTitles(const char *deviceInputJson, NxmtpOnCbResult onDone) {
+  FetchInstalledTitles(NX_IN(deviceInputJson), (on_cb_result_t)onDone);
+}
+
 void NxmtpWalk(const char *walkInputJson, NxmtpOnCbResult onDone) {
   Walk(NX_IN(walkInputJson), (on_cb_result_t)onDone);
 }

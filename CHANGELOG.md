@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.27 — 2026-11-28
+
+### GUI
+
+- **对照主机已装清单，重复项先标后确认覆盖**。连上 DBI 后默认读取主机的已安装应用清单
+  （`InstalledApplications.csv`），批量确认清单里凡是主机上已有的本体 / DLC，行内标紫色
+  「主机已有」小标签；更新补丁（`…800`）不参与重复判定。正式发送前，若勾选项目里有已在
+  主机上的本体 / DLC，会弹出二次确认框，逐个列出这些游戏，点「覆盖安装」才开始批量发送，
+  点「取消」留在确认页、不发送任何项目。清单读取失败或主机未暴露该清单时按「无重复」处理，
+  不弹阻断提示。更新 / DLC 是否真正落地仍以主机屏幕为准，本版本不在界面上展示这一判定口径。
+
 ## 1.7.26 — 2026-11-28
 
 ### GUI

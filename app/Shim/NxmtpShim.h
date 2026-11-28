@@ -38,6 +38,7 @@ void NxmtpFetchAvailableDevices(NxmtpOnCbResult onDone);
 void NxmtpInitialize(const char *initInputJson, NxmtpOnCbResult onDone);
 void NxmtpFetchDeviceInfo(const char *deviceInputJson, NxmtpOnCbResult onDone);
 void NxmtpFetchStorages(const char *deviceInputJson, NxmtpOnCbResult onDone);
+void NxmtpFetchInstalledTitles(const char *deviceInputJson, NxmtpOnCbResult onDone);
 void NxmtpWalk(const char *walkInputJson, NxmtpOnCbResult onDone);
 void NxmtpMakeDirectory(const char *makeDirectoryInputJson, NxmtpOnCbResult onDone);
 void NxmtpFileExists(const char *fileExistsInputJson, NxmtpOnCbResult onDone);
