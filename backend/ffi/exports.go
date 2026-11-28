@@ -268,7 +268,7 @@ func FetchInstalledTitles(deviceInputJson *C.char, onDone C.on_cb_result_t) {
 		return
 	}
 	withClient(in.DeviceID, onDone, func(c *nxmtp.Client) (interface{}, error) {
-		return c.InstalledTitles()
+		return c.InstalledManifest()
 	})
 }
 

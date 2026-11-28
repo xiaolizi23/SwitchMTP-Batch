@@ -4,6 +4,24 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.28 — 2026-11-28
+
+### 修复
+
+- **本体「主机已有」误标**。此前只看主机 `InstalledApplications.csv` 里有没有本体 title id；
+  实测发现本体 NSZ 安装失败回滚后，同组更新 / DLC（NSP）落地仍会在索引里登记本体 id，
+  旧索引条目也会残留，导致本体缺失却被标成「主机已有」。现在本体重复判定改认已装游戏
+  虚拟存储目录里带本体 title id 的 `[Base]` 分项：有 Base 分项才算本体落地，CSV 本体行
+  不再单独作为本体证据。DLC 仍认目录 DLC 分项并集 CSV 行——纯 DLC 不落目录项，只能靠
+  CSV。更新补丁（`…800`）依旧不参与重复判定。目录遍历不可用或主机未暴露该存储时，
+  本体走安全侧兜底：不标已有，宁可漏提醒也不误报。
+
+### 实测
+
+- 真机 title 模式补测组合：只装本体（目录仅 Base 分项）、残留补本体（补装后目录出现
+  Base）、只装 DLC（目录无条目、仅 CSV 有行）；与既有全装、本体+更新、只更新、
+  更新+DLC、未装样本对照，目录分项类型与真实落地状态一致。
+
 ## 1.7.27 — 2026-11-28
 
 ### GUI

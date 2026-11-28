@@ -33,10 +33,17 @@ final class MTPManager: ObservableObject {
     /// Kept separate from `errorMessage` so recovery never looks like a failure.
     @Published var queueNotice: String? = nil
     @Published var availableDevices: [MTPDeviceInfo] = []
-    /// Title IDs the console reports as already installed, normalized to the
-    /// bare uppercase form (no 0x prefix, no spaces). Filled once a session
-    /// comes up and cleared on disconnect. Used only to flag duplicates in
-    /// the batch plan; it never claims an install succeeded.
+    /// Base-game title IDs with a [Base] directory entry in the installed-games
+    /// virtual storage. This is the only trusted "base is actually present"
+    /// signal; the CSV base rows can come from an update/DLC install or a stale
+    /// leftover and are not trusted on their own. Normalized to bare uppercase.
+    @Published private(set) var installedBaseIDs: Set<String> = []
+    /// DLC title IDs with a [DLC] directory entry (enhancement to the CSV DLC
+    /// match). Pure DLC titles never get a directory entry.
+    @Published private(set) var installedDLCIDs: Set<String> = []
+    /// Title IDs listed in the responder's InstalledApplications.csv startup
+    /// snapshot. Used for DLC matching and fallback reference only; do not
+    /// match base games off this set.
     @Published private(set) var installedTitleIDs: Set<String> = []
     @Published private(set) var isTransferActive: Bool = false {
         didSet {
@@ -1849,6 +1856,8 @@ final class MTPManager: ObservableObject {
         // from this one can be trusted.
         listingCache.removeAll()
         installedTitleIDs = []
+        installedBaseIDs = []
+        installedDLCIDs = []
         walkingPath = nil
         showingCachedListing = false
         uploadDestinationCacheKey = nil
@@ -1925,17 +1934,49 @@ final class MTPManager: ObservableObject {
     private func handleInstalledTitlesDone(jsonPtr: UnsafeMutablePointer<CChar>?) {
         guard let jsonPtr else { return }
         let jsonString = String(cString: jsonPtr)
-        let set = Self.parseInstalledTitleIDs(parseEnvelopeData(jsonString))
+        let manifest = Self.parseInstalledManifest(parseEnvelopeData(jsonString))
         DispatchQueue.main.async {
-            self.installedTitleIDs = set
+            self.installedTitleIDs = manifest.csvTitles
+            self.installedBaseIDs = manifest.baseIDs
+            self.installedDLCIDs = manifest.dlcIDs
         }
     }
 
-    private static func parseInstalledTitleIDs(_ any: Any?) -> Set<String> {
+    private struct InstalledManifestSets {
+        var csvTitles: Set<String> = []
+        var baseIDs: Set<String> = []
+        var dlcIDs: Set<String> = []
+    }
+
+    private static func parseInstalledManifest(_ any: Any?) -> InstalledManifestSets {
+        guard let root = any as? [String: Any] else {
+            // Backward tolerant: an older payload was a bare list of titles.
+            return InstalledManifestSets(csvTitles: parseTitleIDList(any))
+        }
+        return InstalledManifestSets(
+            csvTitles: parseTitleIDList(root["csvTitles"]),
+            baseIDs: parseIDStringList(root["baseIds"]),
+            dlcIDs: parseIDStringList(root["dlcIds"])
+        )
+    }
+
+    /// CSV title rows carry an object per row; normalize each titleId.
+    private static func parseTitleIDList(_ any: Any?) -> Set<String> {
         guard let list = any as? [[String: Any]] else { return [] }
         var set = Set<String>()
         for entry in list {
             let id = normalizeTitleID(entry["titleId"] as? String ?? "")
+            if !id.isEmpty { set.insert(id) }
+        }
+        return set
+    }
+
+    /// Directory entry id sets are plain string arrays.
+    private static func parseIDStringList(_ any: Any?) -> Set<String> {
+        guard let list = any as? [String] else { return [] }
+        var set = Set<String>()
+        for raw in list {
+            let id = normalizeTitleID(raw)
             if !id.isEmpty { set.insert(id) }
         }
         return set

@@ -186,14 +186,24 @@ final class BatchInstallModel: ObservableObject {
         packages.filter { $0.isSelected && $0.needsTitleModeAdvisory }.count
     }
 
-    /// Whether the console manifest already lists this package's title. Only
-    /// base games and DLC are matched: update titles (`…800`) are not listed in
-    /// the manifest and are never flagged as duplicates, so no update/reinstall
-    /// verdict is drawn here.
+    /// Whether the console already has this package's content.
+    ///
+    /// Base games are matched off the [Base] directory entries only: a CSV base
+    /// row can be left behind by an update/DLC install or a stale leftover, so
+    /// it is not trusted on its own. DLC is matched off the directory DLC
+    /// entries union the CSV rows, because pure DLC titles never get a
+    /// directory entry. Update titles (`…800`) are never flagged as duplicates,
+    /// so no update/reinstall verdict is drawn here.
     func isAlreadyOnConsole(_ package: InstallPackage) -> Bool {
-        guard package.contentType == .base || package.contentType == .dlc,
-              let id = package.normalizedTitleID else { return false }
-        return manager.installedTitleIDs.contains(id)
+        guard let id = package.normalizedTitleID else { return false }
+        switch package.contentType {
+        case .base:
+            return manager.installedBaseIDs.contains(id)
+        case .dlc:
+            return manager.installedDLCIDs.contains(id) || manager.installedTitleIDs.contains(id)
+        case .update, .unknown:
+            return false
+        }
     }
 
     /// Selected base/DLC packages the console already reports as installed.
