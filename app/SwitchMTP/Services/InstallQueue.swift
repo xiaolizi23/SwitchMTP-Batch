@@ -39,6 +39,22 @@ struct InstallQueueItem: Identifiable, Equatable {
     /// that needed resetting costs a retry instead of the rest of the batch.
     var attempts: Int = 0
     var lastError: String?
+    /// Actionable remediation attached by the backend to a failure (e.g. the
+    /// applet/title-mode hint). Shown beneath the localized error when present.
+    var hint: String?
+
+    // MARK: - Live transfer progress
+
+    /// 0...1 for the active upload; 1 once the bytes are on the console.
+    /// Derived from real backend payloads, never invented.
+    var progress: Double = 0
+    var sentBytes: Int64?
+    var totalBytes: Int64?
+    /// MiB/s as reported by the backend (same conversion as `TransferStatistics.speed`).
+    var speedMBps: Double?
+    /// Raw `TransferPhase` value, kept so the row can show the console-committing
+    /// indeterminate state without re-decoding.
+    var phaseRaw: String?
 
     var name: String { url.lastPathComponent }
 
@@ -77,15 +93,17 @@ extension MTPManager {
                                     storageKind: $0.storage.kind.rawValue,
                                     attempts: $0.attempts)
         }
-        InstallQueueStore.save(entries, to: Self.installQueueStoreURL)
+        InstallQueueStore.save(entries, to: Self.installQueueStoreURL, paused: queuePaused)
     }
 
     /// Restores the queue saved by the previous run. Called once at startup;
     /// nothing is sent until the console is connected again, at which point the
-    /// normal drain picks the list up from the first unsent item.
+    /// normal drain picks the list up from the first unsent item. A persisted
+    /// soft-pause stays parked until the user presses continue.
     func restorePersistedInstallQueue() {
         guard installQueue.isEmpty else { return }
-        let stored = InstallQueueStore.load(from: Self.installQueueStoreURL)
+        let document = InstallQueueStore.loadDocument(from: Self.installQueueStoreURL)
+        let stored = document.entries
         guard !stored.isEmpty else { return }
 
         var restored: [InstallQueueItem] = []
@@ -110,10 +128,15 @@ extension MTPManager {
         }
 
         installQueue = restored
+        queuePaused = document.paused
         if !restored.isEmpty {
-            DebugLog.write("install queue: restored \(restored.count) item(s) from disk")
-            queueNotice = String(localized: "已恢复上次未完成的 \(restored.count) 个安装项，连接主机后自动继续。")
-            scheduleInstallQueueDrain()
+            DebugLog.write("install queue: restored \(restored.count) item(s) from disk, paused=\(queuePaused)")
+            if queuePaused {
+                queueNotice = String(localized: "已暂停：\(restored.count) 个安装项保留在队列中，连接主机后点击「继续」再发送。")
+            } else {
+                queueNotice = String(localized: "已恢复上次未完成的 \(restored.count) 个安装项，连接主机后自动继续。")
+                scheduleInstallQueueDrain()
+            }
         }
         if !dropped.isEmpty {
             DebugLog.write("install queue: dropped missing files \(dropped.joined(separator: ", "))")
@@ -211,6 +234,40 @@ extension MTPManager {
 
     var hasQueuedInstalls: Bool { pendingInstallCount > 0 }
 
+    // MARK: - Soft pause
+
+    /// Soft pause: the upload currently in flight keeps running to its finish,
+    /// but no waiting item is dispatched next. Parked items stay queued;
+    /// resuming re-arms the drain. The flag is persisted so a restart leaves
+    /// the batch parked until the user presses continue.
+    func setQueuePaused(_ paused: Bool) {
+        guard queuePaused != paused else { return }
+        queuePaused = paused
+        persistInstallQueue()
+        if paused {
+            queueNotice = String(localized: "已暂停：当前项目传完后不再发送下一个。")
+            DebugLog.write("install queue paused by user")
+        } else {
+            queueNotice = nil
+            DebugLog.write("install queue resumed by user")
+            scheduleInstallQueueDrain()
+        }
+    }
+
+    /// Mirrors the active upload's live byte counters onto its queue item, so
+    /// the plan rows and the queue list can render per-title progress from one
+    /// source. Called from the progress callback; a no-op when the running
+    /// transfer is not a queued install.
+    func syncActiveInstallProgress(stats: TransferStatistics) {
+        guard let id = activeInstallItemID,
+              let index = installQueue.firstIndex(where: { $0.id == id }) else { return }
+        installQueue[index].progress = stats.progressPercentage
+        installQueue[index].sentBytes = stats.progressData.bulkFileSize?.sent
+        installQueue[index].totalBytes = stats.progressData.bulkFileSize?.total
+        installQueue[index].speedMBps = stats.speed
+        installQueue[index].phaseRaw = stats.phase.rawValue
+    }
+
     // MARK: - Queue draining
 
     /// Asks the queue to start its next item as soon as the device is free.
@@ -229,6 +286,9 @@ extension MTPManager {
     /// seconds of dead air between every title. The wake-ups are a trivial
     /// main-queue block each and measured no CPU; the polling stays.
     func scheduleInstallQueueDrain(after delay: TimeInterval = 0.35) {
+        // Soft pause holds the queue parked; resuming re-arms the drain from
+        // the continue button instead.
+        guard !queuePaused else { return }
         guard !installQueueDrainScheduled else { return }
         guard installQueue.contains(where: { $0.state == .waiting }) else { return }
         installQueueDrainScheduled = true
@@ -263,6 +323,10 @@ extension MTPManager {
             DebugLog.write("queue drain deferred: not connected")
             return false
         }
+        guard !queuePaused else {
+            DebugLog.write("queue drain deferred: paused")
+            return false
+        }
         guard let index = installQueue.firstIndex(where: { $0.state == .waiting }) else { return false }
 
         let item = installQueue[index]
@@ -277,6 +341,12 @@ extension MTPManager {
 
         installQueue[index].state = .active
         installQueue[index].attempts += 1
+        installQueue[index].progress = 0
+        installQueue[index].sentBytes = nil
+        installQueue[index].totalBytes = nil
+        installQueue[index].speedMBps = nil
+        installQueue[index].phaseRaw = nil
+        installQueue[index].hint = nil
         activeInstallItemID = item.id
         persistInstallQueue()
 
@@ -305,7 +375,7 @@ extension MTPManager {
     /// off immediately: the console is usually fine, the *session* is not, and
     /// the caller resets it. Only after `maxInstallAttempts` does the item stay
     /// failed and the batch move on.
-    func finishActiveInstall(errorString: String?) {
+    func finishActiveInstall(errorString: String?, hint: String? = nil) {
         defer {
             // Always try to advance: a failed title should not strand the rest
             // of the queue, and the user explicitly asked for unattended
@@ -320,11 +390,13 @@ extension MTPManager {
 
         if let errorString {
             DebugLog.write("install queue <- \(installQueue[index].name) FAILED: \(errorString)")
+            installQueue[index].hint = hint?.isEmpty == false ? hint : nil
             switch InstallRetryPolicy.decision(attempts: installQueue[index].attempts,
                                                isCancelled: ErrorStringLocalizer.isTransferCancelledError(errorString),
                                                maxAttempts: Self.maxInstallAttempts) {
             case .cancelled:
                 installQueue[index].state = .cancelled
+                installQueue[index].progress = 0
                 // A cancel is a deliberate stop. Draining the rest immediately
                 // would fight the user, and the session is being reconnected
                 // anyway, so park the remainder.
@@ -335,6 +407,7 @@ extension MTPManager {
                 let localized = ErrorStringLocalizer.localize(errorString)
                 installQueue[index].lastError = localized
                 installQueue[index].state = .waiting
+                installQueue[index].progress = 0
                 DebugLog.write("install queue <- \(installQueue[index].name) will retry "
                                + "(\(installQueue[index].attempts)/\(Self.maxInstallAttempts))")
             case .fail:
@@ -344,6 +417,8 @@ extension MTPManager {
         } else {
             DebugLog.write("install queue <- \(installQueue[index].name) sent OK")
             installQueue[index].state = .sent
+            installQueue[index].progress = 1
+            installQueue[index].hint = nil
         }
     }
 }

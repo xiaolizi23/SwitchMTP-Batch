@@ -286,6 +286,44 @@ struct InstallPackage: Identifiable, Sendable {
     /// 全选都必须跳过它。其余结论（通过 / 未验签 / 非官方）允许勾选，
     /// 安装前再按口径弹确认。
     var isSelectable: Bool { resolvedVerdict != .blocked }
+
+    // MARK: - Console environment advisory
+
+    /// Largest in-container entry on disk. For an NSZ/XCZ this is a compressed
+    /// NCZ; its uncompressed size lives in the zstd frame header and is not read
+    /// here. Used only for the environment advisory, never for the verdict axis.
+    var largestEntrySize: Int64? { report?.entries.map(\.size).max() }
+
+    /// Independent environment-risk axis: a large compressed title decompresses
+    /// in console memory. DBI launched from the album / hbmenu runs in applet
+    /// mode with a tight heap (~440 MB) and refuses such titles with
+    /// "title mode required"; holding R and launching DBI from an installed game
+    /// gives the full memory window.
+    ///
+    /// This is a *heuristic*, not a verdict: DBI publishes no GB-level cutoff,
+    /// and a flagged package can still install fine. Pure NSP/XCI do not go
+    /// through the in-memory NCZ decompression path, so they are never flagged.
+    /// The thresholds below are conservative starting points pending real-device
+    /// calibration; adjust `InstallModeAdvisory` together with any on-screen copy.
+    var needsTitleModeAdvisory: Bool {
+        guard format.isCompressed else { return false }
+        if fileSize >= InstallModeAdvisory.compressedTotalBytes { return true }
+        if let largest = largestEntrySize, largest >= InstallModeAdvisory.largestEntryBytes {
+            return true
+        }
+        return false
+    }
+}
+
+/// Heuristic sizes behind the applet/title-mode advisory. DBI does not document a
+/// byte cutoff; these start conservative and are meant to be tuned against real
+/// installs on the console. Keep in bytes so the comparison matches `fileSize`.
+enum InstallModeAdvisory {
+    /// Compressed outer container at/above this size suggests a large decompress
+    /// workload. 2.0 GB ≈ 1.86 GiB.
+    static let compressedTotalBytes: Int64 = 2_000_000_000
+    /// Single compressed entry at/above this size. 1.5 GB ≈ 1.40 GiB.
+    static let largestEntryBytes: Int64 = 1_500_000_000
 }
 
 /// A title group shown as one expandable row in the plan.
@@ -305,6 +343,10 @@ struct InstallPackageGroup: Identifiable, Sendable {
     var hasBlocked: Bool { packages.contains { $0.resolvedVerdict == .blocked } }
     var hasCaution: Bool { packages.contains { $0.resolvedVerdict == .caution } }
     var hasUnverified: Bool { packages.contains { $0.resolvedVerdict == .unverified } }
+    /// Members flagged for the title-mode environment advisory (independent of
+    /// the signature/structure verdict).
+    var advisoryPackages: [InstallPackage] { packages.filter(\.needsTitleModeAdvisory) }
+    var advisoryCount: Int { advisoryPackages.count }
 
     /// Aggregate glyph for the collapsed row: the worst member wins.
     var verdict: PackageVerdict {
@@ -429,6 +471,11 @@ struct InstallPlan: Sendable {
 
     var totalSize: Int64 { packages.reduce(0) { $0 + $1.fileSize } }
     var totalSizeText: String { ByteCountFormatter.string(fromByteCount: totalSize, countStyle: .file) }
+    /// Members flagged for the applet/title-mode advisory, listed on the
+    /// confirm sheet as a separate acknowledgement.
+    var advisoryPackages: [InstallPackage] { packages.filter(\.needsTitleModeAdvisory) }
+    var advisoryCount: Int { advisoryPackages.count }
+
     var counts: (passed: Int, unverified: Int, caution: Int, blocked: Int) {
         var p = 0, u = 0, c = 0, b = 0
         for item in packages {

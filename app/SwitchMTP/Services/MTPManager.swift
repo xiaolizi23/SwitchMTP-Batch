@@ -82,6 +82,10 @@ final class MTPManager: ObservableObject {
     /// Mutate it through the queue API in `InstallQueue.swift`, never directly.
     @Published var installQueue: [InstallQueueItem] = []
 
+    /// Soft-pause switch for the install queue (see `setQueuePaused`). Persisted
+    /// with the queue; a restart keeps the batch parked until continued.
+    @Published var queuePaused: Bool = false
+
     /// Timestamp of the most recent progress payload, used to notice stalls.
     @Published private(set) var lastProgressAt: Date? = nil
 
@@ -587,6 +591,7 @@ final class MTPManager: ObservableObject {
             } else {
                 self.transferStats = stats
                 self.transferProgress = stats.progressPercentage
+                self.syncActiveInstallProgress(stats: stats)
             }
         }
     }
@@ -990,11 +995,12 @@ final class MTPManager: ObservableObject {
         }
 
         DebugLog.write("transfer done: \(jsonString)")
+        let doneHint = parseEnvelopeHint(jsonString)
         if let errorString = parseEnvelopeErrorOnly(jsonString) {
             self.finishTransferCompletion(errorString: errorString)
             DispatchQueue.main.async {
                 if ErrorStringLocalizer.isDeviceDisconnectedError(errorString) {
-                    self.finishActiveInstall(errorString: errorString)
+                    self.finishActiveInstall(errorString: errorString, hint: doneHint)
                     self.handleDeviceDisconnected()
                 } else if ErrorStringLocalizer.isTransferCancelledError(errorString) {
                     // User-initiated cancel: the MTP session is corrupt after
@@ -1006,7 +1012,7 @@ final class MTPManager: ObservableObject {
                     self.lastProgressAt = nil
                     let localizedError = ErrorStringLocalizer.localize(errorString)
                     self.errorMessage = localizedError
-                    self.finishActiveInstall(errorString: errorString)
+                    self.finishActiveInstall(errorString: errorString, hint: doneHint)
                     self.pendingNavigationPath = nil
                     self.reconnectAndRestore(to: self.currentPath)
                 } else {
@@ -1016,7 +1022,7 @@ final class MTPManager: ObservableObject {
                     self.lastProgressAt = nil
                     let localizedError = ErrorStringLocalizer.localize(errorString)
                     self.errorMessage = localizedError
-                    self.finishActiveInstall(errorString: errorString)
+                    self.finishActiveInstall(errorString: errorString, hint: doneHint)
                     // An install batch used to die here: `.error` is not
                     // connected, so the queue stopped dead and the user had to
                     // replug the cable. DBI's session is what is actually
@@ -1043,7 +1049,7 @@ final class MTPManager: ObservableObject {
             self.transferProgress = nil
             self.transferStats = nil
             self.lastProgressAt = nil
-            self.finishActiveInstall(errorString: nil)
+            self.finishActiveInstall(errorString: nil, hint: doneHint)
             // A folder the user asked for mid-transfer takes precedence over
             // re-listing the one they were on, which they have already left.
             if !self.runPendingNavigation() {
@@ -1949,37 +1955,53 @@ final class MTPManager: ObservableObject {
     }
     
     private func parseEnvelope(_ jsonString: String) -> (error: String?, data: Any?) {
+        let full = parseEnvelopeFull(jsonString)
+        return (full.error, full.data)
+    }
+
+    /// Full envelope split: `error` (localizable message), `hint` (short
+    /// actionable remediation attached by the backend, e.g. the applet/title
+    /// mode suggestion) and `data`. The hint is kept separate from the error so
+    /// the row can show it as a secondary line without rewrapping the message.
+    private func parseEnvelopeFull(_ jsonString: String) -> (error: String?, hint: String?, data: Any?) {
         guard let data = jsonString.data(using: .utf8),
               let obj = try? JSONSerialization.jsonObject(with: data, options: []),
               let dict = obj as? [String: Any]
         else {
-            return ("Invalid gomtp JSON", nil)
+            return ("Invalid gomtp JSON", nil, nil)
         }
-        
+
         let errorString = (dict["error"] as? String) ?? ""
         // Electron treats `errorType` as `stderr`.
         let errorTypeString = (dict["errorType"] as? String) ?? ""
+        let rawHint = dict["hint"] as? String
+        let hint = rawHint?.isEmpty == false ? rawHint : nil
         let dataAny = dict["data"]
-        
+
         if !errorString.isEmpty && !errorTypeString.isEmpty {
-            return ("\(errorTypeString): \(errorString)", dataAny)
+            return ("\(errorTypeString): \(errorString)", hint, dataAny)
         }
         if !errorString.isEmpty {
-            return (errorString, dataAny)
+            return (errorString, hint, dataAny)
         }
         if !errorTypeString.isEmpty {
-            return (errorTypeString, dataAny)
+            return (errorTypeString, hint, dataAny)
         }
-        return (nil, dataAny)
+        return (nil, hint, dataAny)
     }
-    
+
     private func parseEnvelopeErrorOnly(_ jsonString: String) -> String? {
-        let (error, _) = parseEnvelope(jsonString)
+        let (error, _, _) = parseEnvelopeFull(jsonString)
         return error
     }
-    
+
+    private func parseEnvelopeHint(_ jsonString: String) -> String? {
+        let (_, hint, _) = parseEnvelopeFull(jsonString)
+        return hint
+    }
+
     private func parseEnvelopeData(_ jsonString: String) -> Any? {
-        let (_, data) = parseEnvelope(jsonString)
+        let (_, _, data) = parseEnvelopeFull(jsonString)
         return data
     }
     

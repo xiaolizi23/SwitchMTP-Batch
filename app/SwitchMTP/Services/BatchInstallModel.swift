@@ -179,6 +179,30 @@ final class BatchInstallModel: ObservableObject {
         packages.filter { $0.isSelected && $0.resolvedVerdict == .unverified }.count
     }
 
+    /// Selected files flagged for the applet/title-mode environment advisory.
+    /// Independent of the signature/structure verdict; the confirm sheet asks
+    /// for a separate acknowledgement when this is non-zero.
+    var selectedAdvisoryCount: Int {
+        packages.filter { $0.isSelected && $0.needsTitleModeAdvisory }.count
+    }
+
+    // MARK: - Install queue bridge
+
+    /// Soft-pause state mirrored from the manager's serial queue.
+    var queuePaused: Bool { manager.queuePaused }
+
+    var pendingInstallCount: Int { manager.pendingInstallCount }
+
+    func setQueuePaused(_ paused: Bool) { manager.setQueuePaused(paused) }
+
+    /// The live queue entry matching a plan row, so the row can render its own
+    /// progress bar, speed and failure hint. Matched by standardized path; the
+    /// queue item's URL is the same file handed off at commit time.
+    func queueItem(for package: InstallPackage) -> InstallQueueItem? {
+        let path = package.url.standardizedFileURL.path
+        return manager.installQueue.first { $0.url.standardizedFileURL.path == path }
+    }
+
     /// True only when the device reported a capacity we can trust. Virtual
     /// install targets report a meaningless size, so a "not enough space"
     /// verdict must not be invented from it.

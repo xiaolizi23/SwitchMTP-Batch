@@ -614,6 +614,9 @@ struct BatchInstallSheet: View {
             if group.submittedCount > 0 {
                 badge("已交给 DBI \(group.submittedCount)", color: .blue)
             }
+            if group.advisoryCount > 0 {
+                badge("大压缩包 \(group.advisoryCount)", color: .orange)
+            }
             if group.hasBlocked {
                 badge("含阻止项", color: .red)
             }
@@ -686,10 +689,18 @@ struct BatchInstallSheet: View {
                 .foregroundStyle(typeColor(package.contentType))
 
             VStack(alignment: .leading, spacing: 1) {
-                Text(title)
-                    .font(.system(size: 12))
-                    .lineLimit(1)
-                    .foregroundStyle(package.isSubmitted ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                HStack(spacing: 5) {
+                    Text(title)
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                        .foregroundStyle(package.isSubmitted ? AnyShapeStyle(.secondary) : AnyShapeStyle(.primary))
+                    if package.needsTitleModeAdvisory {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.system(size: 9))
+                            .foregroundStyle(.orange)
+                            .help("大压缩包：在相册 / hbmenu（applet）模式下可能因主机内存不足被 DBI 拒绝。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再安装。")
+                    }
+                }
                 HStack(spacing: 6) {
                     Text(package.format.displayName)
                     if let version = package.version {
@@ -705,6 +716,9 @@ struct BatchInstallSheet: View {
                 .foregroundStyle(.secondary)
                 if package.deepState != .notRun {
                     rowProgressBar(package)
+                }
+                if let queue = model.queueItem(for: package) {
+                    queueStatusRow(queue)
                 }
             }
             // Expand to fill the leftover width instead of hugging the longest
@@ -1141,6 +1155,19 @@ struct BatchInstallSheet: View {
                     .font(.system(size: 10))
                     .help("把这些项目重新视为待发送，方便重装或重跑同一批")
             }
+            if model.pendingInstallCount > 0 {
+                Button {
+                    model.setQueuePaused(!model.queuePaused)
+                } label: {
+                    Label(model.queuePaused ? "继续" : "暂停",
+                          systemImage: model.queuePaused ? "play.fill" : "pause.fill")
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .help(model.queuePaused
+                      ? "继续发送队列中的下一个项目"
+                      : "当前项目传完后暂停，不再自动发送下一个；状态会保留到重启后手动继续")
+            }
             VStack(alignment: .trailing, spacing: 1) {
                 Text("已选 \(model.selectedCount) / \(model.packages.count) 项")
                     .font(.system(size: 11, weight: .medium))
@@ -1293,6 +1320,87 @@ struct BatchInstallSheet: View {
             .tint(color)
             .frame(height: 3)
             .padding(.top, 2)
+    }
+
+    /// Per-title live status mirrored from the serial install queue. The bar
+    /// only counts bytes delivered to the console; it never claims the install
+    /// succeeded — DBI reports its own verdict on the console screen.
+    @ViewBuilder
+    private func queueStatusRow(_ item: InstallQueueItem) -> some View {
+        switch item.state {
+        case .waiting:
+            HStack(spacing: 5) {
+                Image(systemName: "clock")
+                Text(model.queuePaused ? "已暂停 · 等待继续" : "排队中")
+            }
+            .font(.system(size: 9))
+            .foregroundStyle(.secondary)
+            .padding(.top, 2)
+
+        case .active:
+            let phase = TransferPhase(rawValue: item.phaseRaw ?? "") ?? .transferring
+            VStack(alignment: .leading, spacing: 2) {
+                if phase.isIndeterminate {
+                    ProgressView()
+                        .progressViewStyle(.linear)
+                        .tint(.accentColor)
+                        .frame(height: 3)
+                    Text(phase == .installing ? "主机安装中…" : "准备中…")
+                        .font(.system(size: 9))
+                        .foregroundStyle(.secondary)
+                } else {
+                    HStack(spacing: 6) {
+                        ProgressView(value: min(max(item.progress, 0), 1))
+                            .progressViewStyle(.linear)
+                            .tint(.accentColor)
+                            .frame(height: 3)
+                        Text("\(Int((item.progress * 100).rounded()))%")
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                        if let speed = item.speedMBps, speed > 0 {
+                            Text(String(format: "%.1f MB/s", speed))
+                                .font(.system(size: 9, design: .monospaced))
+                                .foregroundStyle(.tertiary)
+                        }
+                    }
+                }
+            }
+            .padding(.top, 2)
+
+        case .sent:
+            HStack(spacing: 5) {
+                Image(systemName: "checkmark.circle.fill")
+                Text("已传到主机（安装结果请看 Switch 屏幕）")
+            }
+            .font(.system(size: 9))
+            .foregroundStyle(.green)
+            .padding(.top, 2)
+
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 1) {
+                HStack(spacing: 5) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    Text(message)
+                }
+                .font(.system(size: 9))
+                .foregroundStyle(.red)
+                if let hint = item.hint, !hint.isEmpty {
+                    Text(hint)
+                        .font(.system(size: 9))
+                        .foregroundStyle(.orange)
+                }
+            }
+            .padding(.top, 2)
+
+        case .cancelled:
+            HStack(spacing: 5) {
+                Image(systemName: "xmark.circle")
+                Text("已取消")
+            }
+            .font(.system(size: 9))
+            .foregroundStyle(.secondary)
+            .padding(.top, 2)
+        }
     }
 
     private func deepCheckText(_ package: InstallPackage) -> String {

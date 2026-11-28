@@ -17,11 +17,19 @@ struct BatchConfirmSheet: View {
     let onFinished: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var acknowledgesRisk = false
+    @State private var acknowledgesMode = false
 
     /// Unverified / non-official items need one explicit click: DBI may still
     /// turn them yellow (or refuse), and we must not let that read as a pass.
     private var needsRiskAcknowledgement: Bool {
         plan.counts.unverified > 0 || plan.counts.caution > 0
+    }
+
+    /// Large compressed titles need a separate acknowledgement: in album /
+    /// hbmenu (applet) mode DBI's console heap is tight and such titles can be
+    /// refused. This is an environment risk, independent of the signature axis.
+    private var needsModeAcknowledgement: Bool {
+        plan.advisoryCount > 0
     }
 
     private var targetName: String {
@@ -65,6 +73,12 @@ struct BatchConfirmSheet: View {
                             Image(systemName: package.resolvedVerdict.shortSymbol)
                                 .foregroundStyle(color(package.resolvedVerdict))
                                 .font(.system(size: 11))
+                            if package.needsTitleModeAdvisory {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundStyle(.orange)
+                                    .font(.system(size: 10))
+                                    .help("大压缩包：applet（相册/hbmenu）模式下可能因主机内存不足被 DBI 拒绝；建议 title 模式启动 DBI。")
+                            }
                             Text(package.contentType.displayName)
                                 .font(.system(size: 9, weight: .bold))
                                 .padding(.horizontal, 5).padding(.vertical, 1)
@@ -94,12 +108,22 @@ struct BatchConfirmSheet: View {
                 if plan.counts.unverified > 0 {
                     noteRow("questionmark.circle.fill", "有 \(plan.counts.unverified) 个待确认项目：本机没验成签名/哈希（密钥不足、个人化票据或未解包），证据不足、不代表文件损坏，不能当作原版绿；最终以 DBI 实机结果为准。")
                 }
+                if needsModeAcknowledgement {
+                    noteRow("arrow.up.forward.app", "有 \(plan.advisoryCount) 个大压缩包（NSZ/XCZ）：在相册 / hbmenu（applet）模式下，DBI 主机内存不足可能拒绝安装并提示“需要 title 模式”。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再发送；纯 NSP/XCI 不受此限制。")
+                }
                 if let shortfall = model.spaceShortfall {
                     noteRow("externaldrive.badge.exclamationmark", "目标空间可能不足：还差约 \(ByteCountFormatter.string(fromByteCount: shortfall, countStyle: .file))。")
                 }
                 if needsRiskAcknowledgement {
                     Toggle(isOn: $acknowledgesRisk) {
                         Text("我已知晓：勾选项目中有未验签/非官方内容，DBI 可能报黄色或拒绝安装")
+                            .font(.system(size: 10))
+                    }
+                    .toggleStyle(.checkbox)
+                }
+                if needsModeAcknowledgement {
+                    Toggle(isOn: $acknowledgesMode) {
+                        Text("我已知晓：以上大压缩包建议在 title 模式下安装；若仍用相册 / hbmenu 打开 DBI，部分项目可能被拒绝。")
                             .font(.system(size: 10))
                     }
                     .toggleStyle(.checkbox)
@@ -129,7 +153,8 @@ struct BatchConfirmSheet: View {
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled(needsRiskAcknowledgement && !acknowledgesRisk)
+                .disabled((needsRiskAcknowledgement && !acknowledgesRisk)
+                           || (needsModeAcknowledgement && !acknowledgesMode))
             }
             .padding(16)
         }

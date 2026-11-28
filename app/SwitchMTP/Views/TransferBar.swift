@@ -226,6 +226,19 @@ struct TransferBar: View {
 
                 Spacer(minLength: 0)
 
+                if manager.pendingInstallCount > 0 {
+                    Button {
+                        manager.setQueuePaused(!manager.queuePaused)
+                    } label: {
+                        Label(manager.queuePaused ? String(localized: "Resume") : String(localized: "Pause"),
+                              systemImage: manager.queuePaused ? "play.fill" : "pause.fill")
+                    }
+                    .font(.system(size: 11))
+                    .buttonStyle(.link)
+                    .help(manager.queuePaused
+                          ? String(localized: "Send the next queued title.", comment: "Tooltip for the queue resume button")
+                          : String(localized: "Finish the current title, then stop before the next one. The pause stays until you resume.", comment: "Tooltip for the queue pause button"))
+                }
                 if !queued.isEmpty {
                     Button(String(localized: "Clear Queue")) {
                         manager.clearPendingInstalls()
@@ -244,11 +257,26 @@ struct TransferBar: View {
                 }
             }
 
+            ProgressView(value: aggregateFraction)
+                .progressViewStyle(.linear)
+                .frame(height: 2)
+
             if isQueueExpanded {
                 queueList
                     .padding(.leading, 14)
             }
         }
+    }
+
+    /// Fraction of the whole batch that has reached a finished state (sent,
+    /// failed or cancelled). The active title's own byte progress lives in the
+    /// active section; this bar only tracks how far through the queue the run
+    /// is, so a stalled install does not freeze the overall counter.
+    private var aggregateFraction: Double {
+        let total = manager.installQueue.count
+        guard total > 0 else { return 0 }
+        let done = manager.installQueue.filter(\.state.isFinished).count
+        return Double(done) / Double(total)
     }
 
     /// How many rows are shown before the list starts scrolling.
@@ -300,7 +328,7 @@ struct TransferBar: View {
     @ViewBuilder
     private var queueRows: some View {
         ForEach(manager.installQueue) { item in
-            InstallQueueRow(item: item) {
+            InstallQueueRow(item: item, queuePaused: manager.queuePaused) {
                 manager.removeFromInstallQueue(item.id)
             }
             .equatable()
@@ -332,9 +360,10 @@ struct TransferBar: View {
 
 private struct InstallQueueRow: View, Equatable {
     let item: InstallQueueItem
+    let queuePaused: Bool
     let onRemove: () -> Void
 
-    /// Compared on the item alone.
+    /// Compared on the item and the pause flag.
     ///
     /// The row also carries a closure, and a closure is not equatable, so
     /// without this SwiftUI has to assume every row changed whenever the bar
@@ -343,7 +372,7 @@ private struct InstallQueueRow: View, Equatable {
     /// likely never show. The closure only captures the manager and the item's
     /// id, both of which are stable for a given item, so ignoring it is safe.
     static func == (lhs: InstallQueueRow, rhs: InstallQueueRow) -> Bool {
-        lhs.item == rhs.item
+        lhs.item == rhs.item && lhs.queuePaused == rhs.queuePaused
     }
 
     private var symbol: String {
@@ -366,11 +395,47 @@ private struct InstallQueueRow: View, Equatable {
         }
     }
 
+    private var phase: TransferPhase {
+        TransferPhase(rawValue: item.phaseRaw ?? "") ?? .transferring
+    }
+
     private var detail: String? {
         switch item.state {
         case .failed(let message): return message
         case .sent: return String(localized: "Sent — DBI reports the result on the console.")
-        default: return nil
+        case .waiting:
+            return queuePaused ? String(localized: "Paused — waiting to resume", comment: "Install queue item status") : nil
+        case .active, .cancelled: return nil
+        }
+    }
+
+    /// Live byte-progress line for the active title, or nil when the state has
+    /// no byte counters to show. Mirrors the batch plan rows' wording: bytes
+    /// delivered to the console, not an install success claim.
+    @ViewBuilder
+    private var activeProgress: some View {
+        if item.state == .active {
+            if phase.isIndeterminate {
+                ProgressView()
+                    .progressViewStyle(.linear)
+                    .tint(.accentColor)
+                    .frame(height: 2)
+            } else {
+                HStack(spacing: 5) {
+                    ProgressView(value: min(max(item.progress, 0), 1))
+                        .progressViewStyle(.linear)
+                        .tint(.accentColor)
+                        .frame(height: 2)
+                    Text("\(Int((item.progress * 100).rounded()))%")
+                        .font(.system(size: 9, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                    if let speed = item.speedMBps, speed > 0 {
+                        Text(String(format: "%.1f MB/s", speed))
+                            .font(.system(size: 9, design: .monospaced))
+                            .foregroundStyle(.tertiary)
+                    }
+                }
+            }
         }
     }
 
@@ -380,7 +445,10 @@ private struct InstallQueueRow: View, Equatable {
     private var tooltip: String {
         let status: String
         switch item.state {
-        case .waiting: status = String(localized: "Waiting to be sent", comment: "Install queue item status")
+        case .waiting:
+            status = queuePaused
+                ? String(localized: "Paused — waiting to resume", comment: "Install queue item status")
+                : String(localized: "Waiting to be sent", comment: "Install queue item status")
         case .active: status = String(localized: "Sending now", comment: "Install queue item status")
         case .sent: status = String(localized: "Sent — DBI reports the result on the console.")
         case .failed(let message): status = message
@@ -400,10 +468,18 @@ private struct InstallQueueRow: View, Equatable {
                     .font(.system(size: 11))
                     .lineLimit(1)
                     .truncationMode(.middle)
+                activeProgress
                 if let detail {
                     Text(detail)
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if case .failed = item.state, let hint = item.hint, !hint.isEmpty {
+                    Text(hint)
+                        .font(.system(size: 10))
+                        .foregroundStyle(.orange)
                         .lineLimit(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }

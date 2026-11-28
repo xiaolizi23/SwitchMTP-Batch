@@ -46,18 +46,41 @@ enum InstallQueueStore {
 
     struct Document: Codable, Equatable, Sendable {
         var entries: [Entry]
+        /// Soft-pause flag: when true, the restored queue stays parked until the
+        /// user presses continue. Survives a restart deliberately; a crash must
+        /// not silently resume a batch the user chose to hold.
+        var paused: Bool = false
+
+        private enum CodingKeys: String, CodingKey { case entries, paused }
+
+        init(entries: [Entry], paused: Bool = false) {
+            self.entries = entries
+            self.paused = paused
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            entries = try container.decode([Entry].self, forKey: .entries)
+            paused = try container.decodeIfPresent(Bool.self, forKey: .paused) ?? false
+        }
     }
 
     static func load(from url: URL) -> [Entry] {
+        loadDocument(from: url).entries
+    }
+
+    static func loadDocument(from url: URL) -> Document {
         guard let data = try? Data(contentsOf: url),
-              let doc = try? JSONDecoder().decode(Document.self, from: data) else { return [] }
-        return doc.entries
+              let doc = try? JSONDecoder().decode(Document.self, from: data) else {
+            return Document(entries: [], paused: false)
+        }
+        return doc
     }
 
     /// Returns false when the file could not be written; the caller decides
     /// whether that is worth surfacing. Removing the file is not a failure.
     @discardableResult
-    static func save(_ entries: [Entry], to url: URL) -> Bool {
+    static func save(_ entries: [Entry], to url: URL, paused: Bool = false) -> Bool {
         if entries.isEmpty {
             try? FileManager.default.removeItem(at: url)
             return true
@@ -67,7 +90,7 @@ enum InstallQueueStore {
                                                     withIntermediateDirectories: true)
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-            try encoder.encode(Document(entries: entries)).write(to: url, options: .atomic)
+            try encoder.encode(Document(entries: entries, paused: paused)).write(to: url, options: .atomic)
             return true
         } catch {
             return false

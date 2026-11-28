@@ -62,7 +62,9 @@ hdiutil create \
   "${DMG}"
 
 info "Writing checksum"
-shasum -a 256 "${DMG}" > "${DMG}.sha256"
+# Record the basename so `shasum -a 256 -c` works next to the DMG instead of
+# baking in this machine's absolute build path.
+( cd "${BUILD}" && shasum -a 256 "$(basename "${DMG}")" ) > "${DMG}.sha256"
 cat "${DMG}.sha256"
 
 attached=0
