@@ -57,6 +57,10 @@ type InstalledManifest struct {
 	// DLCIDs are title ids with a [DLC] directory entry (enhancement to the
 	// CSV DLC match; pure DLCs only appear in CSVTitles).
 	DLCIDs []string `json:"dlcIds"`
+	// UpdateVersions maps an update title id (…800) to its installed version.
+	// Sourced from [Update] directory entries; CSV rows that carry an update id
+	// are used only as a fallback when the directory has no entry.
+	UpdateVersions map[string]int64 `json:"updateVersions"`
 }
 
 const (
@@ -106,26 +110,39 @@ func (c *Client) InstalledManifest() (InstalledManifest, error) {
 	}
 
 	baseSeen, dlcSeen := map[string]struct{}{}, map[string]struct{}{}
-	c.collectInstalledEntriesLocked(st.Sid, ParentRoot, baseSeen, dlcSeen)
+	updateSeen := map[string]int64{}
+	c.collectInstalledEntriesLocked(st.Sid, ParentRoot, baseSeen, dlcSeen, updateSeen)
 	m.BaseIDs = sortedKeySet(baseSeen)
 	m.DLCIDs = sortedKeySet(dlcSeen)
 
 	m.CSVTitles = c.readInstalledCSVLocked(st)
+	// CSV fallback: an update id that the directory tree did not surface yet
+	// still carries a version worth comparing. Directory entries win when both
+	// exist.
+	for _, t := range m.CSVTitles {
+		if !isUpdateTitleID(t.TitleID) {
+			continue
+		}
+		if _, ok := updateSeen[t.TitleID]; !ok {
+			updateSeen[t.TitleID] = t.Version
+		}
+	}
+	m.UpdateVersions = updateSeen
 	return m, nil
 }
 
 // collectInstalledEntriesLocked recursively lists the installed-games tree,
-// collecting base and DLC title ids from parseable entry filenames. Callers
-// must hold c.mu; it uses listRaw directly so it does not re-take the lock
-// the way the high-level Walk does.
-func (c *Client) collectInstalledEntriesLocked(sid, parent uint32, base, dlc map[string]struct{}) {
+// collecting base and DLC title ids and update versions from parseable entry
+// filenames. Callers must hold c.mu; it uses listRaw directly so it does not
+// re-take the lock the way the high-level Walk does.
+func (c *Client) collectInstalledEntriesLocked(sid, parent uint32, base, dlc map[string]struct{}, updates map[string]int64) {
 	entries, err := c.listRaw(sid, parent)
 	if err != nil {
 		return
 	}
 	for _, e := range entries {
 		if e.IsFolder {
-			c.collectInstalledEntriesLocked(sid, e.Handle, base, dlc)
+			c.collectInstalledEntriesLocked(sid, e.Handle, base, dlc, updates)
 			continue
 		}
 		entry, ok := parseDirEntry(e.Name)
@@ -137,8 +154,23 @@ func (c *Client) collectInstalledEntriesLocked(sid, parent uint32, base, dlc map
 			base[entry.TitleID] = struct{}{}
 		case entryKindDLC:
 			dlc[entry.TitleID] = struct{}{}
+		case entryKindUpdate:
+			if _, exists := updates[entry.TitleID]; !exists {
+				updates[entry.TitleID] = entry.Version
+			}
 		}
 	}
+}
+
+// isUpdateTitleID mirrors the Swift content-type rule: the low 12 bits equal
+// 0x0800 and the DLC odd-digit bit (0x1000) is not set.
+func isUpdateTitleID(id string) bool {
+	v, err := strconv.ParseUint(id, 16, 64)
+	if err != nil {
+		return false
+	}
+	suffix := v & 0xFFFF
+	return suffix&0x1000 == 0 && suffix&0x0FFF == 0x0800
 }
 
 // readInstalledCSVLocked downloads and parses the CSV manifest. A missing or

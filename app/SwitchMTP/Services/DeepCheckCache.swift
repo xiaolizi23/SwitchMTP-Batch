@@ -65,6 +65,8 @@ struct CachedDeepResult: Codable, Sendable {
     var ncas: [NCADTO]
     var checkedAt: Date
     var keyset: String
+    /// Control NCA NACP 里的点分显示版本；旧版缓存没有此字段，解码为 nil。
+    var displayVersion: String?
 }
 
 struct CacheDocument: Codable, Sendable {
@@ -110,6 +112,7 @@ final class DeepCheckCache {
                notes: [CheckNote],
                ncas: [DeepVerifier.NCACheck],
                keyset: String,
+               displayVersion: String? = nil,
                for fingerprint: PackageFingerprint) {
         let result = CachedDeepResult(
             state: state.rawValue,
@@ -131,7 +134,8 @@ final class DeepCheckCache {
                     failedLevels: nca.failedLevels)
             },
             checkedAt: Date(),
-            keyset: keyset)
+            keyset: keyset,
+            displayVersion: displayVersion)
         entries[fingerprint.cacheKey] = result
         persist()
     }
@@ -161,6 +165,7 @@ final class DeepCheckCache {
                       title: $0.title, detail: $0.detail)
         }
         package.notes = quickNotes + deepNotes
+        package.displayVersion = cached.displayVersion
         package.deepProgress = 1
         package.deepPhase = nil
     }

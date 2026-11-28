@@ -206,6 +206,9 @@ struct ContainerReport: Sendable {
     var titleID: String?
     var contentType: PackageContentType = .unknown
     var version: Int?
+    /// 文件名里手写的点分版本（如 `1.4.0` / `1.0`），仅作展示兜底；
+    /// 包内 NACP 显示版本以深检结果 `InstallPackage.displayVersion` 为准。
+    var nameVersionHint: String?
     var hasTicket = false
     var hasCertificate = false
     var hasCnmt = false
@@ -232,6 +235,9 @@ struct InstallPackage: Identifiable, Sendable {
     var baseTitleID: String?
     var contentType: PackageContentType = .unknown
     var version: Int?
+    /// 包内 Control NCA 的 NACP `display_version`（主机/DBI 界面显示的点分版本，
+    /// 如 `4.0.1`）。来自深检解密，随深检缓存持久化；未深检/解密失败/DLC 为 nil。
+    var displayVersion: String?
     var report: ContainerReport?
     var quickVerdict: PackageVerdict = .pending
     var deepState: DeepCheckState = .notRun
@@ -472,10 +478,6 @@ struct InstallPlan: Sendable {
     /// confirm sheet as a separate acknowledgement.
     var advisoryPackages: [InstallPackage] { packages.filter(\.needsTitleModeAdvisory) }
     var advisoryCount: Int { advisoryPackages.count }
-
-    /// Packages that never went through the deep pass at all (notRun). These are
-    /// offered as unverified; the confirm sheet asks for a separate acknowledgement.
-    var uncheckedDeepCount: Int { packages.filter { $0.deepState == .notRun }.count }
 
     var counts: (passed: Int, unverified: Int, caution: Int, blocked: Int) {
         var p = 0, u = 0, c = 0, b = 0

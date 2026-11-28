@@ -27,7 +27,6 @@ struct BatchInstallSheet: View {
     /// unwinds a SwiftUI presentation, so the window needs its own way out.
     var onClose: (() -> Void)?
 
-    @State private var pendingPlan: InstallPlan?
     @State private var selectedPackageID: UUID?
     /// A whole game can be selected without expanding it: the detail pane then
     /// shows its cover, counts and members instead of an empty placeholder.
@@ -62,13 +61,13 @@ struct BatchInstallSheet: View {
         return "checkmark.shield"
     }
 
-    /// Modal warning shown when opening the confirm sheet: titles that never
-    /// ran the deep pass. Returns true only if the user confirms proceeding.
-    private func presentUncheckedWarning(_ plan: InstallPlan) -> Bool {
+    /// Modal warning shown when opening the confirm sheet for titles whose
+    /// signature/hash was never verified. Returns true only on confirmation.
+    private func presentUnverifiedWarning(_ plan: InstallPlan) -> Bool {
         let alert = NSAlert()
         alert.alertStyle = .warning
-        alert.messageText = "有 \(plan.uncheckedDeepCount) 个项目尚未做深度检查"
-        alert.informativeText = "签名链与内容哈希都没验过。可先关闭本页点「深度检查」补验；直接发送则按未验签处理，DBI 可能显示黄色。"
+        alert.messageText = "有 \(plan.counts.unverified) 个项目未完成签名/哈希校验"
+        alert.informativeText = "这些项目还没通过签名链与内容哈希校验；可先返回做深度检查，直接发送 DBI 可能显示黄色或拒绝安装。"
         alert.addButton(withTitle: "仍然安装")
         alert.addButton(withTitle: "取消")
         return alert.runModal() == .alertFirstButtonReturn
@@ -97,17 +96,6 @@ struct BatchInstallSheet: View {
         .overlay(dropOverlay)
         .sheet(isPresented: $showKeyPanel) {
             KeySetPanel(model: model) { showKeyPanel = false }
-        }
-        .sheet(item: Binding(get: { pendingPlan.map(PlanBox.init) },
-                             set: { if $0 == nil { pendingPlan = nil } })) { box in
-            BatchConfirmSheet(plan: box.plan, model: model, manager: manager) {
-                // The send has been handed to DBI, but the run is still going on
-                // the console. Closing the workspace here would throw away the
-                // only record of what this batch was made of, so it stays open
-                // with the sent items marked "已交给 DBI".
-                pendingPlan = nil
-            }
-            // A cancelled confirm leaves the plan untouched by design.
         }
         .onChange(of: model.banner) { _ in }
         .onAppear(perform: loadAutomationFixture)
@@ -861,7 +849,7 @@ struct BatchInstallSheet: View {
     private func packageHelp(_ package: InstallPackage) -> String {        if package.isSubmitted { return "已交给 DBI，本次不再重复发送" }
         switch package.resolvedVerdict {
         case .blocked: return "检查未通过（结构或内容损坏），默认不允许安装"
-        case .unverified: return "本机未能完成签名/哈希校验：证据不足，不代表文件已损坏；勾选后安装前会要求确认，最终以 DBI 实机结果为准"
+        case .unverified: return "未完成签名/哈希校验。"
         case .caution: return "签名非官方，或容器结构需注意；通常需要 sigpatch，勾选后安装前会要求确认"
         default: return "勾选以加入安装计划"
         }
@@ -970,11 +958,9 @@ struct BatchInstallSheet: View {
                             Text(model.displayTitle(for: package))
                                 .font(.system(size: 10))
                                 .lineLimit(1)
-                            if let version = package.version {
-                                Text("v\(version)")
-                                    .font(.system(size: 9))
-                                    .foregroundStyle(.secondary)
-                            }
+                            Text(versionLabelShort(package))
+                                .font(.system(size: 9))
+                                .foregroundStyle(.secondary)
                             Spacer(minLength: 4)
                             Circle()
                                 .fill(verdictColor(package.resolvedVerdict))
@@ -1154,13 +1140,30 @@ struct BatchInstallSheet: View {
             detailRow("大小", package.sizeText)
             detailRow("Title ID", package.titleID ?? "未识别")
             detailRow("基础 ID", package.baseTitleID ?? "—")
-            detailRow("版本", package.version.map { "v\($0)" } ?? "未识别")
+            detailRow("版本", versionLabel(package))
             detailRow("NCA 数量", package.report.map { "\($0.ncaCount)" } ?? "—")
             detailRow("TICKET", (package.report?.hasTicket ?? false) ? "有" : "无")
             detailRow("CNMT", (package.report?.hasCnmt ?? false) ? "有" : "无")
             detailRow("深度检查", deepCheckText(package))
         }
         .font(.system(size: 10))
+    }
+
+    /// 版本展示优先级：包内 NACP 点分版本 → 文件名手写点分串兜底 → 内部 build 号。
+    /// 点分版本是主机/DBI 界面看到的号（如 `4.0.1`）；build 号是内部递增号。
+    private func versionLabel(_ package: InstallPackage) -> String {
+        let dotted = package.displayVersion ?? package.report?.nameVersionHint
+        if let dotted {
+            if let build = package.version { return "\(dotted)（build \(build)）" }
+            return dotted
+        }
+        return package.version.map { "v\($0)" } ?? "未识别"
+    }
+
+    /// 紧凑版：组内行只放点分版本，缺省退回 build 号，不附 build 括号。
+    private func versionLabelShort(_ package: InstallPackage) -> String {
+        if let dotted = package.displayVersion ?? package.report?.nameVersionHint { return dotted }
+        return package.version.map { "v\($0)" } ?? "—"
     }
 
     private func detailRow(_ key: String, _ value: String) -> some View {
@@ -1219,10 +1222,13 @@ struct BatchInstallSheet: View {
                 // optional deep pass runs independently and does not block install.
                 model.preparePlan { plan in
                     guard let plan else { return }
-                    // Warn about unchecked titles before the confirm sheet opens;
+                    // Warn about unverified titles before the confirm panel opens;
                     // the applet-mode warning is shown again after 确认安装.
-                    if plan.uncheckedDeepCount > 0, !presentUncheckedWarning(plan) { return }
-                    pendingPlan = plan
+                    if plan.counts.unverified > 0, !presentUnverifiedWarning(plan) { return }
+                    BatchConfirmController.shared.show(plan: plan, model: model, manager: manager) {
+                        // The send has been handed to DBI; the workspace stays open
+                        // with the sent items marked "已交给 DBI".
+                    }
                 }
             } label: {
                 Label("开始安装", systemImage: "arrow.up.circle.fill")
@@ -1406,7 +1412,7 @@ struct BatchInstallSheet: View {
         case .sent:
             HStack(spacing: 5) {
                 Image(systemName: "checkmark.circle.fill")
-                Text("已传到主机（安装结果请看 Switch 屏幕）")
+                Text("已传到主机")
             }
             .font(.system(size: 9))
             .foregroundStyle(.green)
@@ -1507,13 +1513,6 @@ struct BatchInstallSheet: View {
     }
 }
 
-/// `sheet(item:)` needs Identifiable; an InstallPlan is a value snapshot, so
-/// boxing it is enough and avoids making the model itself Identifiable.
-private struct PlanBox: Identifiable {
-    let id = UUID()
-    let plan: InstallPlan
-}
-
 // MARK: - Key set panel
 
 struct KeySetPanel: View {
@@ -1572,9 +1571,7 @@ struct KeySetPanel: View {
             VStack(alignment: .leading, spacing: 6) {
                 Text("隐私与边界").font(.system(size: 11, weight: .semibold))
                 bullet("密钥只在本机读取，不上传、不写日志、不进报告。")
-                bullet("校验引擎需要一个文件路径，因此检查期间会在系统临时目录放一份 0600 权限的临时副本，检查结束立即删除。")
-                bullet("这个工作区不提供下载、密钥获取、签名绕过或固件修改。")
-                bullet("固件镜像不是必需输入；缺新密钥代时结果会是“无法验证”，而不是“签名错误”。")
+                bullet("检查期间会在临时目录放一份权限受限的密钥副本，结束即删。")
             }
 
             Spacer(minLength: 0)

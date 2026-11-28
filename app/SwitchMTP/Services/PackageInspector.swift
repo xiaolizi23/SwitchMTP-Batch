@@ -52,7 +52,9 @@ enum PackageInspector {
                     title: "无法确认标题归属",
                     detail: "容器里没有可读的 CNMT 文件名，只能按文件夹/文件名归类；这不代表文件损坏，安装前请自行确认这是正确的游戏。"))
             }
-            report.version = versionFromName(url.lastPathComponent)
+            report.version = versionFromCnmtXML(entries: report.entries, reader: reader)
+                ?? versionFromName(url.lastPathComponent)
+            report.nameVersionHint = displayVersionHint(from: url.lastPathComponent)
             report.verdict = verdict(for: report)
         } catch {
             report.verdict = .blocked
@@ -375,6 +377,39 @@ enum PackageInspector {
             }
         }
         return nil
+    }
+
+    /// 文件名里手写的点分版本（`v1.4.0`、`v1.0`），只作展示兜底。
+    /// 正则要求至少一个小数点，因此不会把纯数字的 build 号（`v1507328`）误判成点分版本。
+    static func displayVersionHint(from name: String) -> String? {
+        guard let value = firstCapture(pattern: #"[vV](\d+\.\d+(?:\.\d+)?)"#, in: name) else { return nil }
+        return isValidDisplayVersion(value) ? value : nil
+    }
+
+    /// 点分版本合法性：一到三段数字，每段不超过 4 位，剔除 NACP 里混入的空白。
+    static func isValidDisplayVersion(_ value: String) -> Bool {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let parts = trimmed.split(separator: ".")
+        guard (2...3).contains(parts.count) else { return false }
+        return parts.allSatisfy { part in
+            guard let n = Int(part), n >= 0, n <= 9999 else { return false }
+            return part.allSatisfy(\.isNumber)
+        }
+    }
+
+    /// Reads the `<Version>` u32 from a plain-text `<hash>.cnmt.xml` entry shipped
+    /// inside the container. Repack NSPs often carry this XML beside the encrypted
+    /// CNMT NCA; the XML itself is plain text, so the real patch version can be
+    /// read without keys or decrypting any NCA. Filename `[v<u32>]` stays as the
+    /// fallback for containers that ship no XML (compressed NSZ/XCZ included).
+    private static func versionFromCnmtXML(entries: [ContainerEntry], reader: RandomAccessReader) -> Int? {
+        guard let xml = entries.first(where: { $0.name.lowercased().hasSuffix(".cnmt.xml") }),
+              xml.size > 0, xml.size <= 64 * 1024 else { return nil }
+        guard let data = try? reader.read(at: xml.absoluteOffset, count: Int(xml.size)),
+              let text = String(data: data, encoding: .utf8) else { return nil }
+        guard let value = firstCapture(pattern: #"<Version>\s*(\d+)\s*</Version>"#, in: text),
+              let number = Int(value) else { return nil }
+        return number
     }
 
     private static func firstCapture(pattern: String, in text: String, caseInsensitive: Bool = false) -> String? {

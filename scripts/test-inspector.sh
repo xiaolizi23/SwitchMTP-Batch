@@ -39,6 +39,7 @@ swiftc -O -swift-version 5 \
   "${ROOT}/app/SwitchMTP/Models/"*.swift \
   "${ROOT}/app/SwitchMTP/Services/PackageInspector.swift" \
   "${ROOT}/app/SwitchMTP/Services/DeepVerifier.swift" \
+  "${ROOT}/app/SwitchMTP/Services/NacpVersionReader.swift" \
   "${ROOT}/app/SwitchMTP/Services/NSZUnpacker.swift" \
   "${ROOT}/tests/InspectorTests.swift" \
   -o "${WORK}/inspector-tests"

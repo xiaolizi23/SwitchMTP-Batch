@@ -179,7 +179,11 @@ enum DeepVerifier {
             output = text
         }
 
-        return interpret(output: output, format: format)
+        var result = interpret(output: output, format: format)
+        result.displayVersion = NacpVersionReader.displayVersion(
+            url: url, format: format, keysetURL: keysetURL,
+            titleKeysURL: titleKeysURL, hactoolURL: hactoolURL)
+        return result
     }
 
     // MARK: - NSZ
@@ -242,7 +246,11 @@ enum DeepVerifier {
                            progress: { fraction, _ in
                                progress?(0.6 + 0.4 * fraction, "验签中")
                            })
-        return reconcileNSZ(inner: inner, conversion: conversion, source: url)
+        var result = reconcileNSZ(inner: inner, conversion: conversion, source: url)
+        // The rebuilt inner NSP was already read for its Control NCA; carry that
+        // display version through instead of re-decrypting the NSZ again.
+        result.displayVersion = inner.displayVersion
+        return result
     }
 
 
@@ -752,4 +760,7 @@ struct DeepResult {
     var notes: [CheckNote]
     var detail: String
     var ncas: [DeepVerifier.NCACheck] = []
+    /// 主机/DBI 界面显示的点分版本（来自 Control NCA 的 NACP `display_version`），
+    /// 与内部 build 号是两套数。DLC 无 Control NCA、或解密失败时为 nil。
+    var displayVersion: String? = nil
 }

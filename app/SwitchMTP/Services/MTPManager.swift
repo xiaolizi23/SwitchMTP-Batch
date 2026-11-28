@@ -45,6 +45,10 @@ final class MTPManager: ObservableObject {
     /// snapshot. Used for DLC matching and fallback reference only; do not
     /// match base games off this set.
     @Published private(set) var installedTitleIDs: Set<String> = []
+    /// Update title id (…800) → installed version, from [Update] directory
+    /// entries with CSV fallback. Used only for update version comparison;
+    /// updates are never flagged as plain duplicates.
+    @Published private(set) var installedUpdateVersions: [String: Int64] = [:]
     @Published private(set) var isTransferActive: Bool = false {
         didSet {
             guard isTransferActive != oldValue else { return }
@@ -1858,6 +1862,7 @@ final class MTPManager: ObservableObject {
         installedTitleIDs = []
         installedBaseIDs = []
         installedDLCIDs = []
+        installedUpdateVersions = [:]
         walkingPath = nil
         showingCachedListing = false
         uploadDestinationCacheKey = nil
@@ -1939,6 +1944,7 @@ final class MTPManager: ObservableObject {
             self.installedTitleIDs = manifest.csvTitles
             self.installedBaseIDs = manifest.baseIDs
             self.installedDLCIDs = manifest.dlcIDs
+            self.installedUpdateVersions = manifest.updateVersions
         }
     }
 
@@ -1946,6 +1952,7 @@ final class MTPManager: ObservableObject {
         var csvTitles: Set<String> = []
         var baseIDs: Set<String> = []
         var dlcIDs: Set<String> = []
+        var updateVersions: [String: Int64] = [:]
     }
 
     private static func parseInstalledManifest(_ any: Any?) -> InstalledManifestSets {
@@ -1956,8 +1963,25 @@ final class MTPManager: ObservableObject {
         return InstalledManifestSets(
             csvTitles: parseTitleIDList(root["csvTitles"]),
             baseIDs: parseIDStringList(root["baseIds"]),
-            dlcIDs: parseIDStringList(root["dlcIds"])
+            dlcIDs: parseIDStringList(root["dlcIds"]),
+            updateVersions: parseUpdateVersionMap(root["updateVersions"])
         )
+    }
+
+    /// updateVersions is an object: normalized title id → installed version.
+    private static func parseUpdateVersionMap(_ any: Any?) -> [String: Int64] {
+        guard let dict = any as? [String: Any] else { return [:] }
+        var out: [String: Int64] = [:]
+        for (rawID, rawVersion) in dict {
+            let id = normalizeTitleID(rawID)
+            guard !id.isEmpty else { continue }
+            let version: Int64
+            if let n = rawVersion as? NSNumber { version = n.int64Value }
+            else if let s = rawVersion as? String, let v = Int64(s) { version = v }
+            else { continue }
+            out[id] = version
+        }
+        return out
     }
 
     /// CSV title rows carry an object per row; normalize each titleId.

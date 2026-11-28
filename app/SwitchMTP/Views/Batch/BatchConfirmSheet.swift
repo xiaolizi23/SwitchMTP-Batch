@@ -15,20 +15,13 @@ struct BatchConfirmSheet: View {
     @ObservedObject var model: BatchInstallModel
     @ObservedObject var manager: MTPManager
     let onFinished: () -> Void
-    @Environment(\.dismiss) private var dismiss
+    let onCancel: () -> Void
     @State private var acknowledgesRisk = false
 
     /// Unverified / non-official items need one explicit click: DBI may still
     /// turn them yellow (or refuse), and we must not let that read as a pass.
     private var needsRiskAcknowledgement: Bool {
         plan.counts.unverified > 0 || plan.counts.caution > 0
-    }
-
-    /// Packages that never ran the deep pass get their own acknowledgement:
-    /// their signature/hash has not been checked at all, so the user must
-    /// consciously proceed without that evidence.
-    private var needsUncheckedAcknowledgement: Bool {
-        plan.uncheckedDeepCount > 0
     }
 
     /// Compressed titles (NSZ/XCZ) need a separate acknowledgement: in album /
@@ -94,11 +87,9 @@ struct BatchConfirmSheet: View {
                                 .font(.system(size: 11))
                                 .lineLimit(1)
                             if model.isAlreadyOnConsole(package) {
-                                Text("主机已有")
-                                    .font(.system(size: 9, weight: .semibold))
-                                    .padding(.horizontal, 5).padding(.vertical, 1)
-                                    .background(Capsule().fill(Color.purple.opacity(0.15)))
-                                    .foregroundStyle(.purple)
+                                existingPill("主机已有", .purple)
+                            } else if let pill = updatePill(package) {
+                                pill
                             }
                             Spacer()
                             Text(package.sizeText)
@@ -117,43 +108,34 @@ struct BatchConfirmSheet: View {
 
             VStack(alignment: .leading, spacing: 6) {
                 if plan.counts.caution > 0 {
-                    noteRow("exclamationmark.triangle.fill", "有 \(plan.counts.caution) 个注意项目：签名不是零售链，或容器结构需注意。DBI 装完可能显示黄色，需要主机已有 sigpatch。")
-                }
-                if plan.counts.unverified > 0 {
-                    noteRow("questionmark.circle.fill", "有 \(plan.counts.unverified) 个待确认项目：本机没验成签名/哈希（密钥不足、个人化票据或未解包），证据不足、不代表文件损坏，不能当作原版绿；最终以 DBI 实机结果为准。")
-                }
-                if needsUncheckedAcknowledgement {
-                    noteRow("shield.slash", "有 \(plan.uncheckedDeepCount) 个项目尚未做深度检查：签名链与内容哈希都没验过。可先关闭本页点「深度检查」补验；直接发送则按未验签处理，DBI 可能显示黄色。")
-                }
-                if needsModeAcknowledgement {
-                    noteRow("arrow.up.forward.app", "有 \(plan.advisoryCount) 个压缩包（NSZ/XCZ）：在相册 / hbmenu（applet）模式下需在主机端解压，可能被 DBI 拒绝并提示“需要 title 模式”。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再发送；纯 NSP/XCI 不受此限制。")
+                    noteRow("exclamationmark.triangle.fill", "有 \(plan.counts.caution) 个注意项目：签名不是零售链，或容器结构需注意；DBI 装完可能显示黄色，非官方签名需主机已有 sigpatch。")
                 }
                 if let shortfall = model.spaceShortfall {
                     noteRow("externaldrive.badge.exclamationmark", "目标空间可能不足：还差约 \(ByteCountFormatter.string(fromByteCount: shortfall, countStyle: .file))。")
                 }
                 if needsRiskAcknowledgement {
                     Toggle(isOn: $acknowledgesRisk) {
-                        Text("我已知晓：勾选项目中有未验签/非官方内容，DBI 可能报黄色或拒绝安装")
+                        Text("我已知晓：含未验签/非官方内容，DBI 可能显示黄色或拒绝安装")
                             .font(.system(size: 10))
                     }
                     .toggleStyle(.checkbox)
                 }
-                noteRow("info.circle.fill", "SwitchMTP Batch 只能确认“文件已发送给 DBI”。最终安装成功与否、DBI 屏幕上显示什么颜色，只能看主机本身；本应用不会代你宣称安装成功。")
-                noteRow("exclamationmark.triangle.fill", "安装过程中请保持 USB 连接、不要锁屏休眠。中断可能让主机留下半个游戏。")
             }
             .padding(.horizontal, 18)
             .padding(.vertical, 10)
 
             Divider()
 
-            HStack {
-                if model.lastSubmittedCount == 0 {
-                    Text("点击“确认安装”后才会开始传输。")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.secondary)
-                }
+            HStack(alignment: .center) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                Text("安装过程中请保持 USB 连接、不要锁屏休眠，中断可能导致安装不完整。")
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-                Button("取消") { dismiss() }
+                Button("取消") { onCancel() }
                     .keyboardShortcut(.cancelAction)
                 Button {
                     confirmAndCommit()
@@ -176,6 +158,25 @@ struct BatchConfirmSheet: View {
         }
     }
 
+    private func existingPill(_ text: String, _ color: Color) -> some View {
+        Text(text)
+            .font(.system(size: 9, weight: .semibold))
+            .padding(.horizontal, 5).padding(.vertical, 1)
+            .background(Capsule().fill(color.opacity(0.15)))
+            .foregroundStyle(color)
+    }
+
+    /// Update-only comparison pill. Base/DLC duplicates use `existingPill` via
+    /// `isAlreadyOnConsole`; `.notInstalled` returns no pill.
+    private func updatePill(_ package: InstallPackage) -> AnyView? {
+        switch model.updateMatch(package) {
+        case .sameVersion: return AnyView(existingPill("已有同版本", .purple))
+        case .upgradable: return AnyView(existingPill("可升级", .blue))
+        case .outdated: return AnyView(existingPill("主机已是新版", .secondary))
+        case .notInstalled: return nil
+        }
+    }
+
     private func noteRow(_ icon: String, _ text: String) -> some View {
         HStack(alignment: .top, spacing: 6) {
             Image(systemName: icon)
@@ -195,11 +196,11 @@ struct BatchConfirmSheet: View {
         if needsModeAcknowledgement {
             guard presentWarning(
                 title: "有 \(plan.advisoryCount) 个压缩包（NSZ/XCZ）",
-                info: "在相册 / hbmenu（applet）模式下需在主机端解压，可能被 DBI 拒绝并提示“需要 title 模式”。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再发送；纯 NSP/XCI 不受此限制。"
+                info: "applet（相册/hbmenu）模式下压缩包需在主机解压，可能被 DBI 拒绝；建议用 title 模式启动 DBI 后发送。"
             ) else { return }
         }
 
-        let duplicates = plan.packages.filter { model.isAlreadyOnConsole($0) }
+        let duplicates = plan.packages.filter { model.needsOverwriteConfirm($0) }
         guard !duplicates.isEmpty else {
             model.commit(plan: plan)
             onFinished()
@@ -212,7 +213,7 @@ struct BatchConfirmSheet: View {
         if names.count == 1 {
             alert.messageText = "「\(names[0])」已安装在主机上，是否确认覆盖安装？"
         } else {
-            alert.messageText = "有 \(names.count) 个游戏已安装在主机上，是否确认覆盖安装？"
+            alert.messageText = "有 \(names.count) 个项目已安装在主机上，是否确认覆盖安装？"
         }
         alert.informativeText = "已在主机上：\n" + names.joined(separator: "\n")
         alert.addButton(withTitle: "覆盖安装")

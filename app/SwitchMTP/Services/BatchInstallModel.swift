@@ -210,11 +210,43 @@ final class BatchInstallModel: ObservableObject {
         }
     }
 
+    /// Update version comparison against the console's installed update.
+    enum UpdateMatch: Equatable {
+        /// Console has no matching update, or the local version could not be read.
+        case notInstalled
+        /// Local version is newer: this package upgrades the console's copy.
+        case upgradable
+        /// Same version already installed on the console: a duplicate.
+        case sameVersion
+        /// Local version is older than what the console already has.
+        case outdated
+    }
+
+    /// Compare an update package against the console's installed update version.
+    /// Base/DLC packages always report `.notInstalled` here; their duplicate
+    /// verdict lives in `isAlreadyOnConsole`. A missing local version is not
+    /// guessed: it falls back to `.notInstalled`.
+    func updateMatch(_ package: InstallPackage) -> UpdateMatch {
+        guard package.contentType == .update else { return .notInstalled }
+        guard let id = package.normalizedTitleID,
+              let hostVersion = manager.installedUpdateVersions[id] else { return .notInstalled }
+        guard let localVersion = package.version else { return .notInstalled }
+        if localVersion == hostVersion { return .sameVersion }
+        return localVersion > hostVersion ? .upgradable : .outdated
+    }
+
+    /// True when sending this package would overwrite an already-present title:
+    /// an installed base/DLC, or an update whose version matches the console's.
+    func needsOverwriteConfirm(_ package: InstallPackage) -> Bool {
+        if isAlreadyOnConsole(package) { return true }
+        return updateMatch(package) == .sameVersion
+    }
+
     /// Selected base/DLC packages the console already reports as installed.
     /// These are the rows the confirm sheet marks, and the ones the overwrite
     /// prompt lists before sending.
     var selectedAlreadyInstalled: [InstallPackage] {
-        selectedPackages.filter { isAlreadyOnConsole($0) }
+        selectedPackages.filter { needsOverwriteConfirm($0) }
     }
 
     // MARK: - Install queue bridge
@@ -825,6 +857,7 @@ final class BatchInstallModel: ObservableObject {
                 p.deepProgress = 0
                 p.deepPhase = nil
                 p.deepNCAs = []
+                p.displayVersion = nil
             }
         }
         rebuildGroups()
@@ -892,6 +925,7 @@ final class BatchInstallModel: ObservableObject {
                         self.updatePackage(id: job.id) { package in
                             package.deepState = result.state
                             package.deepNCAs = result.ncas
+                            package.displayVersion = result.displayVersion
                             package.notes.append(contentsOf: result.notes)
                             // The colour is now derived from (quick, deep) together;
                             // mutating quickVerdict here used to hide a failed deep
@@ -908,6 +942,7 @@ final class BatchInstallModel: ObservableObject {
                                     notes: result.notes,
                                     ncas: result.ncas,
                                     keyset: keysetFingerprint,
+                                    displayVersion: result.displayVersion,
                                     for: fp)
                             }
                         }

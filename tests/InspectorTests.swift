@@ -133,6 +133,19 @@ struct InspectorTests {
                "release-name bracket is used for cartridge images")
         expect(PackageInspector.titleIDFromFileName("no-id-here.nsp") == nil, "name without title id yields nothing")
 
+        print("display version hint (filename dotted version fallback)")
+        expect(PackageInspector.displayVersionHint(from: "Mario Kart 8 Deluxe [0100152000022800][v1.4.0] (4.53 GB).nsp") == "1.4.0",
+               "three-segment dotted version extracted")
+        expect(PackageInspector.displayVersionHint(from: "Boomerang Fu [010081A00EE62000][v1.0].nsz") == "1.0",
+               "two-segment dotted version extracted")
+        expect(PackageInspector.displayVersionHint(from: "Mario Kart 8 Deluxe [0100152000022800][v1507328] (4.53 GB).nsp") == nil,
+               "bare build number without a dot is not mistaken for a dotted version")
+        expect(PackageInspector.displayVersionHint(from: "plain game.nsp") == nil, "no version in name yields nil")
+        expect(PackageInspector.isValidDisplayVersion("1.0.0"), "valid three-segment version accepted")
+        expect(PackageInspector.isValidDisplayVersion("1.0"), "valid two-segment version accepted")
+        expect(!PackageInspector.isValidDisplayVersion("1."), "trailing dot rejected")
+        expect(!PackageInspector.isValidDisplayVersion("abc.def"), "non-numeric rejected")
+
         print("display names")
         let names: [(String, String)] = [
             ("/Volumes/Switch/马里奥赛车8豪华版/[本体v1.0.0][0100152000022000][1.0.0][中文][US].nsp", "马里奥赛车8豪华版"),

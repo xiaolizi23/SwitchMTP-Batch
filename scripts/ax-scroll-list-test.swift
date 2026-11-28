@@ -306,7 +306,7 @@ func waitUntil(_ timeout: TimeInterval = 3, _ predicate: () -> Bool) -> Bool {
     return predicate()
 }
 
-/// "已选 43 / 44 项 …" → (43, 44)
+/// "已选 N / M 项 …" → (N, M)
 func selectionSummary(in root: AXUIElement) -> (selected: Int, total: Int)? {
     let texts = findAll(root) { el in
         role(el) == kAXStaticTextRole as String && stringValue(el).contains("已选")
@@ -373,9 +373,11 @@ guard let workspace = window(titled: workspaceName) else {
     exit(1)
 }
 
-check("TC1.0 夹具已载入（44 个包）",
-      waitUntil(15) { selectionSummary(in: workspace)?.total == 44 },
+check("TC1.0 夹具已载入",
+      waitUntil(15) { (selectionSummary(in: workspace)?.total ?? 0) > 0 },
       "summary=\(String(describing: selectionSummary(in: workspace)))")
+// 跟随夹具实际包数，不写死：不同夹具目录的包数可以不同。
+let expectedCount = selectionSummary(in: workspace)?.total ?? 0
 
 // MARK: - TC1: expand all so every package row is materialised
 
@@ -385,8 +387,8 @@ if let expandAll = find(workspace, where: { help($0).contains("展开/收起全�
     check("TC1.0 找到展开全部按钮", false)
 }
 
-let rowsReady = waitUntil(5) { packageBoxes(in: workspace).count >= 44 }
-check("TC1.1 展开全部后 44 个包复选框都进了 AX 树", rowsReady,
+let rowsReady = waitUntil(5) { packageBoxes(in: workspace).count >= expectedCount }
+check("TC1.1 展开全部后 \(expectedCount) 个包复选框都进了 AX 树", rowsReady,
       "count=\(packageBoxes(in: workspace).count)")
 
 // MARK: - TC2: no table semantics anywhere under the plan list
@@ -421,7 +423,7 @@ let badBoxes = boxes.filter { el in
         || (attr(el, kAXDescriptionAttribute) as? String ?? "").isEmpty
 }
 check("TC3.1 每个包复选框都是带 identifier 的 AXButton",
-      boxes.count == 44 && badBoxes.isEmpty,
+      boxes.count == expectedCount && badBoxes.isEmpty,
       "count=\(boxes.count) bad=\(badBoxes.prefix(3).map(identifier))")
 
 // MARK: - TC4: a single checkbox press flips exactly one package
@@ -603,7 +605,7 @@ if allowHIDClicks {
 if let expandAll = find(workspace, where: { help($0).contains("展开/收起全部") }) {
     _ = press(expandAll)
 }
-check("TC8.6 再展开恢复 44 行", waitUntil(3) { packageBoxes(in: workspace).count >= 44 },
+check("TC8.6 再展开恢复 \(expectedCount) 行", waitUntil(3) { packageBoxes(in: workspace).count >= expectedCount },
       "count=\(packageBoxes(in: workspace).count)")
 
 

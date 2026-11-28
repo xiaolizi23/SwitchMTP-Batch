@@ -93,3 +93,19 @@ func TestNormalizeTitleID(t *testing.T) {
 		}
 	}
 }
+
+func TestIsUpdateTitleID(t *testing.T) {
+	cases := map[string]bool{
+		"0100EA80032EA800": true,  // patch …800
+		"0100152000022800": true,  // patch …800
+		"0100EA80032EA000": false, // base …000
+		"01007EF00011F002": false, // DLC odd digit …F002
+		"010081A00EE63001": false, // DLC …3001
+		"010081A00EE62000": false, // base …2000
+	}
+	for id, want := range cases {
+		if got := isUpdateTitleID(id); got != want {
+			t.Errorf("isUpdateTitleID(%s) = %v, want %v", id, got, want)
+		}
+	}
+}
