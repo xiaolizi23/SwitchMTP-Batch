@@ -13,8 +13,8 @@ settings:
   base:
     MACOSX_DEPLOYMENT_TARGET: "12.0"
     SWIFT_VERSION: "5.10"
-    MARKETING_VERSION: "1.7.32"
-    CURRENT_PROJECT_VERSION: "56"
+    MARKETING_VERSION: "1.7.33"
+    CURRENT_PROJECT_VERSION: "57"
     ENABLE_HARDENED_RUNTIME: YES
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
@@ -77,8 +77,8 @@ targets:
         GCC_PREPROCESSOR_DEFINITIONS:
           - $(inherited)
           - SWIFT_PACKAGE=0
-        MARKETING_VERSION: "1.7.32"
-        CURRENT_PROJECT_VERSION: "56"
+        MARKETING_VERSION: "1.7.33"
+        CURRENT_PROJECT_VERSION: "57"
     dependencies:
       - sdk: IOKit.framework
       - framework: ../backend/build/nxmtp.dylib
@@ -153,8 +153,8 @@ targets:
           # nxmtp/libusb from the host's Contents/Frameworks (two levels up).
           - "@executable_path/../../Frameworks"
         ENABLE_HARDENED_RUNTIME: YES
-        MARKETING_VERSION: "1.7.32"
-        CURRENT_PROJECT_VERSION: "56"
+        MARKETING_VERSION: "1.7.33"
+        CURRENT_PROJECT_VERSION: "57"
     dependencies:
       - sdk: IOKit.framework
     postBuildScripts:

@@ -1157,6 +1157,7 @@ private func scanPackages(roots: [String], config: Config) throws -> [InstallPac
             guard var package = byID[job.id] else { return }
             package.deepState = result.state
             package.deepNCAs = result.ncas
+            package.displayVersion = result.displayVersion
             package.notes.append(contentsOf: result.notes)
             if result.state == .failed { package.isSelected = false }
             byID[job.id] = package

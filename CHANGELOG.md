@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.33 — 2026-11-28
+
+### 修复
+
+- **CLI 扫描结果漏回写点分版本**。命令行 `batch scan` / `batch install` 的深检回调此前只回写
+  签名 / 哈希结论，未把 NACP 提取到的点分版本带回清单，导致 JSON 里 `displayVersion` 恒为
+  空；现已与 GUI 模型一致回写。GUI 模型与本地缓存链路不受影响。
+
 ## 1.7.32 — 2026-11-28
 
 ### 新增
