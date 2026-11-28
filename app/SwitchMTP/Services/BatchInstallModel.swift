@@ -54,6 +54,10 @@ final class BatchInstallModel: ObservableObject {
     @Published private(set) var isDeepChecking = false
     @Published private(set) var deepCheckDone = 0
     @Published private(set) var deepCheckTotal = 0
+    /// True after the user paused the deep pass: the in-flight package finishes,
+    /// the rest stay queued in `deepRemainingJobs` until resume.
+    @Published private(set) var deepCheckPaused = false
+    private var deepRemainingJobs: [DeepCheckRunner.Job] = []
 
     @Published var keySetPath: String? = nil {
         didSet { refreshKeySetState() }
@@ -415,6 +419,7 @@ final class BatchInstallModel: ObservableObject {
         let fresh = incoming.filter { !existingPaths.contains($0.url.standardizedFileURL.path) }
         guard !fresh.isEmpty else { return }
         packages.append(contentsOf: fresh)
+        restoreCachedDeepResults()
         scannedFileCount = packages.count
         scannedBytes = totalBytes
         rebuildGroups()
@@ -726,14 +731,32 @@ final class BatchInstallModel: ObservableObject {
             packages[index].deepPhase = nil
             packages[index].deepNCAs = []
         }
+        DeepCheckCache.shared.invalidateAll()
         rebuildGroups()
     }
 
+    /// Fingerprint of the active keyset; cached conclusions derived under a
+    /// different one are not trusted.
+    private var activeKeysetFingerprint: String {
+        DeepCheckCache.keysetFingerprint(path: keySetPath)
+    }
+
+    /// Re-applies persisted deep conclusions to packages whose file fingerprint
+    /// still matches. Called after a scan merges fresh packages in.
+    private func restoreCachedDeepResults() {
+        let keyset = activeKeysetFingerprint
+        for index in packages.indices {
+            guard packages[index].deepState == .notRun,
+                  let fp = PackageFingerprint.make(for: packages[index]),
+                  let cached = DeepCheckCache.shared.result(for: fp, keyset: keyset) else { continue }
+            DeepCheckCache.shared.apply(cached, to: &packages[index])
+        }
+    }
+
     /// Runs the optional deep pass over the current selection (or everything
-    /// when nothing is selected). Only packages that have never been checked
-    /// are verified, so adding a new folder does not force a second pass over
-    /// titles already concluded. To re-check everything, clear the list and
-    /// scan again, then press this button once more.
+    /// when nothing is selected). Packages already concluded — including ones
+    /// restored from the on-disk cache — are skipped. The pass can be paused
+    /// and resumed from the next unrun package.
     func runDeepCheck() {
         guard !isDeepChecking, !isScanning else { return }
         guard let keyPath = keySetPath, keySetLoaded else {
@@ -752,34 +775,69 @@ final class BatchInstallModel: ObservableObject {
             return
         }
 
+        deepCheckPaused = false
+        deepRemainingJobs = []
         performDeepChecks(keysetPath: keyPath, jobs: DeepCheckRunner.jobs(for: targets)) { [weak self] in
             guard let self else { return }
-            self.setBanner(self.deepSummary(), isError: false)
+            if !self.deepCheckPaused {
+                self.setBanner(self.deepSummary(), isError: false)
+            }
         }
     }
 
-    /// The gate behind the "开始安装" button. Anything the user selected but
-    /// never deep-checked is verified first, so the plan's colours and the
-    /// confirm sheet's risk acknowledgement describe real evidence instead of
-    /// "结构看起来没问题". Without a keyset this degrades to a structural plan
-    /// whose items stay `.unverified`.
+    /// Pauses the deep pass after the package currently being checked finishes.
+    /// The remaining packages stay queued; nothing is killed mid-run.
+    func pauseDeepCheck() {
+        guard isDeepChecking else { return }
+        deepCheckPaused = true
+    }
+
+    /// Continues a paused deep pass with the packages left unrun.
+    func resumeDeepCheck() {
+        guard !isDeepChecking, !deepRemainingJobs.isEmpty else { return }
+        guard let keyPath = keySetPath, keySetLoaded else { return }
+        let remaining = deepRemainingJobs
+        deepRemainingJobs = []
+        deepCheckPaused = false
+        performDeepChecks(keysetPath: keyPath, jobs: remaining) { [weak self] in
+            guard let self else { return }
+            if !self.deepCheckPaused {
+                self.setBanner(self.deepSummary(), isError: false)
+            }
+        }
+    }
+
+    /// Stops the deep pass from starting any further package. The in-flight
+    /// package finishes; queued jobs are dropped with the workspace on close.
+    func cancelDeepCheck() {
+        deepCheckPaused = true
+    }
+
+    /// Drops the cached deep conclusion for the given packages and marks them
+    /// unchecked, so the next deep pass re-verifies them.
+    func recheck(_ packages: [InstallPackage]) {
+        for package in packages {
+            if let fp = PackageFingerprint.make(for: package) {
+                DeepCheckCache.shared.invalidate(fingerprint: fp)
+            }
+            updatePackage(id: package.id) { p in
+                p.deepState = .notRun
+                p.deepProgress = 0
+                p.deepPhase = nil
+                p.deepNCAs = []
+            }
+        }
+        rebuildGroups()
+    }
+
+    /// The gate behind the "开始安装" button. The plan is built straight from
+    /// the quick structural pass: a structurally sound package that was never
+    /// deep-checked is offered as `.unverified` and acknowledged on the confirm
+    /// sheet. Deep verification stays a manual, optional pass — it is no longer
+    /// forced before install.
     func preparePlan(completion: @escaping (InstallPlan?) -> Void) {
         guard canInstall else { completion(nil); return }
-
-        let pending = selectedPackages.filter { $0.deepState == .notRun }
-        guard !pending.isEmpty else { completion(makePlan()); return }
-
-        guard let keyPath = keySetPath, keySetLoaded, DeepVerifier.hactoolURL != nil else {
-            setBanner("没有可用的 prod.keys，本次只按结构判定；未验签项目会在确认页要求你勾选。", isError: false)
-            completion(makePlan())
-            return
-        }
-
-        performDeepChecks(keysetPath: keyPath, jobs: DeepCheckRunner.jobs(for: pending)) { [weak self] in
-            guard let self else { return }
-            self.setBanner(self.deepSummary(), isError: false)
-            completion(self.makePlan())
-        }
+        completion(makePlan())
     }
 
     private func performDeepChecks(keysetPath: String,
@@ -803,6 +861,7 @@ final class BatchInstallModel: ObservableObject {
             }
         }
         let titleKeys = DeepCheckRunner.titleKeysURL(for: keysetPath)
+        let keysetFingerprint = activeKeysetFingerprint
         // Freeze the work list: the scan may still publish new packages while
         // this runs, and those are simply not part of this pass.
         let frozen = jobs
@@ -812,11 +871,12 @@ final class BatchInstallModel: ObservableObject {
             let keyset = try? KeySetStore.makeEphemeralCopy(of: keysetPath)
             defer { if let keyset { KeySetStore.discard(keyset) } }
 
-            DeepCheckRunner.run(
+            let remaining = DeepCheckRunner.run(
                 jobs: frozen,
                 keysetURL: keyset,
                 titleKeysURL: titleKeys,
                 hactoolURL: hactool,
+                shouldStop: { self.deepCheckPaused },
                 onProgress: { job, fraction, phase in
                     DispatchQueue.main.async { [weak self] in
                         guard let self else { return }
@@ -826,8 +886,9 @@ final class BatchInstallModel: ObservableObject {
                         }
                     }
                 },
-                onResult: { job, result in
+                onResult: { [weak self] job, result in
                     DispatchQueue.main.async {
+                        guard let self else { return }
                         self.updatePackage(id: job.id) { package in
                             package.deepState = result.state
                             package.deepNCAs = result.ncas
@@ -840,12 +901,35 @@ final class BatchInstallModel: ObservableObject {
                             }
                             package.deepProgress = 1
                             package.deepPhase = nil
+                            if let fp = PackageFingerprint.make(for: package) {
+                                DeepCheckCache.shared.store(
+                                    state: result.state,
+                                    detail: result.detail,
+                                    notes: result.notes,
+                                    ncas: result.ncas,
+                                    keyset: keysetFingerprint,
+                                    for: fp)
+                            }
                         }
                         self.deepCheckDone += 1
                     }
                 })
 
             DispatchQueue.main.async {
+                if self.deepCheckPaused {
+                    // Reset the untouched jobs back to unchecked so their rows do
+                    // not sit on a stuck "running" state; resume picks them up.
+                    for job in remaining {
+                        self.updatePackage(id: job.id) { package in
+                            package.deepState = .notRun
+                            package.deepProgress = 0
+                            package.deepPhase = nil
+                        }
+                    }
+                    self.deepRemainingJobs = remaining
+                } else {
+                    self.deepRemainingJobs = []
+                }
                 self.isDeepChecking = false
                 self.rebuildGroups()
                 completion()

@@ -59,16 +59,28 @@ struct DeepCheckRunner {
     ///
     /// - Parameter keysetURL: Ephemeral keyset copy. When nil every job falls
     ///   back to an `.unavailable` result, matching the no-keyset degraded pass.
+    /// - Parameter shouldStop: Checked before each job. When it returns true,
+    ///   the current job finishes first (it is never killed mid-run), then the
+    ///   rest are left untouched and returned so a later resume can pick them
+    ///   up.
     /// - Parameters:
     ///   - onProgress: Per-job 0...1 fraction plus a short stage label.
     ///   - onResult: Delivered after each job finishes, whatever the verdict.
+    /// - Returns: Jobs left unrun because the pass was paused.
+    @discardableResult
     static func run(jobs: [Job],
                     keysetURL: URL?,
                     titleKeysURL: URL?,
                     hactoolURL: URL,
+                    shouldStop: () -> Bool,
                     onProgress: @escaping (Job, Double, String) -> Void,
-                    onResult: @escaping (Job, DeepResult) -> Void) {
+                    onResult: @escaping (Job, DeepResult) -> Void) -> [Job] {
+        var remaining: [Job] = []
         for job in jobs {
+            if shouldStop() {
+                remaining.append(job)
+                continue
+            }
             let result: DeepResult
             if let keysetURL {
                 result = DeepVerifier.verify(
@@ -89,5 +101,6 @@ struct DeepCheckRunner {
             }
             onResult(job, result)
         }
+        return remaining
     }
 }

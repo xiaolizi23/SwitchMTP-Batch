@@ -116,12 +116,14 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
     }
 
     func close() {
+        model?.cancelDeepCheck()
         windowController?.window?.close()
         windowController = nil
         model = nil
     }
 
     func windowWillClose(_ notification: Notification) {
+        model?.cancelDeepCheck()
         windowController = nil
         model = nil
     }

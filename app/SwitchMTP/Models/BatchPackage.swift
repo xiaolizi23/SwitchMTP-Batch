@@ -473,6 +473,10 @@ struct InstallPlan: Sendable {
     var advisoryPackages: [InstallPackage] { packages.filter(\.needsTitleModeAdvisory) }
     var advisoryCount: Int { advisoryPackages.count }
 
+    /// Packages that never went through the deep pass at all (notRun). These are
+    /// offered as unverified; the confirm sheet asks for a separate acknowledgement.
+    var uncheckedDeepCount: Int { packages.filter { $0.deepState == .notRun }.count }
+
     var counts: (passed: Int, unverified: Int, caution: Int, blocked: Int) {
         var p = 0, u = 0, c = 0, b = 0
         for item in packages {

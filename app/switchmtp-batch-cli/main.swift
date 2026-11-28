@@ -1147,6 +1147,7 @@ private func scanPackages(roots: [String], config: Config) throws -> [InstallPac
         keysetURL: ephemeral,
         titleKeysURL: titleKeys,
         hactoolURL: hactool,
+        shouldStop: { false },
         onProgress: { job, fraction, phase in
             guard !config.json else { return }
             fputs("\r  \(phase) \(Int((fraction * 100).rounded()))%  \(job.url.lastPathComponent)", stderr)

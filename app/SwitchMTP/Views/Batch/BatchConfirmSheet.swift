@@ -18,11 +18,19 @@ struct BatchConfirmSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var acknowledgesRisk = false
     @State private var acknowledgesMode = false
+    @State private var acknowledgesUnchecked = false
 
     /// Unverified / non-official items need one explicit click: DBI may still
     /// turn them yellow (or refuse), and we must not let that read as a pass.
     private var needsRiskAcknowledgement: Bool {
         plan.counts.unverified > 0 || plan.counts.caution > 0
+    }
+
+    /// Packages that never ran the deep pass get their own acknowledgement:
+    /// their signature/hash has not been checked at all, so the user must
+    /// consciously proceed without that evidence.
+    private var needsUncheckedAcknowledgement: Bool {
+        plan.uncheckedDeepCount > 0
     }
 
     /// Compressed titles (NSZ/XCZ) need a separate acknowledgement: in album /
@@ -116,6 +124,9 @@ struct BatchConfirmSheet: View {
                 if plan.counts.unverified > 0 {
                     noteRow("questionmark.circle.fill", "有 \(plan.counts.unverified) 个待确认项目：本机没验成签名/哈希（密钥不足、个人化票据或未解包），证据不足、不代表文件损坏，不能当作原版绿；最终以 DBI 实机结果为准。")
                 }
+                if needsUncheckedAcknowledgement {
+                    noteRow("shield.slash", "有 \(plan.uncheckedDeepCount) 个项目尚未做深度检查：签名链与内容哈希都没验过。可先关闭本页点「深度检查」补验；直接发送则按未验签处理，DBI 可能显示黄色。")
+                }
                 if needsModeAcknowledgement {
                     noteRow("arrow.up.forward.app", "有 \(plan.advisoryCount) 个压缩包（NSZ/XCZ）：在相册 / hbmenu（applet）模式下需在主机端解压，可能被 DBI 拒绝并提示“需要 title 模式”。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再发送；纯 NSP/XCI 不受此限制。")
                 }
@@ -125,6 +136,13 @@ struct BatchConfirmSheet: View {
                 if needsRiskAcknowledgement {
                     Toggle(isOn: $acknowledgesRisk) {
                         Text("我已知晓：勾选项目中有未验签/非官方内容，DBI 可能报黄色或拒绝安装")
+                            .font(.system(size: 10))
+                    }
+                    .toggleStyle(.checkbox)
+                }
+                if needsUncheckedAcknowledgement {
+                    Toggle(isOn: $acknowledgesUnchecked) {
+                        Text("我已知晓：\(plan.uncheckedDeepCount) 个项目未做深度检查，未验签名与哈希，按未验签发送")
                             .font(.system(size: 10))
                     }
                     .toggleStyle(.checkbox)
@@ -161,7 +179,8 @@ struct BatchConfirmSheet: View {
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
                 .disabled((needsRiskAcknowledgement && !acknowledgesRisk)
-                           || (needsModeAcknowledgement && !acknowledgesMode))
+                           || (needsModeAcknowledgement && !acknowledgesMode)
+                           || (needsUncheckedAcknowledgement && !acknowledgesUnchecked))
             }
             .padding(16)
         }

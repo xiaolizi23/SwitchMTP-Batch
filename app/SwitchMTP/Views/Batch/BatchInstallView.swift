@@ -50,6 +50,18 @@ struct BatchInstallSheet: View {
         }
     }
 
+    private var deepButtonLabel: String {
+        if model.isDeepChecking { return "暂停 \(model.deepCheckDone)/\(model.deepCheckTotal)" }
+        if model.deepCheckPaused { return "继续 \(model.deepCheckDone)/\(model.deepCheckTotal)" }
+        return "深度检查"
+    }
+
+    private var deepButtonIcon: String {
+        if model.isDeepChecking { return "pause.fill" }
+        if model.deepCheckPaused { return "play.fill" }
+        return "checkmark.shield"
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -142,14 +154,17 @@ struct BatchInstallSheet: View {
             }
 
             Button {
-                model.runDeepCheck()
+                if model.isDeepChecking {
+                    model.pauseDeepCheck()
+                } else if model.deepCheckPaused {
+                    model.resumeDeepCheck()
+                } else {
+                    model.runDeepCheck()
+                }
             } label: {
-                Label(model.isDeepChecking
-                      ? "深度检查 \(model.deepCheckDone)/\(model.deepCheckTotal)"
-                      : "深度检查",
-                      systemImage: "checkmark.shield")
+                Label(deepButtonLabel, systemImage: deepButtonIcon)
             }
-            .disabled(model.isDeepChecking || model.isScanning || model.packages.isEmpty)
+            .disabled(model.isScanning || model.packages.isEmpty)
 
             Button("关闭") { closeWorkspace() }
                 .keyboardShortcut(.cancelAction)
@@ -780,6 +795,13 @@ struct BatchInstallSheet: View {
         .disabled(!package.isSelectable || package.isSubmitted)
 
         Button("在访达中显示") { revealInFinder([package.url]) }
+
+        if package.deepState != .notRun && !package.isSubmitted {
+            Button("重新深度检查") {
+                model.recheck([package])
+                model.runDeepCheck()
+            }
+        }
 
         if package.format == .nsz && !package.isSubmitted {
             Button("解包为 NSP…") { chooseUnpackDestination(for: package) }
