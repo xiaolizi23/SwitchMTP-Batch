@@ -82,10 +82,10 @@ func TestParseDirEntry(t *testing.T) {
 
 func TestNormalizeTitleID(t *testing.T) {
 	cases := map[string]string{
-		"0x0100ABCDEF123456":  "0100ABCDEF123456",
-		"0X0100abcdef123456":  "0100ABCDEF123456",
-		" 0100 ABC DEF 800 ":  "0100ABCDEF800",
-		"":                     "",
+		"0x0100ABCDEF123456": "0100ABCDEF123456",
+		"0X0100abcdef123456": "0100ABCDEF123456",
+		" 0100 ABC DEF 800 ": "0100ABCDEF800",
+		"":                   "",
 	}
 	for in, want := range cases {
 		if got := NormalizeTitleID(in); got != want {
