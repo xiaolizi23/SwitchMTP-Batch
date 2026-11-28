@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.31 — 2026-11-28
+
+### 调整
+
+- **两类警告弹窗时机分开**。未深度检查提醒在点「开始安装」、打开确认页之前弹出；
+  相册 / 压缩包模式提醒改为在确认页点「确认安装」时弹出，两类不再连续叠弹。
+
 ## 1.7.30 — 2026-11-28
 
 ### 调整

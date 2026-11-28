@@ -188,16 +188,10 @@ struct BatchConfirmSheet: View {
         }
     }
 
-    /// Sends the plan after the explicit prompts: unchecked / applet-mode
-    /// warnings first, then titles already on the console. Cancelling any
-    /// prompt leaves the sheet open and sends nothing.
+    /// Sends the plan after the explicit prompts: the applet-mode warning
+    /// (unchecked titles were warned before the sheet opened), then titles
+    /// already on the console. Cancelling any prompt leaves the sheet open.
     private func confirmAndCommit() {
-        if needsUncheckedAcknowledgement {
-            guard presentWarning(
-                title: "有 \(plan.uncheckedDeepCount) 个项目尚未做深度检查",
-                info: "签名链与内容哈希都没验过。可先关闭本页点「深度检查」补验；直接发送则按未验签处理，DBI 可能显示黄色。"
-            ) else { return }
-        }
         if needsModeAcknowledgement {
             guard presentWarning(
                 title: "有 \(plan.advisoryCount) 个压缩包（NSZ/XCZ）",

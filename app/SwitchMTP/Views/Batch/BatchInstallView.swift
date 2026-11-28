@@ -62,6 +62,18 @@ struct BatchInstallSheet: View {
         return "checkmark.shield"
     }
 
+    /// Modal warning shown when opening the confirm sheet: titles that never
+    /// ran the deep pass. Returns true only if the user confirms proceeding.
+    private func presentUncheckedWarning(_ plan: InstallPlan) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = "有 \(plan.uncheckedDeepCount) 个项目尚未做深度检查"
+        alert.informativeText = "签名链与内容哈希都没验过。可先关闭本页点「深度检查」补验；直接发送则按未验签处理，DBI 可能显示黄色。"
+        alert.addButton(withTitle: "仍然安装")
+        alert.addButton(withTitle: "取消")
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
     var body: some View {
         VStack(spacing: 0) {
             header
@@ -1206,7 +1218,11 @@ struct BatchInstallSheet: View {
                 // The plan is built straight from the quick structural pass; the
                 // optional deep pass runs independently and does not block install.
                 model.preparePlan { plan in
-                    if let plan { pendingPlan = plan }
+                    guard let plan else { return }
+                    // Warn about unchecked titles before the confirm sheet opens;
+                    // the applet-mode warning is shown again after 确认安装.
+                    if plan.uncheckedDeepCount > 0, !presentUncheckedWarning(plan) { return }
+                    pendingPlan = plan
                 }
             } label: {
                 Label("开始安装", systemImage: "arrow.up.circle.fill")
