@@ -183,6 +183,11 @@ final class BatchInstallModel: ObservableObject {
         packages.filter { $0.isSelected && $0.resolvedVerdict == .unverified }.count
     }
 
+    /// Selected files whose signature chain is non-retail / structure needs care.
+    var selectedCautionCount: Int {
+        packages.filter { $0.isSelected && $0.resolvedVerdict == .caution }.count
+    }
+
     /// Selected files flagged for the applet/title-mode environment advisory.
     /// Independent of the signature/structure verdict; the confirm sheet asks
     /// for a separate acknowledgement when this is non-zero.
@@ -264,6 +269,19 @@ final class BatchInstallModel: ObservableObject {
     func queueItem(for package: InstallPackage) -> InstallQueueItem? {
         let path = package.url.standardizedFileURL.path
         return manager.installQueue.first { $0.url.standardizedFileURL.path == path }
+    }
+
+    /// True when this file is already sitting in the pending queue (waiting or
+    /// active). A second hand-off would be skipped by the queue dedupe, so the
+    /// row should be marked and the confirm gate should warn before committing.
+    func isQueuedPending(_ package: InstallPackage) -> Bool {
+        guard let item = queueItem(for: package) else { return false }
+        return !item.state.isFinished
+    }
+
+    /// Selected files already in the pending install queue.
+    var selectedQueuedPending: [InstallPackage] {
+        selectedPackages.filter { isQueuedPending($0) }
     }
 
     /// True only when the device reported a capacity we can trust. Virtual
@@ -348,6 +366,15 @@ final class BatchInstallModel: ObservableObject {
     }
 
     func rescanAll() {
+        startScan(urls: roots)
+    }
+
+    /// Re-scans the folders last imported, so reopening the workspace shows the
+    /// previous plan without the user picking the folder again. The automation
+    /// fixture hook runs first and owns the list when it is present; this only
+    /// fills an empty list from the persisted roots.
+    func recoverPersistedRoots() {
+        guard packages.isEmpty, !isScanning, !roots.isEmpty else { return }
         startScan(urls: roots)
     }
 

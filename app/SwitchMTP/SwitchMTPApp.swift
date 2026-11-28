@@ -15,6 +15,8 @@ import SwiftUI
 
 @main
 struct SwitchMTPApp: App {
+    @NSApplicationDelegateAdaptor(TerminationGuard.self) private var terminationGuard
+
     init() {
         NSWindow.allowsAutomaticWindowTabbing = false
     }

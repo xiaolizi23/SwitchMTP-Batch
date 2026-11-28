@@ -18,7 +18,11 @@ import UserNotifications
 
 /// Manages MTP device communication.
 final class MTPManager: ObservableObject {
-    
+
+    /// Weak back-reference to the live manager, so the app delegate can read
+    /// install-queue state when deciding whether to confirm termination.
+    static weak var shared: MTPManager?
+
     // MARK: – Published State
     @Published var connectionState: ConnectionState = .disconnected
     @Published var files: [MTPFile] = []
@@ -397,6 +401,7 @@ final class MTPManager: ObservableObject {
     static let isUITestFixture = ProcessInfo.processInfo.environment["SWITCHMTP_BATCH_TEST_FOLDER"] != nil
 
     init() {
+        Self.shared = self
         CallbackRouter.manager = self
 
         // Initialize and start USB monitor. Monitoring itself is passive --

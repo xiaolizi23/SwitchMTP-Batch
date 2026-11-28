@@ -98,7 +98,10 @@ struct BatchInstallSheet: View {
             KeySetPanel(model: model) { showKeyPanel = false }
         }
         .onChange(of: model.banner) { _ in }
-        .onAppear(perform: loadAutomationFixture)
+        .onAppear {
+            loadAutomationFixture()
+            model.recoverPersistedRoots()
+        }
     }
 
     /// Automation hook: `SWITCHMTP_BATCH_TEST_FOLDER` pre-loads a folder so an
@@ -198,6 +201,9 @@ struct BatchInstallSheet: View {
     private var leftColumn: some View {
         VStack(spacing: 0) {
             importBar
+            if let advisory = selectionAdvisoryText {
+                advisoryStrip(advisory)
+            }
             if let banner = model.banner {
                 bannerView(banner)
             }
@@ -300,6 +306,45 @@ struct BatchInstallSheet: View {
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(Color.accentColor.opacity(0.06))
+    }
+
+    /// Live summary of conflicts in the current selection. This is derived from
+    /// the checked rows, so it appears the moment a conflicting title is ticked
+    /// and disappears on its own when the selection clears; it does not write to
+    /// the one-shot `banner` and is never dismissed by an action result.
+    private var selectionAdvisoryText: String? {
+        var parts: [String] = []
+        if model.selectedAlreadyInstalled.count > 0 {
+            parts.append("\(model.selectedAlreadyInstalled.count) 项主机已有")
+        }
+        if model.selectedQueuedPending.count > 0 {
+            parts.append("\(model.selectedQueuedPending.count) 项已在队列")
+        }
+        if model.selectedCautionCount > 0 {
+            parts.append("\(model.selectedCautionCount) 项非官方签名")
+        }
+        if model.selectedUnverifiedCount > 0 {
+            parts.append("\(model.selectedUnverifiedCount) 项未验签")
+        }
+        if let shortfall = model.spaceShortfall {
+            parts.append("空间还差约 \(ByteCountFormatter.string(fromByteCount: shortfall, countStyle: .file))")
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " · ")
+    }
+
+    private func advisoryStrip(_ text: String) -> some View {
+        HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(.orange)
+            Text(text)
+                .font(.system(size: 11))
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+        .background(Color.orange.opacity(0.08))
     }
 
     private var emptyState: some View {

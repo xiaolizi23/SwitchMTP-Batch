@@ -108,6 +108,22 @@ final class BatchWorkspaceController: NSObject, NSWindowDelegate {
         model.importURLs(urls)
     }
 
+    /// Opens the workspace for a queue restored at launch — either a crash
+    /// resume or a parked soft-pause — and imports the folders the queued
+    /// files live in, so the whole group shows up with live progress instead
+    /// of an empty list the user has to re-import by hand. No-op when nothing
+    /// is queued, so a normal cold start is not disturbed.
+    func showRestoredQueue(manager: MTPManager) {
+        guard manager.hasQueuedInstalls else { return }
+        show(manager: manager)
+        guard let model else { return }
+        let parents = Set(manager.installQueue.map {
+            $0.url.deletingLastPathComponent().standardizedFileURL
+        }).filter { FileManager.default.fileExists(atPath: $0.path) }
+        guard !parents.isEmpty else { return }
+        model.importURLs(Array(parents))
+    }
+
     private func ensureModel(manager: MTPManager) -> BatchInstallModel {
         if let model { return model }
         let model = BatchInstallModel(manager: manager)

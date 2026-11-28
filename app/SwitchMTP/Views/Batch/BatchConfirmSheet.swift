@@ -32,6 +32,14 @@ struct BatchConfirmSheet: View {
         plan.advisoryCount > 0
     }
 
+    /// Whether the advisory band (caution note, space shortfall, risk toggle)
+    /// has anything to show. When it is empty the band and its top divider are
+    /// hidden, so the list sits directly above the action row with one divider
+    /// instead of two lines framing an empty strip.
+    private var hasAdvisory: Bool {
+        plan.counts.caution > 0 || model.spaceShortfall != nil || needsRiskAcknowledgement
+    }
+
     private var targetName: String {
         plan.targetKind == .nandInstall ? "NAND" : "SD 卡"
     }
@@ -91,6 +99,9 @@ struct BatchConfirmSheet: View {
                             } else if let pill = updatePill(package) {
                                 pill
                             }
+                            if model.isQueuedPending(package) {
+                                existingPill("已在队列", .blue)
+                            }
                             Spacer()
                             Text(package.sizeText)
                                 .font(.system(size: 10))
@@ -104,25 +115,27 @@ struct BatchConfirmSheet: View {
             }
             .frame(minHeight: 180, maxHeight: 320)
 
-            Divider()
+            if hasAdvisory {
+                Divider()
 
-            VStack(alignment: .leading, spacing: 6) {
-                if plan.counts.caution > 0 {
-                    noteRow("exclamationmark.triangle.fill", "有 \(plan.counts.caution) 个注意项目：签名不是零售链，或容器结构需注意；DBI 装完可能显示黄色，非官方签名需主机已有 sigpatch。")
-                }
-                if let shortfall = model.spaceShortfall {
-                    noteRow("externaldrive.badge.exclamationmark", "目标空间可能不足：还差约 \(ByteCountFormatter.string(fromByteCount: shortfall, countStyle: .file))。")
-                }
-                if needsRiskAcknowledgement {
-                    Toggle(isOn: $acknowledgesRisk) {
-                        Text("我已知晓：含未验签/非官方内容，DBI 可能显示黄色或拒绝安装")
-                            .font(.system(size: 10))
+                VStack(alignment: .leading, spacing: 6) {
+                    if plan.counts.caution > 0 {
+                        noteRow("exclamationmark.triangle.fill", "有 \(plan.counts.caution) 个注意项目：签名不是零售链，或容器结构需注意；DBI 装完可能显示黄色，非官方签名需主机已有 sigpatch。")
                     }
-                    .toggleStyle(.checkbox)
+                    if let shortfall = model.spaceShortfall {
+                        noteRow("externaldrive.badge.exclamationmark", "目标空间可能不足：还差约 \(ByteCountFormatter.string(fromByteCount: shortfall, countStyle: .file))。")
+                    }
+                    if needsRiskAcknowledgement {
+                        Toggle(isOn: $acknowledgesRisk) {
+                            Text("我已知晓：含未验签/非官方内容，DBI 可能显示黄色或拒绝安装")
+                                .font(.system(size: 10))
+                        }
+                        .toggleStyle(.checkbox)
+                    }
                 }
+                .padding(.horizontal, 18)
+                .padding(.vertical, 10)
             }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 10)
 
             Divider()
 
@@ -200,7 +213,30 @@ struct BatchConfirmSheet: View {
             ) else { return }
         }
 
-        let duplicates = plan.packages.filter { model.needsOverwriteConfirm($0) }
+        let queued = plan.packages.filter { model.isQueuedPending($0) }
+        if !queued.isEmpty {
+            let names = queued.map { model.displayTitle(for: $0) }
+            let alert = NSAlert()
+            alert.alertStyle = .warning
+            if names.count == 1 {
+                alert.messageText = "「\(names[0])」已在安装队列中，重复发送将被跳过。"
+            } else {
+                alert.messageText = "有 \(names.count) 个项目已在安装队列中，重复发送将被跳过。"
+            }
+            alert.informativeText = "已在队列：\n" + names.joined(separator: "\n")
+            alert.addButton(withTitle: "仍然继续")
+            alert.addButton(withTitle: "取消")
+            guard alert.runModal() == .alertFirstButtonReturn else { return }
+        }
+
+        // Overwrite confirmation only applies to titles that will actually be
+        // sent. Items already sitting in the pending queue are deduped by the
+        // backend and skipped, so asking whether to overwrite the console for
+        // them is moot — and would contradict the queue warning just shown.
+        let queuedIDs = Set(queued.map(\.id))
+        let duplicates = plan.packages.filter {
+            !queuedIDs.contains($0.id) && model.needsOverwriteConfirm($0)
+        }
         guard !duplicates.isEmpty else {
             model.commit(plan: plan)
             onFinished()

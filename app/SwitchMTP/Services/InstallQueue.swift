@@ -234,6 +234,18 @@ extension MTPManager {
 
     var hasQueuedInstalls: Bool { pendingInstallCount > 0 }
 
+    /// The title currently being uploaded, if a transfer is in flight.
+    var activeInstallTitle: String? {
+        guard let id = activeInstallItemID,
+              let item = installQueue.first(where: { $0.id == id }) else { return nil }
+        return item.name
+    }
+
+    /// Titles still waiting behind the in-flight one.
+    var queuedInstallCount: Int {
+        installQueue.filter { $0.state == .waiting }.count
+    }
+
     // MARK: - Soft pause
 
     /// Soft pause: the upload currently in flight keeps running to its finish,

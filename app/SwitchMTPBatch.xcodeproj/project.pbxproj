@@ -43,6 +43,7 @@
 		82E9A979F2A1F72DD23290D8 /* PackageInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B17A61DD50CE75EC03BE039 /* PackageInspector.swift */; };
 		8362B7A20D48D3F5A6B61233 /* NSZUnpacker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 104165856777133274B78161 /* NSZUnpacker.swift */; };
 		89FB407322DA694F9A62679A /* FavoritesManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = C24E675C9D057E04CA2098A8 /* FavoritesManager.swift */; };
+		8BCD51CF843E80F0387CB794 /* TerminationGuard.swift in Sources */ = {isa = PBXBuildFile; fileRef = D08BABC1CD52E743891FAB6B /* TerminationGuard.swift */; };
 		9E0034BF01D531D1884A0052 /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 915C6296D6E867D7F4711C8F /* UpdateChecker.swift */; };
 		A1F80EAA7A62CDC9FF1AC364 /* MainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DE472E8AB3747B888C2EB36 /* MainView.swift */; };
 		A2F594E989A4C151C30E1A63 /* BatchPackage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 695B9B29F1B66271E678CA71 /* BatchPackage.swift */; };
@@ -156,6 +157,7 @@
 		C9810D759F1045FD568F35D3 /* T2S.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = T2S.json; sourceTree = "<group>"; };
 		CC28003D6E00CC89C2011216 /* Credits.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = Credits.html; sourceTree = "<group>"; };
 		CF603DC5B9805AD3BCE9DEEA /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D08BABC1CD52E743891FAB6B /* TerminationGuard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminationGuard.swift; sourceTree = "<group>"; };
 		D64ADEAB0D03CFB7C60E205B /* InstallQueueStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InstallQueueStore.swift; sourceTree = "<group>"; };
 		D799ADB64DCA1A02E7CE5937 /* BatchConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchConfirmSheet.swift; sourceTree = "<group>"; };
 		E6B4B8496333F77F85090735 /* SwitchMTPApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SwitchMTPApp.swift; sourceTree = "<group>"; };
@@ -300,6 +302,7 @@
 				104165856777133274B78161 /* NSZUnpacker.swift */,
 				3B17A61DD50CE75EC03BE039 /* PackageInspector.swift */,
 				1DE5FABBA7B0A46D5503BCC4 /* SwitchWorkflows.swift */,
+				D08BABC1CD52E743891FAB6B /* TerminationGuard.swift */,
 				45CE6F809C9DA8FFD6B49E45 /* TitleIconStore.swift */,
 				915C6296D6E867D7F4711C8F /* UpdateChecker.swift */,
 				233ECF7304E35A5E256ED211 /* USBMonitor.swift */,
@@ -567,6 +570,7 @@
 				FA45E0F6F7587217CB8F697C /* SwitchCommands.swift in Sources */,
 				00408051092CF3E852527BE5 /* SwitchMTPApp.swift in Sources */,
 				0F4CE73C2EE78C131E60BFE9 /* SwitchWorkflows.swift in Sources */,
+				8BCD51CF843E80F0387CB794 /* TerminationGuard.swift in Sources */,
 				B90C3B9D16182E39930A0B2E /* TitleIconStore.swift in Sources */,
 				EF58B53F7CA46DF42D7AD511 /* ToolbarViews.swift in Sources */,
 				DCCA212E0FD9A5161E9965EF /* TransferBar.swift in Sources */,
@@ -587,7 +591,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/SwitchMTPBatch.entitlements;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				ENABLE_APP_SANDBOX = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -614,7 +618,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.33;
+				MARKETING_VERSION = 1.7.34;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -630,7 +634,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "Resources/switchmtp-batch-cli.entitlements";
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				ENABLE_HARDENED_RUNTIME = YES;
 				EXECUTABLE_NAME = "switchmtp-batch-cli";
 				HEADER_SEARCH_PATHS = (
@@ -650,7 +654,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.33;
+				MARKETING_VERSION = 1.7.34;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -667,10 +671,10 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.33;
+				MARKETING_VERSION = 1.7.34;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
 			};
@@ -681,7 +685,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/SwitchMTPBatch.entitlements;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				ENABLE_APP_SANDBOX = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
@@ -708,7 +712,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.33;
+				MARKETING_VERSION = 1.7.34;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -724,7 +728,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_ENTITLEMENTS = "Resources/switchmtp-batch-cli.entitlements";
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				ENABLE_HARDENED_RUNTIME = YES;
 				EXECUTABLE_NAME = "switchmtp-batch-cli";
 				HEADER_SEARCH_PATHS = (
@@ -744,7 +748,7 @@
 					"$(SRCROOT)/../third_party/libusb/lib",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.33;
+				MARKETING_VERSION = 1.7.34;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
 					"$(SRCROOT)/../backend/build/nxmtp.dylib",
@@ -761,10 +765,10 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "-";
 				CODE_SIGN_STYLE = Manual;
-				CURRENT_PROJECT_VERSION = 57;
+				CURRENT_PROJECT_VERSION = 58;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 12.0;
-				MARKETING_VERSION = 1.7.33;
+				MARKETING_VERSION = 1.7.34;
 				SDKROOT = macosx;
 				SWIFT_VERSION = 5.10;
 			};

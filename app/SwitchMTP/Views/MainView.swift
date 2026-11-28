@@ -120,6 +120,10 @@ struct MainView: View {
             if usbAccessDisclosureAcknowledged {
                 manager.start()
             }
+            // Reopen the batch workspace for a queue restored at launch (crash
+            // resume or parked pause), importing the queued files' folders so
+            // progress is visible without a manual re-import. No-op when empty.
+            batchWorkspace.showRestoredQueue(manager: manager)
         }
         .animation(.easeInOut(duration: 0.18), value: manager.transferProgress != nil)
         .animation(.easeInOut(duration: 0.18), value: manager.isTransferActive)
