@@ -677,19 +677,27 @@ enum DeepVerifier {
         process.standardOutput = pipe
         process.standardError = pipe
 
+        // The file-handle monitor thread and the caller thread that drains the
+        // output after `waitUntilExit` must never touch the buffered strings at
+        // the same time. Before this fix the captured `buffer`/`collected` were
+        // mutated from both threads; a COW string refcount race could corrupt the
+        // heap and abort with a malloc double free (crash 2026-11-28 11:37).
+        let drainQueue = DispatchQueue(label: "me.fratei.switchmtp.deep-verifier.output")
         var buffer = ""
         var collected = ""
+
         let readHandle = pipe.fileHandleForReading
         readHandle.readabilityHandler = { handle in
             let data = handle.availableData
             guard !data.isEmpty else { return }
-            let chunk = String(data: data, encoding: .utf8) ?? ""
-            buffer += chunk
-            while let newline = buffer.firstIndex(of: "\n") {
-                let line = String(buffer[buffer.startIndex..<newline])
-                buffer.removeSubrange(...newline)
-                collected += line + "\n"
-                onLine?(line)
+            drainQueue.async {
+                buffer.append(String(data: data, encoding: .utf8) ?? "")
+                while let newline = buffer.firstIndex(of: "\n") {
+                    let line = String(buffer[buffer.startIndex..<newline])
+                    buffer.removeSubrange(...newline)
+                    collected.append(line + "\n")
+                    onLine?(line)
+                }
             }
         }
 
@@ -697,6 +705,7 @@ enum DeepVerifier {
             try process.run()
         } catch {
             readHandle.readabilityHandler = nil
+            drainQueue.sync { }
             try? readHandle.close()
             return .failure(error.localizedDescription)
         }
@@ -709,18 +718,32 @@ enum DeepVerifier {
         process.waitUntilExit()
         timeoutWork.cancel()
         readHandle.readabilityHandler = nil
-        try? readHandle.close()
 
-        let remainder = buffer.trimmingCharacters(in: .newlines)
+        // No further handler can be enqueued now. Wait for any in-flight
+        // callback to finish, pull whatever the pipe still holds, and take the
+        // final remainder under the same lock.
+        var remainder = ""
+        var output = ""
+        drainQueue.sync {
+            let trailing = readHandle.availableData
+            if !trailing.isEmpty {
+                buffer.append(String(data: trailing, encoding: .utf8) ?? "")
+            }
+            remainder = buffer.trimmingCharacters(in: .newlines)
+            if !remainder.isEmpty {
+                collected.append(remainder)
+            }
+            output = collected
+        }
         if !remainder.isEmpty {
-            collected += remainder
             onLine?(remainder)
         }
+        try? readHandle.close()
 
-        if process.terminationStatus != 0, collected.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+        if process.terminationStatus != 0, output.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return .failure("校验引擎异常退出（\(process.terminationStatus)）")
         }
-        return .success(collected)
+        return .success(output)
     }
 }
 

@@ -4,6 +4,17 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.25 — 2026-11-28
+
+### 修复
+
+- **深度检查偶发崩溃（malloc double free）**。验签 / NSZ 解包子进程的输出读取回调与
+  `waitUntilExit()` 返回后的收尾线程并发改写同一份字符串缓冲，Copy-on-Write 引用计数
+  被踩坏，某次释放时 malloc 报 double free 并中止进程；输出行越多（NSZ 解包）越容易
+  踩到。现在输出缓冲全部经过一条串行队列保护：回调块入队处理，收尾时先等在途回调结束，
+  再排空管道剩余数据并取快照，两个线程不再并发触碰缓冲。该崩溃只发生在本地深度检查，
+  不涉及 MTP 传输通道。
+
 ## 1.7.24 — 2026-11-28
 
 ### GUI
