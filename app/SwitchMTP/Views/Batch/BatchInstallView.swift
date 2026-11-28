@@ -51,14 +51,14 @@ struct BatchInstallSheet: View {
     }
 
     private var deepButtonLabel: String {
-        if model.isDeepChecking { return "暂停 \(model.deepCheckDone)/\(model.deepCheckTotal)" }
-        if model.deepCheckPaused { return "继续 \(model.deepCheckDone)/\(model.deepCheckTotal)" }
+        if model.isDeepChecking && !model.deepCheckPaused {
+            return "暂停 \(model.deepCheckDone)/\(model.deepCheckTotal)"
+        }
         return "深度检查"
     }
 
     private var deepButtonIcon: String {
-        if model.isDeepChecking { return "pause.fill" }
-        if model.deepCheckPaused { return "play.fill" }
+        if model.isDeepChecking && !model.deepCheckPaused { return "pause.fill" }
         return "checkmark.shield"
     }
 
@@ -154,10 +154,8 @@ struct BatchInstallSheet: View {
             }
 
             Button {
-                if model.isDeepChecking {
+                if model.isDeepChecking && !model.deepCheckPaused {
                     model.pauseDeepCheck()
-                } else if model.deepCheckPaused {
-                    model.resumeDeepCheck()
                 } else {
                     model.runDeepCheck()
                 }
@@ -1205,18 +1203,18 @@ struct BatchInstallSheet: View {
                 }
             }
             Button {
-                // Deep-check anything still unverified before the sheet opens,
-                // so the colours in the plan are evidence, not guesswork.
+                // The plan is built straight from the quick structural pass; the
+                // optional deep pass runs independently and does not block install.
                 model.preparePlan { plan in
                     if let plan { pendingPlan = plan }
                 }
             } label: {
-                Label(model.isDeepChecking ? "校验中…" : "开始安装", systemImage: "arrow.up.circle.fill")
+                Label("开始安装", systemImage: "arrow.up.circle.fill")
                     .frame(minWidth: 110)
             }
             .buttonStyle(.borderedProminent)
             .controlSize(.large)
-            .disabled(!model.canInstall || model.isDeepChecking)
+            .disabled(!model.canInstall)
             .help(model.isDeviceReady ? "" : "先连接 Switch 并在 DBI 里运行 MTP responder")
         }
         .padding(.horizontal, 18)

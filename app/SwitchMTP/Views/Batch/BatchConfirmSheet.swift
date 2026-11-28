@@ -17,8 +17,6 @@ struct BatchConfirmSheet: View {
     let onFinished: () -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var acknowledgesRisk = false
-    @State private var acknowledgesMode = false
-    @State private var acknowledgesUnchecked = false
 
     /// Unverified / non-official items need one explicit click: DBI may still
     /// turn them yellow (or refuse), and we must not let that read as a pass.
@@ -140,20 +138,6 @@ struct BatchConfirmSheet: View {
                     }
                     .toggleStyle(.checkbox)
                 }
-                if needsUncheckedAcknowledgement {
-                    Toggle(isOn: $acknowledgesUnchecked) {
-                        Text("我已知晓：\(plan.uncheckedDeepCount) 个项目未做深度检查，未验签名与哈希，按未验签发送")
-                            .font(.system(size: 10))
-                    }
-                    .toggleStyle(.checkbox)
-                }
-                if needsModeAcknowledgement {
-                    Toggle(isOn: $acknowledgesMode) {
-                        Text("我已知晓：以上压缩包（NSZ/XCZ）建议在 title 模式下安装；若仍用相册 / hbmenu 打开 DBI，部分项目可能被拒绝。")
-                            .font(.system(size: 10))
-                    }
-                    .toggleStyle(.checkbox)
-                }
                 noteRow("info.circle.fill", "SwitchMTP Batch 只能确认“文件已发送给 DBI”。最终安装成功与否、DBI 屏幕上显示什么颜色，只能看主机本身；本应用不会代你宣称安装成功。")
                 noteRow("exclamationmark.triangle.fill", "安装过程中请保持 USB 连接、不要锁屏休眠。中断可能让主机留下半个游戏。")
             }
@@ -164,7 +148,7 @@ struct BatchConfirmSheet: View {
 
             HStack {
                 if model.lastSubmittedCount == 0 {
-                    Text("点击“开始安装”后才会开始传输。")
+                    Text("点击“确认安装”后才会开始传输。")
                         .font(.system(size: 10))
                         .foregroundStyle(.secondary)
                 }
@@ -174,13 +158,11 @@ struct BatchConfirmSheet: View {
                 Button {
                     confirmAndCommit()
                 } label: {
-                    Label("开始安装 \(plan.packages.count) 项", systemImage: "arrow.up.circle.fill")
+                    Label("确认安装 \(plan.packages.count) 项", systemImage: "arrow.up.circle.fill")
                 }
                 .buttonStyle(.borderedProminent)
                 .keyboardShortcut(.defaultAction)
-                .disabled((needsRiskAcknowledgement && !acknowledgesRisk)
-                           || (needsModeAcknowledgement && !acknowledgesMode)
-                           || (needsUncheckedAcknowledgement && !acknowledgesUnchecked))
+                .disabled(needsRiskAcknowledgement && !acknowledgesRisk)
             }
             .padding(16)
         }
@@ -206,11 +188,23 @@ struct BatchConfirmSheet: View {
         }
     }
 
-    /// Sends the plan after one explicit prompt about titles already on the
-    /// console. Every selected base/DLC the manifest lists is shown in the
-    /// prompt, one per line; updates are excluded by `isAlreadyOnConsole` and
-    /// are never asked about. Cancelling leaves the sheet open and sends nothing.
+    /// Sends the plan after the explicit prompts: unchecked / applet-mode
+    /// warnings first, then titles already on the console. Cancelling any
+    /// prompt leaves the sheet open and sends nothing.
     private func confirmAndCommit() {
+        if needsUncheckedAcknowledgement {
+            guard presentWarning(
+                title: "有 \(plan.uncheckedDeepCount) 个项目尚未做深度检查",
+                info: "签名链与内容哈希都没验过。可先关闭本页点「深度检查」补验；直接发送则按未验签处理，DBI 可能显示黄色。"
+            ) else { return }
+        }
+        if needsModeAcknowledgement {
+            guard presentWarning(
+                title: "有 \(plan.advisoryCount) 个压缩包（NSZ/XCZ）",
+                info: "在相册 / hbmenu（applet）模式下需在主机端解压，可能被 DBI 拒绝并提示“需要 title 模式”。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再发送；纯 NSP/XCI 不受此限制。"
+            ) else { return }
+        }
+
         let duplicates = plan.packages.filter { model.isAlreadyOnConsole($0) }
         guard !duplicates.isEmpty else {
             model.commit(plan: plan)
@@ -233,6 +227,17 @@ struct BatchConfirmSheet: View {
         guard alert.runModal() == .alertFirstButtonReturn else { return }
         model.commit(plan: plan)
         onFinished()
+    }
+
+    /// One modal warning. Returns true only when the user confirms proceeding.
+    private func presentWarning(title: String, info: String) -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = title
+        alert.informativeText = info
+        alert.addButton(withTitle: "仍然安装")
+        alert.addButton(withTitle: "取消")
+        return alert.runModal() == .alertFirstButtonReturn
     }
 
     private func color(_ verdict: PackageVerdict) -> Color {
