@@ -4,6 +4,16 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.24 — 2026-11-28
+
+### GUI
+
+- **完成通知标注具体包名**。此前每传完一个包、切出 app 时弹出的系统通知只写
+  「导入完成 / 导出完成」，看不出是哪一个包。现在通知正文带上具体文件名：优先取
+  当前队列安装项的名称，一次性上传/下载（不在队列里）回退到最后一帧进度文件名；
+  取不到名字时仍回退原来的通用文案。该通知仍只在 app 不在前台时由系统弹出，前台
+  完成时的包信息以清单行 / 队列行状态为准。
+
 ## 1.7.23 — 2026-11-28
 
 ### GUI

@@ -1045,6 +1045,16 @@ final class MTPManager: ObservableObject {
 
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
+            // Capture the finished title's name before the queue entry is cleared,
+            // so the completion notification can name the package instead of
+            // saying only generically "import completed". Prefer the queue entry
+            // (the real install file); fall back to the last progress payload's
+            // file name for a one-off upload/download that is not queued.
+            let activeName = self.activeInstallItemID
+                .flatMap { id in self.installQueue.first(where: { $0.id == id })?.name }
+            let statsName = self.transferStats?.currentFileName
+            let finishedName = activeName ?? (statsName != "—" && !(statsName ?? "").isEmpty ? statsName : nil)
+
             self.isTransferActive = false
             self.transferProgress = nil
             self.transferStats = nil
@@ -1059,7 +1069,15 @@ final class MTPManager: ObservableObject {
             if !NSApplication.shared.isActive {
                 let content = UNMutableNotificationContent()
                 content.title = String(localized: "Transfer Complete")
-                content.body = kind == .uploading ? String(localized: "Import completed successfully.") : String(localized: "Export completed successfully.")
+                if let finishedName, !finishedName.isEmpty {
+                    content.body = kind == .uploading
+                        ? String(localized: "Import completed: \(finishedName)")
+                        : String(localized: "Export completed: \(finishedName)")
+                } else {
+                    content.body = kind == .uploading
+                        ? String(localized: "Import completed successfully.")
+                        : String(localized: "Export completed successfully.")
+                }
                 let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
                 UNUserNotificationCenter.current().requestAuthorization(options: [.alert]) { granted, _ in
                     if granted {
