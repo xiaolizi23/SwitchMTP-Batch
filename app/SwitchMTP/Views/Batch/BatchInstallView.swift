@@ -615,7 +615,7 @@ struct BatchInstallSheet: View {
                 badge("已交给 DBI \(group.submittedCount)", color: .blue)
             }
             if group.advisoryCount > 0 {
-                badge("大压缩包 \(group.advisoryCount)", color: .orange)
+                badge("压缩包 \(group.advisoryCount)", color: .orange)
             }
             if group.hasBlocked {
                 badge("含阻止项", color: .red)
@@ -698,7 +698,7 @@ struct BatchInstallSheet: View {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .font(.system(size: 9))
                             .foregroundStyle(.orange)
-                            .help("大压缩包：在相册 / hbmenu（applet）模式下可能因主机内存不足被 DBI 拒绝。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再安装。")
+                            .help("NSZ/XCZ 压缩包：在相册 / hbmenu（applet）模式下需在主机端解压，可能被 DBI 拒绝。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再安装；纯 NSP/XCI 不受此限制。")
                     }
                 }
                 HStack(spacing: 6) {

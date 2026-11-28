@@ -67,9 +67,9 @@ const minTransferRate = 64 * 1024
 // of space, and running out of memory in applet mode. All three look identical
 // over USB: the device simply stops reading.
 const StallNote = "The Switch has stopped accepting data. Check the console — DBI may be " +
-	"showing an error or waiting for input. Large compressed titles can also exhaust " +
-	"memory in applet mode; launching DBI by holding R while starting a game avoids that. " +
-	"Cancel the transfer if the console does not recover."
+	"showing an error or waiting for input. Compressed titles (NSZ/XCZ) decompress on the " +
+	"console and can be refused in applet mode; launching DBI by holding R while starting a " +
+	"game avoids that. Cancel the transfer if the console does not recover."
 
 // FileSizeProgress describes progress through a byte count.
 type FileSizeProgress struct {

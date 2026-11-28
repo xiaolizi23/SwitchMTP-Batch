@@ -426,8 +426,8 @@ struct MainView: View {
                   device.profile == .switchDBI,
                   !switchDBILargeInstallTipDismissed {
             SwitchMTPBanner(
-                title: String(localized: "Tip for large installs"),
-                message: String(localized: "For large installs, launch DBI in title mode (hold R while starting a game). In applet mode large transfers fail with \"Extra buffers exceeded\"."),
+                title: String(localized: "Tip for compressed titles"),
+                message: String(localized: "For compressed titles (NSZ/XCZ), launch DBI in title mode (hold R while starting a game). In applet mode these decompress on the console and can fail with \"Extra buffers exceeded\"."),
                 systemImage: "lightbulb",
                 tint: .accentColor,
                 onDismiss: { switchDBILargeInstallTipDismissed = true }

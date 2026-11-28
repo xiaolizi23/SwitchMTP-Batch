@@ -6903,46 +6903,6 @@
         }
       }
     },
-    "For large installs, launch DBI in title mode (hold R while starting a game). In applet mode large transfers fail with \"Extra buffers exceeded\".": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "For large installs, launch DBI in title mode (hold R while starting a game). In applet mode large transfers fail with \"Extra buffers exceeded\"."
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Para instalaciones grandes, abre DBI en modo título (mantén pulsado R al iniciar un juego). En modo applet, las transferencias grandes fallan con «Extra buffers exceeded»."
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "大きなインストールを行うときは、DBI をタイトルモードで起動してください（ゲーム起動時に R を押したままにします）。アプレットモードでは大きな転送が「Extra buffers exceeded」で失敗します。"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Для больших установок запускайте DBI в режиме игры (удерживайте R при запуске игры). В режиме апплета большие передачи завершаются ошибкой «Extra buffers exceeded»."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "安装大文件时，请以标题模式启动 DBI（启动游戏时按住 R）。在小程序模式下，大文件传输会因“Extra buffers exceeded”而失败。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "安裝大型檔案時，請以標題模式啟動 DBI（啟動遊戲時按住 R）。在小程式模式下，大型傳輸會因「Extra buffers exceeded」而失敗。"
-          }
-        }
-      }
-    },
     "Free Space": {
       "extractionState": "manual",
       "localizations": {
@@ -14353,46 +14313,6 @@
         }
       }
     },
-    "Tip for large installs": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tip for large installs"
-          }
-        },
-        "es": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Consejo para instalaciones grandes"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "大きなインストールのヒント"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Совет для больших установок"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "大文件安装提示"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "大型安裝提示"
-          }
-        }
-      }
-    },
     "To get past this, SwitchMTP Batch briefly resets the USB port your Switch is plugged into. macOS releases the connection, and SwitchMTP Batch takes it immediately.": {
       "extractionState": "manual",
       "localizations": {
@@ -15493,6 +15413,129 @@
           "stringUnit": {
             "state": "translated",
             "value": "暫無已發布的版本。"
+          }
+        }
+      }
+    },
+    "Tip for compressed titles": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tip for compressed titles"
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Consejo para títulos comprimidos"
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "圧縮タイトルのヒント"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Совет для сжатых образов"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "压缩包安装提示"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "壓縮檔安裝提示"
+          }
+        }
+      }
+    },
+    "For compressed titles (NSZ/XCZ), launch DBI in title mode (hold R while starting a game). In applet mode these decompress on the console and can fail with \"Extra buffers exceeded\".": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For compressed titles (NSZ/XCZ), launch DBI in title mode (hold R while starting a game). In applet mode these decompress on the console and can fail with \"Extra buffers exceeded\"."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Para títulos comprimidos (NSZ/XCZ), abre DBI en modo título (mantén pulsado R al iniciar un juego). En modo applet se descomprimen en la consola y pueden fallar con «Extra buffers exceeded»."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "圧縮タイトル（NSZ/XCZ）は、DBI をタイトルモードで起動してください（ゲーム起動時に R を押したままにします）。アプレットモードでは本体上で展開され、「Extra buffers exceeded」で失敗することがあります。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Для сжатых образов (NSZ/XCZ) запускайте DBI в режиме игры (удерживайте R при запуске игры). В режиме апплета они распаковываются на консоли и могут завершиться ошибкой «Extra buffers exceeded»."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "压缩包（NSZ/XCZ）请以标题模式启动 DBI（启动游戏时按住 R）。在小程序模式下需在主机端解压，可能因“Extra buffers exceeded”而失败。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "壓縮檔（NSZ/XCZ）請以標題模式啟動 DBI（啟動遊戲時按住 R）。在小程式模式下需在主機端解壓，可能因「Extra buffers exceeded」而失敗。"
+          }
+        }
+      }
+    },
+    "No data accepted for %llds. Check the console — DBI may be showing an error or waiting for input. Compressed titles (NSZ/XCZ) decompress on the console and can be refused in applet mode; launching DBI over a running game avoids that.": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No data accepted for %llds. Check the console — DBI may be showing an error or waiting for input. Compressed titles (NSZ/XCZ) decompress on the console and can be refused in applet mode; launching DBI over a running game avoids that."
+          }
+        },
+        "es": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No se aceptan datos desde hace %lld s. Revisa la consola: DBI puede mostrar un error o estar esperando entrada. Los títulos comprimidos (NSZ/XCZ) se descomprimen en la consola y pueden rechazarse en modo applet; lanzar DBI desde un juego en ejecución lo evita."
+          }
+        },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 秒間データを受け付けていません。本体を確認してください。DBI がエラーを表示しているか入力待ちの可能性があります。圧縮タイトル（NSZ/XCZ）は本体上で展開され、アプレットモードでは拒否されることがあります。実行中のゲームから DBI を起動すれば回避できます。"
+          }
+        },
+        "ru": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Данные не принимаются уже %lld с. Проверьте консоль — DBI может показывать ошибку или ждать ввода. Сжатые образы (NSZ/XCZ) распаковываются на консоли и могут быть отклонены в режиме апплета; запуск DBI поверх запущенной игры это обходит."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 秒未收到数据。请查看主机——DBI 可能显示错误或正在等待输入。压缩包（NSZ/XCZ）需在主机端解压，在小程序模式下可能被拒绝；从运行中的游戏启动 DBI 可避免此问题。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%lld 秒未收到資料。請查看主機——DBI 可能顯示錯誤或正在等待輸入。壓縮檔（NSZ/XCZ）需在主機端解壓，在小程式模式下可能被拒絕；從執行中的遊戲啟動 DBI 可避免此問題。"
           }
         }
       }

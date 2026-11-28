@@ -196,7 +196,7 @@ struct TransferBar: View {
         // more specific advice that comes with it.
         if let stats, stats.isStalled {
             let seconds = Int(max(stats.stalledFor, secondsSinceProgress ?? 0))
-            return String(localized: "No data accepted for \(seconds)s. Check the console — DBI may be showing an error or waiting for input. Large compressed titles can exhaust memory in applet mode; launching DBI over a running game avoids that.")
+            return String(localized: "No data accepted for \(seconds)s. Check the console — DBI may be showing an error or waiting for input. Compressed titles (NSZ/XCZ) decompress on the console and can be refused in applet mode; launching DBI over a running game avoids that.")
         }
         let seconds = Int(secondsSinceProgress ?? 0)
         return String(localized: "No progress for \(seconds)s. The console may be busy; DBI shows the real state on screen.")

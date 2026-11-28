@@ -237,8 +237,8 @@ func (c *Client) waitForDeviceReady(tracker *progressTracker) error {
 		Kind: KindDeviceBusy,
 		Op:   "install",
 		Msg:  "the Switch did not become ready again after the previous installation",
-		Hint: "Check the console for an error. Large installs can fail in applet mode -- " +
-			"launch DBI by holding R while starting a game.",
+		Hint: "Check the console for an error. Compressed titles (NSZ/XCZ) can fail in " +
+			"applet mode -- launch DBI by holding R while starting a game.",
 		Err: lastErr,
 	}
 }

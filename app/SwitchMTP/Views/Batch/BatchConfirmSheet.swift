@@ -25,9 +25,10 @@ struct BatchConfirmSheet: View {
         plan.counts.unverified > 0 || plan.counts.caution > 0
     }
 
-    /// Large compressed titles need a separate acknowledgement: in album /
-    /// hbmenu (applet) mode DBI's console heap is tight and such titles can be
-    /// refused. This is an environment risk, independent of the signature axis.
+    /// Compressed titles (NSZ/XCZ) need a separate acknowledgement: in album /
+    /// hbmenu (applet) mode DBI decompresses them on the console and such titles
+    /// can be refused. This is an environment risk keyed by format, independent
+    /// of the signature axis and of package size.
     private var needsModeAcknowledgement: Bool {
         plan.advisoryCount > 0
     }
@@ -77,7 +78,7 @@ struct BatchConfirmSheet: View {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundStyle(.orange)
                                     .font(.system(size: 10))
-                                    .help("大压缩包：applet（相册/hbmenu）模式下可能因主机内存不足被 DBI 拒绝；建议 title 模式启动 DBI。")
+                                    .help("NSZ/XCZ 压缩包：applet（相册/hbmenu）模式下需在主机端解压，可能被 DBI 拒绝；建议 title 模式启动 DBI。")
                             }
                             Text(package.contentType.displayName)
                                 .font(.system(size: 9, weight: .bold))
@@ -109,7 +110,7 @@ struct BatchConfirmSheet: View {
                     noteRow("questionmark.circle.fill", "有 \(plan.counts.unverified) 个待确认项目：本机没验成签名/哈希（密钥不足、个人化票据或未解包），证据不足、不代表文件损坏，不能当作原版绿；最终以 DBI 实机结果为准。")
                 }
                 if needsModeAcknowledgement {
-                    noteRow("arrow.up.forward.app", "有 \(plan.advisoryCount) 个大压缩包（NSZ/XCZ）：在相册 / hbmenu（applet）模式下，DBI 主机内存不足可能拒绝安装并提示“需要 title 模式”。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再发送；纯 NSP/XCI 不受此限制。")
+                    noteRow("arrow.up.forward.app", "有 \(plan.advisoryCount) 个压缩包（NSZ/XCZ）：在相册 / hbmenu（applet）模式下需在主机端解压，可能被 DBI 拒绝并提示“需要 title 模式”。建议按住 R 从任意已安装游戏标题启动 DBI（title 模式）后再发送；纯 NSP/XCI 不受此限制。")
                 }
                 if let shortfall = model.spaceShortfall {
                     noteRow("externaldrive.badge.exclamationmark", "目标空间可能不足：还差约 \(ByteCountFormatter.string(fromByteCount: shortfall, countStyle: .file))。")
@@ -123,7 +124,7 @@ struct BatchConfirmSheet: View {
                 }
                 if needsModeAcknowledgement {
                     Toggle(isOn: $acknowledgesMode) {
-                        Text("我已知晓：以上大压缩包建议在 title 模式下安装；若仍用相册 / hbmenu 打开 DBI，部分项目可能被拒绝。")
+                        Text("我已知晓：以上压缩包（NSZ/XCZ）建议在 title 模式下安装；若仍用相册 / hbmenu 打开 DBI，部分项目可能被拒绝。")
                             .font(.system(size: 10))
                     }
                     .toggleStyle(.checkbox)

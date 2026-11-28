@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## 1.7.26 — 2026-11-28
+
+### GUI
+
+- **环境提醒改为按压缩格式判定，不再按体积**。此前 NSZ/XCZ 要达到保守体积档
+  （总包 ≈1.86 GiB，或单个压缩条目 ≈1.40 GiB）才标出 title 模式提醒；实测成败与
+  体积关系不大——大 NSP/NSZ 能装成，小压缩包也可能被拒。现在只要是 NSZ/XCZ 压缩包
+  即挂该环境提醒，纯 NSP/XCI 不挂，判定不再读取包大小。提醒文案去掉「大压缩包 /
+  内存不足」的体积归因，改为说明压缩包需在主机端解压、在相册 / hbmenu（applet）
+  模式下可能被 DBI 拒绝，建议按住 R 从已安装游戏标题启动 DBI（title 模式）。Mac 端
+  仍无法探测 DBI 当前运行在相册还是标题模式，格式是这里唯一可观测的信号。
+
 ## 1.7.25 — 2026-11-28
 
 ### 修复

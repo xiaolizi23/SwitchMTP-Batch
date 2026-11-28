@@ -289,41 +289,19 @@ struct InstallPackage: Identifiable, Sendable {
 
     // MARK: - Console environment advisory
 
-    /// Largest in-container entry on disk. For an NSZ/XCZ this is a compressed
-    /// NCZ; its uncompressed size lives in the zstd frame header and is not read
-    /// here. Used only for the environment advisory, never for the verdict axis.
-    var largestEntrySize: Int64? { report?.entries.map(\.size).max() }
-
-    /// Independent environment-risk axis: a large compressed title decompresses
-    /// in console memory. DBI launched from the album / hbmenu runs in applet
-    /// mode with a tight heap (~440 MB) and refuses such titles with
-    /// "title mode required"; holding R and launching DBI from an installed game
-    /// gives the full memory window.
+    /// Independent environment-risk axis, keyed by container **format**, not
+    /// size. NSZ/XCZ carry zstd-compressed NCZs that DBI decompresses on the
+    /// console; launched from the album / hbmenu (applet mode) that path is
+    /// tighter and can be refused with a "title mode required" error, whereas
+    /// holding R and launching DBI from an installed game (title mode) gives the
+    /// full memory window.
     ///
-    /// This is a *heuristic*, not a verdict: DBI publishes no GB-level cutoff,
-    /// and a flagged package can still install fine. Pure NSP/XCI do not go
+    /// This is an *advisory*, not a verdict: a flagged package can still install
+    /// fine, and size alone does not predict failure. Pure NSP/XCI do not go
     /// through the in-memory NCZ decompression path, so they are never flagged.
-    /// The thresholds below are conservative starting points pending real-device
-    /// calibration; adjust `InstallModeAdvisory` together with any on-screen copy.
-    var needsTitleModeAdvisory: Bool {
-        guard format.isCompressed else { return false }
-        if fileSize >= InstallModeAdvisory.compressedTotalBytes { return true }
-        if let largest = largestEntrySize, largest >= InstallModeAdvisory.largestEntryBytes {
-            return true
-        }
-        return false
-    }
-}
-
-/// Heuristic sizes behind the applet/title-mode advisory. DBI does not document a
-/// byte cutoff; these start conservative and are meant to be tuned against real
-/// installs on the console. Keep in bytes so the comparison matches `fileSize`.
-enum InstallModeAdvisory {
-    /// Compressed outer container at/above this size suggests a large decompress
-    /// workload. 2.0 GB ≈ 1.86 GiB.
-    static let compressedTotalBytes: Int64 = 2_000_000_000
-    /// Single compressed entry at/above this size. 1.5 GB ≈ 1.40 GiB.
-    static let largestEntryBytes: Int64 = 1_500_000_000
+    /// The Mac side cannot read whether DBI is running in applet or title mode,
+    /// so format is the only observable signal available here.
+    var needsTitleModeAdvisory: Bool { format.isCompressed }
 }
 
 /// A title group shown as one expandable row in the plan.
